@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme, alpha } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
@@ -218,6 +218,7 @@ export default function CollagePage() {
   const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 1 });
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
   const [startInLibrary, setStartInLibrary] = useState(false);
+  const [isLibraryPickerOpen, setIsLibraryPickerOpen] = useState(false);
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -287,6 +288,7 @@ export default function CollagePage() {
     panelImageMapping,
     panelTransforms,
     panelTexts,
+    stickers,
     lastUsedTextSettings,
     selectedTemplate,
     setSelectedTemplate,
@@ -310,6 +312,10 @@ export default function CollagePage() {
     updateImage,
     replaceImage,
     clearImages,
+    addSticker,
+    updateSticker,
+    moveSticker,
+    removeSticker,
     applySnapshotState,
     setHydrationMode,
     updatePanelImageMapping,
@@ -578,6 +584,7 @@ export default function CollagePage() {
 
   const currentSnapshot = useMemo(() => buildSnapshotFromState({
     selectedImages,
+    selectedStickers: stickers,
     panelImageMapping,
     panelTransforms,
     panelTexts,
@@ -626,7 +633,7 @@ export default function CollagePage() {
         return undefined;
       }
     })(),
-  }), [selectedImages, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
+  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);
@@ -921,6 +928,63 @@ export default function CollagePage() {
       };
     });
 
+    const resolveStickerRef = async (ref, index) => {
+      if (!ref) return null;
+      if (typeof ref === 'string') {
+        return {
+          id: `sticker-${index + 1}`,
+          originalUrl: ref,
+          thumbnailUrl: ref,
+          metadata: {},
+          aspectRatio: 1,
+          angleDeg: 0,
+          widthPercent: 28,
+          xPercent: 36,
+          yPercent: 12,
+        };
+      }
+
+      const metadata = (ref.metadata && typeof ref.metadata === 'object') ? { ...ref.metadata } : {};
+      if (typeof ref.libraryKey === 'string' && ref.libraryKey) {
+        metadata.libraryKey = ref.libraryKey;
+      }
+
+      let resolvedUrl = typeof ref.url === 'string' ? ref.url : '';
+      if (typeof ref.libraryKey === 'string' && ref.libraryKey) {
+        try {
+          const blob = await getFromLibrary(ref.libraryKey, { level: 'private' });
+          resolvedUrl = await blobToDataUrl(blob);
+        } catch (_) {
+          // Keep URL fallback if library retrieval fails.
+        }
+      }
+
+      if (!resolvedUrl) return null;
+
+      const parsedAspectRatio = Number(ref.aspectRatio);
+      const parsedAngle = Number(ref.angleDeg);
+      const parsedWidth = Number(ref.widthPercent);
+      const parsedX = Number(ref.xPercent);
+      const parsedY = Number(ref.yPercent);
+
+      return {
+        id: (typeof ref.id === 'string' && ref.id.trim()) ? ref.id : `sticker-${index + 1}`,
+        originalUrl: resolvedUrl,
+        thumbnailUrl: (typeof ref.thumbnailUrl === 'string' && ref.thumbnailUrl) ? ref.thumbnailUrl : resolvedUrl,
+        metadata,
+        aspectRatio: Number.isFinite(parsedAspectRatio) && parsedAspectRatio > 0 ? parsedAspectRatio : 1,
+        angleDeg: Number.isFinite(parsedAngle) ? parsedAngle : 0,
+        widthPercent: Number.isFinite(parsedWidth) ? parsedWidth : 28,
+        xPercent: Number.isFinite(parsedX) ? parsedX : 36,
+        yPercent: Number.isFinite(parsedY) ? parsedY : 12,
+      };
+    };
+
+    const resolvedStickersRaw = Array.isArray(snap.stickers)
+      ? await Promise.all(snap.stickers.map(resolveStickerRef))
+      : [];
+    const stickersForState = resolvedStickersRaw.filter(Boolean);
+
     const normalizedTransforms = (snap.panelTransforms && typeof snap.panelTransforms === 'object')
       ? JSON.parse(JSON.stringify(snap.panelTransforms))
       : {};
@@ -930,6 +994,7 @@ export default function CollagePage() {
       mapping: (snap.panelImageMapping && typeof snap.panelImageMapping === 'object') ? snap.panelImageMapping : {},
       transforms: normalizedTransforms,
       texts: (snap.panelTexts && typeof snap.panelTexts === 'object') ? snap.panelTexts : {},
+      stickers: stickersForState,
     };
 
     hydrationTransformAdjustRef.current = {
@@ -1713,6 +1778,89 @@ export default function CollagePage() {
   useEffect(() => { nudgeMessageVisibleRef.current = nudgeMessageVisible; }, [nudgeMessageVisible]);
   useEffect(() => { nudgeVisualActiveRef.current = nudgeVisualActive; }, [nudgeVisualActive]);
 
+  const canManageStickers = Boolean(user) && hasLibraryAccess;
+
+  const resolveStickerSource = useCallback(async (selectedItem) => {
+    const metadataBase = (selectedItem?.metadata && typeof selectedItem.metadata === 'object')
+      ? { ...selectedItem.metadata }
+      : {};
+    const libraryKey = metadataBase?.libraryKey;
+
+    if (libraryKey) {
+      try {
+        const blob = await getFromLibrary(libraryKey, { level: 'private' });
+        const dataUrl = await blobToDataUrl(blob);
+        return {
+          dataUrl,
+          metadata: { ...metadataBase, libraryKey },
+        };
+      } catch (error) {
+        console.warn('Unable to load sticker from library key, trying URL fallback.', error);
+      }
+    }
+
+    const sourceUrl = selectedItem?.originalUrl || selectedItem?.displayUrl || selectedItem?.url || null;
+    if (typeof sourceUrl !== 'string' || !sourceUrl) {
+      throw new Error('Missing sticker source');
+    }
+    if (sourceUrl.startsWith('data:')) {
+      return {
+        dataUrl: sourceUrl,
+        metadata: metadataBase,
+      };
+    }
+
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch sticker source (${response.status})`);
+    }
+    const blob = await response.blob();
+    const dataUrl = await blobToDataUrl(blob);
+    return {
+      dataUrl,
+      metadata: {
+        ...metadataBase,
+        ...(sourceUrl ? { sourceUrl } : {}),
+      },
+    };
+  }, []);
+
+  const getStickerAspectRatio = useCallback((source) => (
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const naturalWidth = Number(img.naturalWidth || 0);
+        const naturalHeight = Number(img.naturalHeight || 0);
+        if (naturalWidth > 0 && naturalHeight > 0) {
+          resolve(naturalWidth / naturalHeight);
+          return;
+        }
+        resolve(1);
+      };
+      img.onerror = () => resolve(1);
+      img.src = source;
+    })
+  ), []);
+
+  const handleAddStickerFromLibrary = useCallback(async (selectedItem) => {
+    if (!canManageStickers) {
+      setSnackbar({ open: true, message: 'Log in with library access to use stickers.', severity: 'warning' });
+      return null;
+    }
+    if (!selectedItem) return null;
+
+    const { dataUrl, metadata } = await resolveStickerSource(selectedItem);
+    const aspectRatio = await getStickerAspectRatio(dataUrl);
+    const stickerId = addSticker({
+      originalUrl: dataUrl,
+      thumbnailUrl: dataUrl,
+      metadata,
+      aspectRatio,
+      widthPercent: 28,
+    });
+    return stickerId;
+  }, [addSticker, canManageStickers, getStickerAspectRatio, resolveStickerSource]);
+
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
@@ -1733,6 +1881,11 @@ export default function CollagePage() {
     borderColor,
     setBorderColor,
     borderThicknessOptions,
+    stickers,
+    canManageStickers,
+    onAddStickerFromLibrary: handleAddStickerFromLibrary,
+    onMoveSticker: moveSticker,
+    onRemoveSticker: removeSticker,
   };
 
   // Handler for when collage is generated - show inline result
@@ -1755,10 +1908,14 @@ export default function CollagePage() {
     panelImageMapping,
     panelTransforms,
     panelTexts,
+    stickers,
     lastUsedTextSettings,
     updatePanelImageMapping,
     updatePanelTransform,
     updatePanelText,
+    updateSticker,
+    moveSticker,
+    removeSticker,
     panelCount,
     selectedTemplate,
     selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
@@ -1781,6 +1938,7 @@ export default function CollagePage() {
     isCreatingCollage, // Pass the collage generation state to prevent placeholder text during export
     libraryRefreshTrigger, // For refreshing library when new images are auto-saved
     initialShowLibrary: startInLibrary,
+    onLibraryPickerOpenChange: setIsLibraryPickerOpen,
     onCaptionEditorVisibleChange: (open) => {
       setIsCaptionEditorOpen(open);
       captionOpenPrevRef.current = open;
@@ -1898,6 +2056,28 @@ export default function CollagePage() {
         : neutralButtonShadow,
     },
   };
+  const stickerCount = Array.isArray(stickers) ? stickers.length : 0;
+  const settingsButtonIcon = (
+    <Badge
+      color="error"
+      badgeContent={stickerCount}
+      invisible={stickerCount <= 0}
+      overlap="circular"
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      sx={{
+        '& .MuiBadge-badge': {
+          minWidth: 16,
+          height: 16,
+          px: 0.4,
+          fontSize: '0.62rem',
+          fontWeight: 700,
+          border: `1px solid ${alpha(theme.palette.background.paper, 0.75)}`,
+        },
+      }}
+    >
+      <Settings />
+    </Badge>
+  );
 
   return (
     <>
@@ -2076,7 +2256,7 @@ export default function CollagePage() {
             </Snackbar>
 
             {/* Bottom Action Bar (admins always see; no animation) */}
-            {(!showResultDialog && !isCaptionEditorOpen) && (
+            {(!showResultDialog && !isCaptionEditorOpen && !isLibraryPickerOpen) && (
                 <Box
                   sx={{
                     position: 'fixed',
@@ -2178,7 +2358,7 @@ export default function CollagePage() {
                                   variant="contained"
                                   onClick={handleToggleSettings}
                                   disabled={isCreatingCollage}
-                                  startIcon={<Settings />}
+                                  startIcon={settingsButtonIcon}
                                   aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                                   sx={settingsActionButtonSx}
                                 >
@@ -2225,7 +2405,7 @@ export default function CollagePage() {
                                 variant="contained"
                                 onClick={handleToggleSettings}
                                 disabled={isCreatingCollage}
-                                startIcon={<Settings />}
+                                startIcon={settingsButtonIcon}
                                 aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                                 sx={settingsActionButtonSx}
                               >

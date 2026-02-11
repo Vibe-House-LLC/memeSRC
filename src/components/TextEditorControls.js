@@ -8,10 +8,10 @@ import FormatColorFillIcon from '@mui/icons-material/FormatColorFill';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { FontDownloadOutlined, FormatSizeRounded, Settings } from '@mui/icons-material';
+import { FontDownloadOutlined, FormatSizeRounded } from '@mui/icons-material';
 import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
-import IconButton from '@mui/material/IconButton';
-import { MenuItem, Select, Typography, Menu, InputAdornment } from '@mui/material';
+import { MenuItem, Select, Typography, Menu, InputAdornment, Box, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
 import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
 import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
@@ -33,6 +33,7 @@ TextEditorControls.propTypes = {
   layerFonts: PropTypes.object.isRequired,
   setLayerFonts: PropTypes.func.isRequired,
   activeFormats: PropTypes.arrayOf(PropTypes.string),
+  showHeader: PropTypes.bool,
 };
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => (
@@ -48,6 +49,16 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => (
       </InputAdornment>
     }
     sx={{
+      color: '#f3f4f6',
+      bgcolor: '#151515',
+      borderRadius: 1,
+      border: '1px solid rgba(255,255,255,0.2)',
+      '& .MuiSelect-icon': {
+        color: 'rgba(255,255,255,0.8)',
+      },
+      '& .MuiOutlinedInput-notchedOutline': {
+        border: 'none',
+      },
       '& .MuiSelect-select': {
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -71,8 +82,9 @@ FontSelector.propTypes = {
 };
 
 export default function TextEditorControls(props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [formats, setFormats] = React.useState(() => []);
-  const [editorVisible, setEditorVisible] = React.useState(true);
   const [alignment, setAlignment] = React.useState('center');
   const [alignmentAnchorEl, setAlignmentAnchorEl] = React.useState(null);
   const [colorAnchorEl, setColorAnchorEl] = React.useState(null);
@@ -123,24 +135,51 @@ export default function TextEditorControls(props) {
   };
 
   return (
-    <div style={{ marginBottom: '8px' }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <Typography variant="h5" marginY={1}>
-          <b>Layer {props.index + 1} (caption)</b>
-        </Typography>
-        <IconButton
-          size="small"
-          color={editorVisible ? 'primary' : 'default'}
-          onClick={() => setEditorVisible((prev) => !prev)}
-          sx={{ marginLeft: 1 }}
-        >
-          <Settings />
-        </IconButton>
-      </div>
+    <Box sx={{ mb: 0.75 }}>
+      {props.showHeader !== false && (
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="h5" marginY={1}>
+            <b>Layer {props.index + 1} (caption)</b>
+          </Typography>
+        </Box>
+      )}
 
-      {editorVisible && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <ToggleButtonGroup value={formats} onChange={handleFormat} aria-label="text formatting" size="small">
+      <Box
+        sx={{
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          pb: 0.5,
+          mx: isMobile ? -0.5 : 0,
+          px: isMobile ? 0.5 : 0,
+        }}
+      >
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minWidth: 'max-content' }}>
+          <ToggleButtonGroup
+            value={formats}
+            onChange={handleFormat}
+            aria-label="text formatting"
+            size="small"
+            sx={{
+              flexWrap: 'nowrap',
+              bgcolor: '#111111',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 1.2,
+              '& .MuiToggleButton-root': {
+                minWidth: isMobile ? 36 : 40,
+                color: 'rgba(241,245,249,0.9)',
+                borderColor: 'rgba(255,255,255,0.18)',
+                backgroundColor: 'transparent',
+              },
+              '& .MuiToggleButton-root.Mui-selected': {
+                color: '#ffffff',
+                backgroundColor: '#2a2a2a',
+              },
+              '& .MuiToggleButton-root.Mui-selected:hover': {
+                backgroundColor: '#333333',
+              },
+            }}
+          >
             <ToggleButton value="bold" aria-label="bold">
               <FormatBoldIcon />
             </ToggleButton>
@@ -168,41 +207,67 @@ export default function TextEditorControls(props) {
               <ArrowDropDownIcon />
             </ToggleButton>
           </ToggleButtonGroup>
-          <FontSelector
-            selectedFont={props.layerFonts[props.index] || 'Arial'}
-            onSelectFont={(font, index) => {
-              props.setLayerFonts({ ...props.layerFonts, [index]: font });
-              props.handleFontChange(index, font);
-            }}
-            index={props.index}
-          />
-          <Menu anchorEl={alignmentAnchorEl} open={Boolean(alignmentAnchorEl)} onClose={handleAlignmentClose}>
-            <MenuItem onClick={() => handleAlignmentChange('left')}>
-              <FormatAlignLeftIcon />
-            </MenuItem>
-            <MenuItem onClick={() => handleAlignmentChange('center')}>
-              <FormatAlignCenterIcon />
-            </MenuItem>
-            <MenuItem onClick={() => handleAlignmentChange('right')}>
-              <FormatAlignRightIcon />
-            </MenuItem>
-          </Menu>
-          <Menu anchorEl={colorAnchorEl} open={Boolean(colorAnchorEl)} onClose={handleColorClose}>
-            <MenuItem
-              onClick={(event) => {
-                handleColorChange('text', event);
+
+          <Box sx={{ width: isMobile ? 158 : 190, flexShrink: 0 }}>
+            <FontSelector
+              selectedFont={props.layerFonts[props.index] || 'Arial'}
+              onSelectFont={(font, index) => {
+                props.setLayerFonts({ ...props.layerFonts, [index]: font });
+                props.handleFontChange(index, font);
               }}
-            >
-              <FormatColorTextIcon style={{ marginRight: '8px', color: props.layerColor || 'inherit' }} />
-              Text Color
-            </MenuItem>
-            <MenuItem onClick={(event) => handleColorChange('stroke', event)}>
-              <BorderColorIcon style={{ marginRight: '8px', color: props.layerStrokeColor || 'inherit' }} />
-              Stroke Color
-            </MenuItem>
-          </Menu>
-        </div>
-      )}
-    </div>
+              index={props.index}
+            />
+          </Box>
+        </Box>
+
+        <Menu
+          anchorEl={alignmentAnchorEl}
+          open={Boolean(alignmentAnchorEl)}
+          onClose={handleAlignmentClose}
+          PaperProps={{
+            sx: {
+              bgcolor: '#151515',
+              color: '#f3f4f6',
+              border: '1px solid rgba(255,255,255,0.16)',
+            },
+          }}
+        >
+          <MenuItem onClick={() => handleAlignmentChange('left')}>
+            <FormatAlignLeftIcon />
+          </MenuItem>
+          <MenuItem onClick={() => handleAlignmentChange('center')}>
+            <FormatAlignCenterIcon />
+          </MenuItem>
+          <MenuItem onClick={() => handleAlignmentChange('right')}>
+            <FormatAlignRightIcon />
+          </MenuItem>
+        </Menu>
+        <Menu
+          anchorEl={colorAnchorEl}
+          open={Boolean(colorAnchorEl)}
+          onClose={handleColorClose}
+          PaperProps={{
+            sx: {
+              bgcolor: '#151515',
+              color: '#f3f4f6',
+              border: '1px solid rgba(255,255,255,0.16)',
+            },
+          }}
+        >
+          <MenuItem
+            onClick={(event) => {
+              handleColorChange('text', event);
+            }}
+          >
+            <FormatColorTextIcon style={{ marginRight: '8px', color: props.layerColor || 'inherit' }} />
+            Text Color
+          </MenuItem>
+          <MenuItem onClick={(event) => handleColorChange('stroke', event)}>
+            <BorderColorIcon style={{ marginRight: '8px', color: props.layerStrokeColor || 'inherit' }} />
+            Stroke Color
+          </MenuItem>
+        </Menu>
+      </Box>
+    </Box>
   );
 }

@@ -10,9 +10,7 @@ import {
   MenuItem,
   Snackbar,
   Alert,
-  CircularProgress,
   Button,
-  Stack,
 } from '@mui/material';
 import { useTheme, styled, alpha } from '@mui/material/styles';
 import {
@@ -24,11 +22,9 @@ import {
   Clear,
   PhotoLibrary,
 } from '@mui/icons-material';
-import { LibraryBrowser } from '../../library';
+import { LibraryPickerDialog } from '../../library';
 import { UserContext } from '../../../UserContext';
-import useLibraryData from '../../../hooks/library/useLibraryData';
 import { resizeImage } from '../../../utils/library/resizeImage';
-import { trackUsageEvent } from '../../../utils/trackUsageEvent';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -147,80 +143,35 @@ const BulkUploadSection = ({
   onLibrarySelectionChange,
   onLibraryActionsReady,
   initialShowLibrary = false,
+  onLibraryPickerOpenChange,
 }) => {
   const theme = useTheme();
   const { user } = useContext(UserContext);
+  const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
+  const openLibraryPicker = useCallback(() => setLibraryPickerOpen(true), []);
+  const closeLibraryPicker = useCallback(() => setLibraryPickerOpen(false), []);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const hasLibraryAccess = isAdmin || (user?.userDetails?.magicSubscription === 'true');
-  // For non-admins (no projects access), start with a simple start screen
-  const [showLibrary, setShowLibrary] = useState(isAdmin);
   const bulkFileInputRef = useRef(null);
   const panelScrollerRef = useRef(null);
   const specificPanelFileInputRef = useRef(null);
 
   useEffect(() => {
-    if (initialShowLibrary) {
-      setShowLibrary(true);
+    if (initialShowLibrary && hasLibraryAccess) {
+      setLibraryPickerOpen(true);
     }
-  }, [initialShowLibrary]);
+  }, [initialShowLibrary, hasLibraryAccess]);
 
-  const renderLibraryHeader = useCallback(({ count, minSelected: minSel, maxSelected: maxSel }) => {
-    const minimum = Math.max(1, typeof minSel === 'number' ? minSel : 0);
-    const maximum = typeof maxSel === 'number' && maxSel > 0 ? maxSel : null;
-    const remaining = Math.max(0, minimum - count);
-    const ready = remaining === 0;
-    const rangeCopy = maximum ? `${minimum}-${maximum}` : `at least ${minimum}`;
-
-    return (
-      <Box
-        sx={{
-          borderRadius: 2,
-          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.35 : 0.2)}`,
-          background: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.1 : 0.06),
-          px: 2,
-          pt: { xs: 1.5, sm: 1.75 },
-          pb: { xs: 1.65, sm: 1.75 },
-        }}
-      >
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <PhotoLibrary sx={{ fontSize: 24, color: 'primary.main' }} />
-          Pick your collage photos
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Choose {rangeCopy} photos to start your collage.
-        </Typography>
-        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mt: 1.5, flexWrap: 'wrap' }}>
-          <Chip
-            size="small"
-            label={`${count} selected`}
-            color={ready ? 'primary' : 'default'}
-            sx={{
-              fontWeight: 600,
-            }}
-          />
-          <Typography variant="caption" color="text.secondary">
-            {ready
-              ? 'ready to continue'
-              : `need ${remaining} more ${remaining === 1 ? 'photo' : 'photos'}`}
-          </Typography>
-        </Stack>
-      </Box>
-    );
-  }, [theme]);
-
-  // Peek at library to decide what to show at start when library is enabled
-  const {
-    items: adminLibraryItems,
-    uploadMany: uploadManyToLibrary,
-  } = useLibraryData({ pageSize: 1, storageLevel: 'private', refreshToken: libraryRefreshTrigger });
+  useEffect(() => {
+    if (typeof onLibraryPickerOpenChange === 'function') {
+      onLibraryPickerOpenChange(Boolean(libraryPickerOpen));
+    }
+    return () => {
+      if (typeof onLibraryPickerOpenChange === 'function') {
+        onLibraryPickerOpenChange(false);
+      }
+    };
+  }, [libraryPickerOpen, onLibraryPickerOpenChange]);
 
   // State for context menu
   const [contextMenu, setContextMenu] = useState(null);
@@ -236,10 +187,24 @@ const BulkUploadSection = ({
   // Check if there are any selected images
   const hasImages = selectedImages && selectedImages.length > 0;
 
-  // Determine if user with library access has any uploaded (non-placeholder) library items
-  const adminHasLibraryItems = hasLibraryAccess && Boolean(adminLibraryItems?.some((it) => it?.key));
-  const helperSourceLabel = adminHasLibraryItems ? 'library' : 'device';
-  const showHelperSummary = !adminHasLibraryItems || !showLibrary;
+  const helperSourceLabel = hasLibraryAccess ? 'library' : 'device';
+
+  useEffect(() => {
+    if (typeof onLibrarySelectionChange === 'function') {
+      if (hasLibraryAccess && !hasImages) {
+        onLibrarySelectionChange({ count: 1, minSelected: 1 });
+      } else {
+        onLibrarySelectionChange({ count: 0, minSelected: 1 });
+      }
+    }
+    if (typeof onLibraryActionsReady === 'function') {
+      if (hasLibraryAccess && !hasImages) {
+        onLibraryActionsReady({ primary: openLibraryPicker, clearSelection: () => {} });
+      } else {
+        onLibraryActionsReady({ primary: null, clearSelection: null });
+      }
+    }
+  }, [hasImages, hasLibraryAccess, onLibrarySelectionChange, onLibraryActionsReady, openLibraryPicker]);
 
   // Check if there are any empty frames
   const hasEmptyFrames = () => {
@@ -449,49 +414,6 @@ const BulkUploadSection = ({
     // Reset file input
     if (event.target) {
       event.target.value = null;
-    }
-  };
-
-  // --- Admin-only: upload directly to Library when they have no items yet ---
-  const adminLibraryFileInputRef = useRef(null);
-  const handleAdminLibraryUpload = async (event) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-    try {
-      // Use concurrent uploads with immediate placeholders
-      const results = await uploadManyToLibrary(files, { concurrency: 4 });
-      const indexedSuccesses = (results || [])
-        .map((result, index) => ({ result, index }))
-        .filter(({ result }) => Boolean(result?.key));
-      const successCount = indexedSuccesses.length;
-
-      if (successCount > 0) {
-        const filesForEvent = indexedSuccesses.map(({ result, index }) => {
-          const file = files[index];
-          const meta = { key: result.key };
-          if (file?.name) meta.fileName = file.name;
-          if (typeof file?.size === 'number') meta.fileSize = file.size;
-          if (file?.type) meta.fileType = file.type;
-          return meta;
-        });
-
-        trackUsageEvent('library_upload', {
-          source: 'BulkUploadSection',
-          storageLevel: 'private',
-          uploadedCount: successCount,
-          batchSize: files.length,
-          files: filesForEvent,
-        });
-      }
-
-      if (successCount === 0) {
-        setToast({ open: true, message: 'Failed to upload images', severity: 'error' });
-      }
-    } catch (e) {
-      console.error('Failed to upload to library:', e);
-      setToast({ open: true, message: 'Failed to upload to library', severity: 'error' });
-    } finally {
-      if (event.target) event.target.value = null;
     }
   };
 
@@ -839,6 +761,7 @@ const BulkUploadSection = ({
 
     // Update mapping after images are added
     updatePanelImageMapping(newMapping);
+    setLibraryPickerOpen(false);
   };
 
   // Generate panel list data
@@ -1030,17 +953,15 @@ const BulkUploadSection = ({
       ) : (
         // Starting point: distinct for admins vs non-admins
         <Box>
-          {showHelperSummary && (
-            <Typography
-              variant="subtitle1"
-              sx={{
-                color: 'text.secondary',
-                mb: 1.5,
-              }}
-            >
-              Add up to 5 images from your {helperSourceLabel}
-            </Typography>
-          )}
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: 'text.secondary',
+              mb: 1.5,
+            }}
+          >
+            Add up to 5 images from your {helperSourceLabel}
+          </Typography>
           {!hasLibraryAccess ? (
             // Non-admins: only the collage bulk upload dropzone
             <>
@@ -1103,10 +1024,9 @@ const BulkUploadSection = ({
               )}
             </>
           ) : (
-            // Library users (admins or pro): for non-admins, show a simple start screen first
             <>
-              {!isAdmin && !showLibrary ? (
-                <Box sx={{ 
+              <Box
+                sx={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -1118,130 +1038,53 @@ const BulkUploadSection = ({
                   bgcolor: (theme) => theme.palette.background.paper,
                   border: 1,
                   borderColor: 'divider',
-                }}>
-                  <PhotoLibrary sx={{ fontSize: 56, mb: 1, color: 'text.disabled' }} />
-                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-                    New Collage
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                    You're making a new collage. Select photos to get started.
-                  </Typography>
-                  <Button 
-                    variant="contained"
-                    size="large"
-                    startIcon={<PhotoLibrary />}
-                    onClick={() => {
-                      setShowLibrary(true);
-                    }}
-                    sx={{ fontWeight: 700, textTransform: 'none', minWidth: 220 }}
-                  >
-                    Select photos
-                  </Button>
-                </Box>
-              ) : (
-                <>
-                  {adminHasLibraryItems ? (
-                    <>
-                      <LibraryBrowser
-                        isAdmin={isAdmin}
-                        multiple
-                        minSelected={1}
-                        maxSelected={5}
-                        refreshTrigger={libraryRefreshTrigger}
-                        onSelect={(items) => handleLibrarySelect(items)}
-                        showActionBar={false}
-                        actionBarLabel="Make Collage"
-                        showSelectToggle
-                        initialSelectMode
-                        onSelectionChange={(info) => { if (onLibrarySelectionChange) onLibrarySelectionChange(info); }}
-                        exposeActions={(actions) => { if (onLibraryActionsReady) onLibraryActionsReady(actions); }}
-                        renderHeader={renderLibraryHeader}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Box sx={{ 
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '200px',
-                        border: `2px dashed ${theme.palette.divider}`,
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        '&:hover': {
-                          borderColor: theme.palette.primary.main,
-                          backgroundColor: theme.palette.action.hover,
-                        }
-                      }}>
-                        <Box 
-                          onClick={() => adminLibraryFileInputRef.current?.click()}
-                          sx={{ textAlign: 'center', p: 3 }}
-                        >
-                          <Add sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
-                          <Typography variant="h6" gutterBottom>
-                            Add photos to your library
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Upload images to build your library, then make collages from them
-                          </Typography>
-                        </Box>
-                        <input
-                          type="file"
-                          ref={adminLibraryFileInputRef}
-                          style={{ display: 'none' }}
-                          accept="image/*"
-                          multiple
-                          onChange={handleAdminLibraryUpload}
-                        />
-                      </Box>
+                }}
+              >
+                <PhotoLibrary sx={{ fontSize: 56, mb: 1, color: 'text.disabled' }} />
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                  New Collage
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                  Pick up to 5 photos from your Library to get started.
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<PhotoLibrary />}
+                  onClick={openLibraryPicker}
+                  sx={{ fontWeight: 700, textTransform: 'none', minWidth: 220 }}
+                >
+                  Select photos
+                </Button>
+              </Box>
 
-                      {/* Show placeholders and recently added items while uploads are in progress */}
-                      {Array.isArray(adminLibraryItems) && adminLibraryItems.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                          <HorizontalScroller>
-                            {adminLibraryItems.map((it, idx) => (
-                              <PanelThumbnail key={it.key || it.id || idx} hasImage>
-                                <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-                                  <CardMedia
-                                    component="img"
-                                    width="100%"
-                                    height="100%"
-                                    image={it.url}
-                                    alt="Uploading"
-                                    sx={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                                  />
-                                  {it.loading && (
-                                    <Box
-                                      sx={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        bgcolor: (theme) => theme.palette.action.disabledBackground,
-                                      }}
-                                    >
-                                      <CircularProgress size={20} />
-                                    </Box>
-                                  )}
-                                </Box>
-                              </PanelThumbnail>
-                            ))}
-                          </HorizontalScroller>
-                        </Box>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
+              <LibraryPickerDialog
+                open={libraryPickerOpen}
+                onClose={closeLibraryPicker}
+                title="Choose photos from your library"
+                showSelectAction
+                selectActionLabel="Continue"
+                onSelect={(items) => { void handleLibrarySelect(items); }}
+                maxWidth="lg"
+                browserProps={{
+                  multiple: true,
+                  minSelected: 1,
+                  maxSelected: 5,
+                  refreshTrigger: libraryRefreshTrigger,
+                  uploadEnabled: true,
+                  deleteEnabled: false,
+                  showActionBar: false,
+                  actionBarLabel: 'Add to collage',
+                  selectionEnabled: true,
+                  previewOnClick: false,
+                  showSelectToggle: false,
+                  initialSelectMode: true,
+                }}
+              />
             </>
           )}
         </Box>
       )}
-
-      {/* Library section is rendered above for users with library access (admins or pro) when no images */}
 
       {/* Toast Notification */}
       <Snackbar
@@ -1278,6 +1121,7 @@ BulkUploadSection.propTypes = {
   onLibrarySelectionChange: PropTypes.func,
   onLibraryActionsReady: PropTypes.func,
   initialShowLibrary: PropTypes.bool,
+  onLibraryPickerOpenChange: PropTypes.func,
 };
 
 export default BulkUploadSection; 

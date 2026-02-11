@@ -1,7 +1,7 @@
 // V2EditorPage.js
 /* eslint-disable no-unused-vars, func-names */
 
-import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import PropTypes from 'prop-types';
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
@@ -11,19 +11,19 @@ import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
 import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, Chip, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, InputAdornment, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Radio, FormControlLabel, RadioGroup, Skeleton, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useMediaQuery, useTheme } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { Add, AddCircleOutline, AddPhotoAlternate, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, LocalPoliceRounded, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
+import { Add, AddCircleOutline, AddPhotoAlternate, ArrowDownward, ArrowUpward, AutoFixHigh, AutoFixHighRounded, CheckCircleOutline, Close, ClosedCaption, ContentCopy, Edit, FormatColorFill, GpsFixed, GpsNotFixed, HighlightOffRounded, HistoryToggleOffRounded, IosShare, LocalPoliceRounded, Menu, Redo, Save, Send, Share, Undo, ZoomIn, ZoomOut } from '@mui/icons-material';
 import { API, Storage, graphqlOperation } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
 import { getRateLimit, getWebsiteSetting } from '../graphql/queries';
 import TextEditorControls from '../components/TextEditorControls';
+import { LibraryPickerDialog } from '../components/library';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
-import ImageEditorControls from '../components/ImageEditorControls';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
@@ -346,8 +346,11 @@ const EditorPage = ({ shows }) => {
   const [collageReplaceSelection, setCollageReplaceSelection] = useState(null);
   const [collageReplaceOptions, setCollageReplaceOptions] = useState([]);
   const [collageReplaceContext, setCollageReplaceContext] = useState(null);
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [stickerLoading, setStickerLoading] = useState(false);
   const [snackbarOpen, setSnackBarOpen] = useState(false);
   const theme = useTheme();
+  const isMobile = useMediaQuery((muiTheme) => muiTheme.breakpoints.down('sm'));
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   // const [drawingMode, setDrawingMode] = useState(false);
@@ -371,6 +374,7 @@ const EditorPage = ({ shows }) => {
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
 
+  const isAuthenticated = Boolean(user && user !== false);
   const isProUser = user?.userDetails?.subscriptionStatus === 'active';
 
   // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
@@ -897,25 +901,73 @@ const EditorPage = ({ shows }) => {
         image.setCoords();
         editor.canvas.renderAll();
 
-        // Create a new canvas object for the image
-        const imageObject = {
-          type: 'image',
-          src: event.target.result,
-          scale,
-          angle: 0,
-          left: canvasWidth / 2,
-          top: canvasHeight / 2
-        };
-
-        // Update the canvasObjects state with the new image object
-        setCanvasObjects(prevObjects => [...prevObjects, imageObject]);
+        // Keep layer state in lockstep with Fabric's actual object stack.
+        setCanvasObjects([...editor.canvas._objects]);
         addToHistory();
       };
     };
     reader.readAsDataURL(imageFile);
   };
 
-  const fileInputRef = useRef(null); // Define the ref
+  const addStickerLayerFromSource = useCallback(
+    async (imageSource) =>
+      new Promise((resolve, reject) => {
+        if (!editor?.canvas || typeof imageSource !== 'string' || imageSource.length === 0) {
+          reject(new Error('Editor is not ready for stickers.'));
+          return;
+        }
+
+        const stickerImage = new Image();
+        stickerImage.crossOrigin = 'anonymous';
+        stickerImage.onload = () => {
+          try {
+            const sticker = new fabric.Image(stickerImage);
+            const canvasWidth = editor.canvas.getWidth();
+            const canvasHeight = editor.canvas.getHeight();
+            const maxWidth = canvasWidth * 0.45;
+            const maxHeight = canvasHeight * 0.45;
+            const scale = Math.min(maxWidth / stickerImage.width, maxHeight / stickerImage.height, 1);
+
+            // Increase handle target size on touch devices for easier resize/rotate.
+            sticker.set({
+              angle: 0,
+              scaleX: scale,
+              scaleY: scale,
+              originX: 'center',
+              originY: 'center',
+              left: canvasWidth / 2,
+              top: canvasHeight / 2,
+              selectable: true,
+              hasControls: true,
+              hasBorders: true,
+              centeredScaling: true,
+              cornerStyle: 'circle',
+              transparentCorners: false,
+              cornerColor: '#4CAF50',
+              cornerStrokeColor: '#ffffff',
+              borderColor: '#4CAF50',
+              cornerSize: isMobile ? 22 : 12,
+              touchCornerSize: isMobile ? 34 : 18,
+              padding: isMobile ? 10 : 6,
+            });
+
+            editor.canvas.add(sticker);
+            editor.canvas.setActiveObject(sticker);
+            sticker.setCoords();
+            editor.canvas.renderAll();
+            setCanvasObjects([...editor.canvas._objects]);
+            addToHistory();
+            resolve(sticker);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        stickerImage.onerror = () => reject(new Error('Unable to load sticker image.'));
+        stickerImage.src = imageSource;
+      }),
+    [editor, isMobile]
+  );
+
   const lastTrackedAdvancedViewRef = useRef('');
 
   const handleDeleteLayer = (index) => {
@@ -1931,25 +1983,69 @@ const EditorPage = ({ shows }) => {
     addToHistory();
   }
 
-  // Function to move a layer down in the stack
-  const moveLayerDown = (index) => {
-    if (index >= editor.canvas._objects.length - 1) return; // Already at the bottom or invalid index
+  const swapIndexedRecord = useCallback((record, firstIndex, secondIndex) => {
+    if (!record || typeof record !== 'object') return record;
+    if (firstIndex === secondIndex) return record;
+    const hasFirst = Object.prototype.hasOwnProperty.call(record, firstIndex);
+    const hasSecond = Object.prototype.hasOwnProperty.call(record, secondIndex);
+    if (!hasFirst && !hasSecond) return record;
 
-    const objectToMoveDown = editor.canvas.item(index);
-    if (!objectToMoveDown) return; // Object not found
+    const next = { ...record };
+    const firstValue = next[firstIndex];
+    const secondValue = next[secondIndex];
 
-    // Move the object one step down in the canvas stack
-    editor.canvas.moveTo(objectToMoveDown, index + 1);
+    if (hasSecond) next[firstIndex] = secondValue;
+    else delete next[firstIndex];
+
+    if (hasFirst) next[secondIndex] = firstValue;
+    else delete next[secondIndex];
+
+    return next;
+  }, []);
+
+  const remapLayerStateForSwap = useCallback((firstIndex, secondIndex) => {
+    if (firstIndex === secondIndex) return;
+    setLayerFonts((prev) => swapIndexedRecord(prev || {}, firstIndex, secondIndex));
+    setLayerRawText((prev) => swapIndexedRecord(prev || {}, firstIndex, secondIndex));
+    setLayerActiveFormats((prev) => swapIndexedRecord(prev || {}, firstIndex, secondIndex));
+    textFieldRefs.current = swapIndexedRecord(textFieldRefs.current || {}, firstIndex, secondIndex) || {};
+    selectionCacheRef.current = swapIndexedRecord(selectionCacheRef.current || {}, firstIndex, secondIndex) || {};
+  }, [swapIndexedRecord]);
+
+  const handleMoveLayerUp = useCallback((index) => {
+    if (!editor?.canvas) return;
+    const sourceIndex = Number(index);
+    if (!Number.isInteger(sourceIndex) || sourceIndex <= 0) return;
+
+    const objectToMove = editor.canvas.item(sourceIndex);
+    if (!objectToMove) return;
+
+    const nextObjects = moveLayerUp(editor.canvas, sourceIndex);
+    editor.canvas.setActiveObject(objectToMove);
+    objectToMove.setCoords();
     editor.canvas.renderAll();
+    setCanvasObjects(Array.isArray(nextObjects) && nextObjects.length ? [...nextObjects] : [...editor.canvas._objects]);
+    remapLayerStateForSwap(sourceIndex, sourceIndex - 1);
     addToHistory();
+  }, [addToHistory, editor, remapLayerStateForSwap]);
 
-    setCanvasObjects(prevCanvasObjects => {
-      const newCanvasObjects = [...prevCanvasObjects];
-      // Swap the positions of the index with the index below
-      [newCanvasObjects[index], newCanvasObjects[index + 1]] = [newCanvasObjects[index + 1], newCanvasObjects[index]];
-      return newCanvasObjects;
-    });
-  };
+  const handleMoveLayerDown = useCallback((index) => {
+    if (!editor?.canvas) return;
+    const sourceIndex = Number(index);
+    const lastIndex = editor.canvas._objects.length - 1;
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= lastIndex) return;
+
+    const objectToMove = editor.canvas.item(sourceIndex);
+    if (!objectToMove) return;
+
+    editor.canvas.moveTo(objectToMove, sourceIndex + 1);
+    editor.canvas.setActiveObject(objectToMove);
+    objectToMove.setCoords();
+    editor.canvas.renderAll();
+    setCanvasObjects([...editor.canvas._objects]);
+    remapLayerStateForSwap(sourceIndex, sourceIndex + 1);
+    addToHistory();
+  }, [addToHistory, editor, remapLayerStateForSwap]);
 
   // ------------------------------------------------------------------------
 
@@ -3103,6 +3199,58 @@ const EditorPage = ({ shows }) => {
     [blobToDataUrl]
   );
 
+  const handleOpenStickerPicker = useCallback(() => {
+    if (!isAuthenticated) {
+      setSeverity('info');
+      setMessage('Log in to add stickers from your library.');
+      setOpen(true);
+      return;
+    }
+    setStickerPickerOpen(true);
+  }, [isAuthenticated, setMessage, setOpen, setSeverity]);
+
+  const handleStickerLibrarySelect = useCallback(
+    async (items) => {
+      const selected = items?.[0];
+      if (!selected) return;
+
+      setStickerLoading(true);
+      try {
+        let imageSource = selected.displayUrl || selected.originalUrl || '';
+        const libraryKey = selected?.metadata?.libraryKey;
+        if (libraryKey) {
+          try {
+            const blob = await getFromLibrary(libraryKey, { level: 'private' });
+            imageSource = await blobToDataUrl(blob);
+          } catch (err) {
+            console.warn('Unable to fetch sticker from library key, using URL fallback.', err);
+          }
+        }
+
+        if (typeof imageSource !== 'string' || imageSource.length === 0) {
+          throw new Error('No sticker image found');
+        }
+
+        await addStickerLayerFromSource(imageSource);
+        setStickerPickerOpen(false);
+      } catch (error) {
+        console.error('Error adding sticker layer:', error);
+        setSeverity('error');
+        setMessage('Unable to add sticker right now.');
+        setOpen(true);
+      } finally {
+        setStickerLoading(false);
+      }
+    },
+    [addStickerLayerFromSource, blobToDataUrl, setMessage, setOpen, setSeverity]
+  );
+
+  const handleCloseStickerPicker = useCallback(() => {
+    if (!stickerLoading) {
+      setStickerPickerOpen(false);
+    }
+  }, [stickerLoading]);
+
   const persistCollageSnapshot = useCallback(
     async (projectId, snapshot) => {
       const normalized = normalizeSnapshot(snapshot, 'portrait');
@@ -4049,9 +4197,33 @@ const EditorPage = ({ shows }) => {
     }
   }, [location.state]);
 
-  // Add this state near other useState declarations
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const showAds = shouldShowAds(user);
+  const layerCardSx = {
+    borderRadius: 2,
+    border: '1px solid rgba(255, 255, 255, 0.14)',
+    backgroundColor: '#121212',
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)',
+    color: '#f3f4f6',
+    p: isMobile ? 1.1 : 1.4,
+    mb: 1,
+    overflow: 'hidden',
+  };
+  const layerActionButtonSx = {
+    width: 32,
+    height: 32,
+    borderRadius: 1,
+    border: '1px solid rgba(255, 255, 255, 0.22)',
+    color: 'rgba(241, 245, 249, 0.95)',
+    backgroundColor: '#1a1a1a',
+    '&:hover': {
+      backgroundColor: '#262626',
+      borderColor: 'rgba(255, 255, 255, 0.36)',
+    },
+    '&.Mui-disabled': {
+      borderColor: 'rgba(255, 255, 255, 0.12)',
+      color: 'rgba(255, 255, 255, 0.32)',
+    },
+  };
 
   return (
     <>
@@ -4267,32 +4439,96 @@ const EditorPage = ({ shows }) => {
 
                   {editorTool === 'captions' && (
                     <>
-                      {canvasObjects &&
-                        canvasObjects.map((object, index) => (
-                          <Fragment key={`layer-${index}`}>
-                            {'text' in object && (
-                              <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
-                                <div style={{ display: 'inline', position: 'relative' }}>
-                              <TextEditorControls
-                                showColorPicker={(colorType, index, anchorEl) => showColorPicker(colorType, index, anchorEl)}
-                                colorPickerShowing={colorPickerShowing}
-                                index={index}
-                                showFontSizePicker={(event) => showFontSizePicker(event, index)}
+                      {canvasObjects && canvasObjects.map((object, index) => {
+                        const isTextLayer = object?.type === 'textbox' || object?.type === 'text' || typeof object?.text === 'string';
+                        const isImageLayer = object?.type === 'image';
+                        if (!isTextLayer && !isImageLayer) return null;
+
+                        const layerCount = Array.isArray(canvasObjects) ? canvasObjects.length : 0;
+                        const isMoveUpDisabled = index <= 0;
+                        const isMoveDownDisabled = index >= (layerCount - 1);
+
+                        return (
+                          <Grid item xs={12} order={index} key={`layer-${index}`}>
+                            <Box sx={layerCardSx}>
+                              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mb: 0.75 }}>
+                                <Stack direction="row" alignItems="center" spacing={0.75}>
+                                  <Chip
+                                    size="small"
+                                    label={`Layer ${index + 1}`}
+                                    sx={{
+                                      height: 24,
+                                      borderRadius: 1,
+                                      fontWeight: 700,
+                                      color: '#f8fafc',
+                                      border: '1px solid rgba(255, 255, 255, 0.28)',
+                                      backgroundColor: '#1e1e1e',
+                                    }}
+                                  />
+                                  <Typography variant="body2" sx={{ opacity: 0.88, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    {isTextLayer ? 'Caption' : 'Sticker'}
+                                  </Typography>
+                                </Stack>
+                                <Stack direction="row" spacing={0.5}>
+                                  <IconButton
+                                    size="small"
+                                    aria-label={`Move layer ${index + 1} up`}
+                                    onClick={() => handleMoveLayerUp(index)}
+                                    disabled={isMoveUpDisabled}
+                                    sx={layerActionButtonSx}
+                                  >
+                                    <ArrowUpward sx={{ fontSize: 17 }} />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    aria-label={`Move layer ${index + 1} down`}
+                                    onClick={() => handleMoveLayerDown(index)}
+                                    disabled={isMoveDownDisabled}
+                                    sx={layerActionButtonSx}
+                                  >
+                                    <ArrowDownward sx={{ fontSize: 17 }} />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    aria-label={`Delete layer ${index + 1}`}
+                                    onClick={() => handleDeleteLayer(index)}
+                                    sx={{
+                                      ...layerActionButtonSx,
+                                      borderColor: 'rgba(248, 113, 113, 0.5)',
+                                      color: 'rgba(248, 113, 113, 0.95)',
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(127, 29, 29, 0.45)',
+                                        borderColor: 'rgba(252, 165, 165, 0.66)',
+                                      },
+                                    }}
+                                  >
+                                    <HighlightOffRounded sx={{ fontSize: 17 }} />
+                                  </IconButton>
+                                </Stack>
+                              </Stack>
+
+                              {isTextLayer && (
+                                <>
+                                  <TextEditorControls
+                                    showColorPicker={(colorType, layerIndex, anchorEl) => showColorPicker(colorType, layerIndex, anchorEl)}
+                                    colorPickerShowing={colorPickerShowing}
+                                    index={index}
+                                    showHeader={false}
+                                    showFontSizePicker={(event) => showFontSizePicker(event, index)}
                                     fontSizePickerShowing={fontSizePickerShowing}
                                     handleStyle={handleStyle}
                                     handleFontChange={handleFontChange}
                                     layerFonts={layerFonts}
                                     setLayerFonts={setLayerFonts}
-                                layerColor={object.fill}
-                                layerStrokeColor={object.stroke}
-                                handleAlignment={handleAlignment}
-                                activeFormats={layerActiveFormats[index] || []}
-                              />
-                            </div>
-                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                                    layerColor={object.fill}
+                                    layerStrokeColor={object.stroke}
+                                    handleAlignment={handleAlignment}
+                                    activeFormats={layerActiveFormats[index] || []}
+                                  />
                                   <TextField
                                     size="small"
                                     multiline
+                                    minRows={isMobile ? 2 : 1}
                                     type="text"
                                     value={layerRawText[index] ?? object.text}
                                     fullWidth
@@ -4302,11 +4538,34 @@ const EditorPage = ({ shows }) => {
                                     onSelect={() => scheduleSyncActiveFormats(index)}
                                     onKeyUp={() => scheduleSyncActiveFormats(index)}
                                     onMouseUp={() => scheduleSyncActiveFormats(index)}
-                                    placeholder='(type your caption)'
+                                    placeholder="(type your caption)"
                                     inputRef={(el) => {
                                       if (el) {
                                         textFieldRefs.current[index] = el;
                                       }
+                                    }}
+                                    sx={{
+                                      mt: 0.75,
+                                      '& .MuiOutlinedInput-root': {
+                                        color: '#f8fafc',
+                                        backgroundColor: '#0f0f0f',
+                                        '& fieldset': {
+                                          borderColor: 'rgba(255,255,255,0.22)',
+                                        },
+                                        '&:hover fieldset': {
+                                          borderColor: 'rgba(255,255,255,0.35)',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                          borderColor: 'rgba(255,255,255,0.52)',
+                                        },
+                                      },
+                                      '& .MuiInputBase-root': {
+                                        alignItems: 'flex-start',
+                                      },
+                                      '& .MuiInputBase-input::placeholder': {
+                                        color: 'rgba(255,255,255,0.56)',
+                                        opacity: 1,
+                                      },
                                     }}
                                     InputProps={{
                                       style: {
@@ -4314,55 +4573,58 @@ const EditorPage = ({ shows }) => {
                                       },
                                     }}
                                   />
-                                  <Fab
-                                    size="small"
-                                    aria-label="delete"
+                                </>
+                              )}
+
+                              {isImageLayer && (
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                  <Box
                                     sx={{
-                                      marginLeft: '10px',
-                                      backgroundColor: theme.palette.background.paper,
-                                      boxShadow: 'none'
+                                      width: 64,
+                                      height: 64,
+                                      borderRadius: 1.25,
+                                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                                      backgroundColor: '#181818',
+                                      overflow: 'hidden',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      flexShrink: 0,
                                     }}
-                                    onClick={() => handleDeleteLayer(index)}
                                   >
-                                    <HighlightOffRounded color="error" />
-                                  </Fab>
-                                </div>
-                              </Grid>
-                            )}
-                            {object.type === 'image' && (
-                              <Grid item xs={12} order={index} marginBottom={1} style={{ marginLeft: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                                  {/* Placeholder for image layer UI */}
-                                  <div style={{ display: 'inline', position: 'relative' }}>
-                                    {/* Settings for the image layer, such as resizing and repositioning */}
-                                    {/* Implement ImageEditorControls according to your app's functionality */}
-                                    <ImageEditorControls
-                                      index={index}
-                                      deleteLayer={handleDeleteLayer} // Implement this function to handle layer deletion
-                                      moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
-                                      moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
-                                      src={object.src}
-                                    />
-                                  </div>
-                                  {/* Button to remove the image layer */}
-                                  <Fab
-                                    size="small"
-                                    aria-label="delete"
-                                    sx={{
-                                      marginLeft: '10px',
-                                      backgroundColor: theme.palette.background.paper,
-                                      boxShadow: 'none'
-                                    }}
-                                    onClick={() => handleDeleteLayer(index)}
-                                  >
-                                    <HighlightOffRounded color="error" />
-                                  </Fab>
-                                </div>
-                              </Grid>
-                            )}
-                          </Fragment>
-                        ))
-                      }
+                                    {(
+                                      object?.src ||
+                                      object?._element?.currentSrc ||
+                                      object?._element?.src ||
+                                      (typeof object?.getSrc === 'function' ? object.getSrc() : '')
+                                    ) ? (
+                                      <Box
+                                        component="img"
+                                        src={
+                                          object?.src ||
+                                          object?._element?.currentSrc ||
+                                          object?._element?.src ||
+                                          (typeof object?.getSrc === 'function' ? object.getSrc() : '')
+                                        }
+                                        alt={`Sticker layer ${index + 1}`}
+                                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                      />
+                                    ) : (
+                                      <Typography variant="caption" sx={{ opacity: 0.76 }}>
+                                        Preview
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                                    Drag on canvas to move/resize this sticker layer.
+                                  </Typography>
+                                </Stack>
+                              )}
+                            </Box>
+                          </Grid>
+                        );
+                      })}
+
                       <Grid item xs={12} order={canvasObjects?.length} key="add-text-layer-button">
                         <Button
                           variant="contained"
@@ -4370,13 +4632,13 @@ const EditorPage = ({ shows }) => {
                           fullWidth
                           sx={{
                             zIndex: '50',
-                            marginTop: '20px',
-                            color: '#e5e7eb',
-                            background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
-                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            marginTop: '14px',
+                            color: '#f8fafc',
+                            backgroundColor: '#2b2b2b',
+                            border: '1px solid rgba(255, 255, 255, 0.26)',
                             '&:hover': {
-                              background: 'linear-gradient(45deg, #253042 30%, #3f4856 90%)',
-                              borderColor: 'rgba(255, 255, 255, 0.24)',
+                              backgroundColor: '#363636',
+                              borderColor: 'rgba(255, 255, 255, 0.4)',
                             },
                           }}
                           startIcon={<AddCircleOutline />}
@@ -4384,23 +4646,34 @@ const EditorPage = ({ shows }) => {
                           Add text layer
                         </Button>
                       </Grid>
-                      {/* <Grid item xs={12} order={canvasObjects?.length + 1} key="add-image-layer-button">
-                        <input
-                          type="file"
-                          onChange={(e) => addImageLayer(e.target.files[0])}
-                          style={{ display: 'none' }}
-                          ref={fileInputRef}
-                        />
+                      <Grid item xs={12} order={canvasObjects?.length + 1} key="add-sticker-layer-button">
                         <Button
                           variant="contained"
-                          onClick={() => fileInputRef.current.click()}
+                          onClick={handleOpenStickerPicker}
+                          disabled={stickerLoading}
                           fullWidth
-                          sx={{ zIndex: '50', marginBottom: '20px' }}
+                          sx={{
+                            zIndex: '50',
+                            marginTop: '10px',
+                            marginBottom: '12px',
+                            color: '#f8fafc',
+                            backgroundColor: '#1f1f1f',
+                            border: '1px solid rgba(255, 255, 255, 0.24)',
+                            '&:hover': {
+                              backgroundColor: '#2a2a2a',
+                              borderColor: 'rgba(255, 255, 255, 0.38)',
+                            },
+                          }}
                           startIcon={<AddPhotoAlternate />}
                         >
-                          Add image layer
+                          Add sticker
                         </Button>
-                      </Grid> */}
+                        {!isAuthenticated && (
+                          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', opacity: 0.75 }}>
+                            Log in required
+                          </Typography>
+                        )}
+                      </Grid>
                     </>
                   )}
 
@@ -5242,6 +5515,24 @@ const EditorPage = ({ shows }) => {
               />
             </StyledLayerControlCard>
           </Popover>
+
+          <LibraryPickerDialog
+            open={stickerPickerOpen}
+            onClose={handleCloseStickerPicker}
+            title="Choose a sticker from your library"
+            onSelect={handleStickerLibrarySelect}
+            busy={stickerLoading}
+            browserProps={{
+              multiple: false,
+              uploadEnabled: true,
+              deleteEnabled: false,
+              showActionBar: false,
+              selectionEnabled: true,
+              previewOnClick: true,
+              showSelectToggle: true,
+              initialSelectMode: true,
+            }}
+          />
 
           <Dialog
             open={openDialog}

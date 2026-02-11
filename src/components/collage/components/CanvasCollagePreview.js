@@ -2,11 +2,23 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const normalizeAngleDeg = (value) => {
+  if (!Number.isFinite(value)) return 0;
+  let next = value % 360;
+  if (next > 180) next -= 360;
+  if (next <= -180) next += 360;
+  return next;
+};
+const angleFromPointDeg = (centerX, centerY, pointX, pointY) => (
+  Math.atan2(pointY - centerY, pointX - centerX) * (180 / Math.PI)
+);
 
 
 
@@ -641,6 +653,10 @@ const CanvasCollagePreview = ({
   panelTransforms = {},
   updatePanelTransform,
   panelTexts = {},
+  stickers = [],
+  updateSticker,
+  moveSticker,
+  removeSticker,
   updatePanelText,
   lastUsedTextSettings = {},
   onCaptionEditorVisibleChange,
@@ -663,6 +679,15 @@ const CanvasCollagePreview = ({
   const [componentWidth, setComponentWidth] = useState(400);
   const [componentHeight, setComponentHeight] = useState(400);
   const [loadedImages, setLoadedImages] = useState({});
+  const [loadedStickers, setLoadedStickers] = useState({});
+  const [activeStickerId, setActiveStickerId] = useState(null);
+  const [stickerInteraction, setStickerInteraction] = useState(null);
+  const [stickerDrafts, setStickerDrafts] = useState({});
+  const hasInitializedStickerIdsRef = useRef(false);
+  const previousStickerIdsRef = useRef([]);
+  const stickerDraftsRef = useRef({});
+  const pendingStickerPointerRef = useRef(null);
+  const stickerRafRef = useRef(null);
   // Trigger redraws once custom fonts are ready (especially after loading a saved project)
   const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
 
@@ -750,6 +775,7 @@ const CanvasCollagePreview = ({
   const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState(null);
   const [actionMenuPanelId, setActionMenuPanelId] = useState(null);
   const [actionMenuPosition, setActionMenuPosition] = useState(null);
+  const frameTapSuppressUntilRef = useRef(0);
 
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
@@ -1094,6 +1120,400 @@ const CanvasCollagePreview = ({
     }
   }, [images, panelImageMapping]);
 
+  // Load sticker assets (global overlay layers)
+  useEffect(() => {
+    let cancelled = false;
+    const loadSticker = (sticker) => new Promise((resolve) => {
+      const src = sticker?.originalUrl || sticker?.thumbnailUrl || '';
+      if (!src) {
+        resolve({ id: sticker?.id, img: null });
+        return;
+      }
+      const img = new Image();
+      try { img.decoding = 'async'; } catch (_) { /* ignore */ }
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve({ id: sticker?.id, img });
+      img.onerror = () => resolve({ id: sticker?.id, img: null });
+      img.src = src;
+    });
+
+    const run = async () => {
+      if (!Array.isArray(stickers) || stickers.length === 0) {
+        if (!cancelled) setLoadedStickers({});
+        return;
+      }
+      const results = await Promise.all(stickers.map(loadSticker));
+      if (cancelled) return;
+      const next = {};
+      results.forEach(({ id, img }) => {
+        if (!id || !img) return;
+        next[id] = img;
+      });
+      setLoadedStickers(next);
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [stickers]);
+
+  useEffect(() => {
+    stickerDraftsRef.current = stickerDrafts;
+  }, [stickerDrafts]);
+
+  useEffect(() => {
+    if (!Array.isArray(stickers) || stickers.length === 0) {
+      if (Object.keys(stickerDraftsRef.current).length > 0) {
+        setStickerDrafts({});
+      }
+      return;
+    }
+
+    const validIds = new Set(stickers.map((sticker) => sticker?.id).filter(Boolean));
+    setStickerDrafts((prev) => {
+      const entries = Object.entries(prev || {});
+      if (entries.length === 0) return prev;
+      let changed = false;
+      const next = {};
+      entries.forEach(([stickerId, draft]) => {
+        if (validIds.has(stickerId)) {
+          next[stickerId] = draft;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [stickers]);
+
+  useEffect(() => {
+    if (!activeStickerId) return;
+    const stillExists = Array.isArray(stickers) && stickers.some((sticker) => sticker?.id === activeStickerId);
+    if (!stillExists) {
+      setActiveStickerId(null);
+      setStickerInteraction(null);
+      setStickerDrafts((prev) => {
+        if (!prev || !prev[activeStickerId]) return prev;
+        const next = { ...prev };
+        delete next[activeStickerId];
+        return next;
+      });
+    }
+  }, [activeStickerId, stickers]);
+
+  // Auto-select newly added stickers so controls are immediately available after insert.
+  useEffect(() => {
+    const stickerIds = Array.isArray(stickers)
+      ? stickers.map((sticker) => sticker?.id).filter(Boolean)
+      : [];
+
+    if (!hasInitializedStickerIdsRef.current) {
+      hasInitializedStickerIdsRef.current = true;
+      previousStickerIdsRef.current = stickerIds;
+      return;
+    }
+
+    const previousIds = previousStickerIdsRef.current;
+    const previousIdSet = new Set(previousIds);
+    const addedIds = stickerIds.filter((id) => !previousIdSet.has(id));
+    if (addedIds.length === 1 && stickerIds.length === previousIds.length + 1) {
+      setStickerInteraction(null);
+      setActiveStickerId(addedIds[0]);
+    }
+
+    previousStickerIdsRef.current = stickerIds;
+  }, [stickers]);
+
+  const clampStickerWidthPx = useCallback((widthPx, aspectRatio) => {
+    const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+    const maxWidthByCanvas = componentWidth * 0.95;
+    const maxWidthByHeight = componentHeight * 0.95 * safeAspectRatio;
+    const maxWidth = Math.max(12, Math.min(maxWidthByCanvas, maxWidthByHeight));
+    return clamp(widthPx, 12, maxWidth);
+  }, [componentHeight, componentWidth]);
+
+  const clampStickerPositionPx = useCallback((xPx, yPx, widthPx, heightPx) => {
+    const minVisibleX = Math.min(32, widthPx);
+    const minVisibleY = Math.min(32, heightPx);
+    const minX = -widthPx + minVisibleX;
+    const maxX = componentWidth - minVisibleX;
+    const minY = -heightPx + minVisibleY;
+    const maxY = componentHeight - minVisibleY;
+    const safeWidth = Math.max(componentWidth, 1);
+    const safeHeight = Math.max(componentHeight, 1);
+    const clampedX = clamp(xPx, minX, maxX);
+    const clampedY = clamp(yPx, minY, maxY);
+    return {
+      xPx: clampedX,
+      yPx: clampedY,
+      xPercent: (clampedX / safeWidth) * 100,
+      yPercent: (clampedY / safeHeight) * 100,
+    };
+  }, [componentHeight, componentWidth]);
+
+  const getStickerRectPx = useCallback((sticker, ratioFallbackImage = null) => {
+    if (!sticker) return null;
+    const stickerId = sticker.id;
+    const draft = stickerId ? stickerDrafts[stickerId] : null;
+    const loaded = ratioFallbackImage || (stickerId ? loadedStickers[stickerId] : null);
+    const ratioFromImage = loaded && loaded.naturalWidth && loaded.naturalHeight
+      ? (loaded.naturalWidth / loaded.naturalHeight)
+      : 1;
+    const ratioRaw = Number(draft?.aspectRatio ?? sticker.aspectRatio);
+    const aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : (ratioFromImage || 1);
+    const widthRaw = Number(draft?.widthPercent ?? sticker.widthPercent);
+    const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
+    const widthPxUnbounded = (widthPercent / 100) * componentWidth;
+    const widthPx = clampStickerWidthPx(widthPxUnbounded, aspectRatio);
+    const heightPx = Math.max(12, widthPx / aspectRatio);
+    const angleRaw = Number(draft?.angleDeg ?? sticker.angleDeg);
+    const angleDeg = normalizeAngleDeg(Number.isFinite(angleRaw) ? angleRaw : 0);
+
+    const xRaw = Number(draft?.xPercent ?? sticker.xPercent);
+    const yRaw = Number(draft?.yPercent ?? sticker.yPercent);
+    const safeWidth = Math.max(componentWidth, 1);
+    const xPxRaw = (Number.isFinite(xRaw) ? xRaw : 36) / 100 * componentWidth;
+    const yPxRaw = (Number.isFinite(yRaw) ? yRaw : 12) / 100 * componentHeight;
+    const clampedPosition = clampStickerPositionPx(xPxRaw, yPxRaw, widthPx, heightPx);
+
+    return {
+      x: clampedPosition.xPx,
+      y: clampedPosition.yPx,
+      width: widthPx,
+      height: heightPx,
+      aspectRatio,
+      angleDeg,
+      xPercent: clampedPosition.xPercent,
+      yPercent: clampedPosition.yPercent,
+      widthPercent: (widthPx / safeWidth) * 100,
+    };
+  }, [clampStickerPositionPx, clampStickerWidthPx, componentHeight, componentWidth, loadedStickers, stickerDrafts]);
+
+  const getStickerDraftFromPointer = useCallback((interaction, clientX, clientY) => {
+    if (!interaction) return null;
+
+    if (interaction.mode === 'rotate') {
+      // Fabric-like behavior: keep the top rotate handle on the center->pointer ray.
+      // Top handle sits at -90deg relative to +X axis, so angle is ray + 90deg.
+      const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
+      return {
+        angleDeg: normalizeAngleDeg(pointerAngle + 90),
+      };
+    }
+
+    const dx = clientX - interaction.startClientX;
+    const dy = clientY - interaction.startClientY;
+
+    if (interaction.mode === 'resize') {
+      const widthDeltaPercent = (dx / Math.max(componentWidth, 1)) * 100;
+      const unboundedWidthPercent = clamp(interaction.startWidthPercent + widthDeltaPercent, 6, 95);
+      const unboundedWidthPx = (unboundedWidthPercent / 100) * componentWidth;
+      const widthPx = clampStickerWidthPx(unboundedWidthPx, interaction.aspectRatio);
+      const heightPx = Math.max(12, widthPx / (interaction.aspectRatio || 1));
+      const baseX = (interaction.startXPercent / 100) * componentWidth;
+      const baseY = (interaction.startYPercent / 100) * componentHeight;
+      const position = clampStickerPositionPx(baseX, baseY, widthPx, heightPx);
+      const safeWidth = Math.max(componentWidth, 1);
+      return {
+        widthPercent: (widthPx / safeWidth) * 100,
+        xPercent: position.xPercent,
+        yPercent: position.yPercent,
+      };
+    }
+
+    const nextXPx = (interaction.startXPercent / 100) * componentWidth + dx;
+    const nextYPx = (interaction.startYPercent / 100) * componentHeight + dy;
+    const baseWidthPx = clampStickerWidthPx((interaction.startWidthPercent / 100) * componentWidth, interaction.aspectRatio);
+    const baseHeightPx = Math.max(12, baseWidthPx / (interaction.aspectRatio || 1));
+    return clampStickerPositionPx(nextXPx, nextYPx, baseWidthPx, baseHeightPx);
+  }, [clampStickerPositionPx, clampStickerWidthPx, componentHeight, componentWidth]);
+
+  const handleStickerPointerDown = useCallback((event, sticker, mode = 'move') => {
+    if (!sticker?.id || typeof updateSticker !== 'function') return;
+    if (event?.button !== undefined && event.button !== 0) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    try {
+      if (event?.currentTarget && typeof event.currentTarget.setPointerCapture === 'function' && event.pointerId !== undefined) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
+    } catch (_) {
+      // ignore pointer capture failures
+    }
+
+    const rect = getStickerRectPx(sticker);
+    if (!rect) return;
+
+    if (mode === 'move' && typeof moveSticker === 'function' && Array.isArray(stickers)) {
+      const currentIndex = stickers.findIndex((layer) => layer?.id === sticker.id);
+      if (currentIndex >= 0 && currentIndex < stickers.length - 1) {
+        moveSticker(sticker.id, 1);
+      }
+    }
+
+    setActiveStickerId(sticker.id);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+    const containerRect = containerRef.current?.getBoundingClientRect?.();
+    const centerLocalX = rect.x + (rect.width / 2);
+    const centerLocalY = rect.y + (rect.height / 2);
+    const centerClientX = (containerRect?.left || 0) + centerLocalX;
+    const centerClientY = (containerRect?.top || 0) + centerLocalY;
+
+    setStickerInteraction({
+      stickerId: sticker.id,
+      mode,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startXPercent: rect.xPercent,
+      startYPercent: rect.yPercent,
+      startWidthPercent: rect.widthPercent,
+      aspectRatio: rect.aspectRatio,
+      centerClientX,
+      centerClientY,
+    });
+  }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
+
+  const handleStickerDelete = useCallback((event, stickerId) => {
+    if (!stickerId || typeof removeSticker !== 'function') return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+    setStickerInteraction((prev) => (prev?.stickerId === stickerId ? null : prev));
+    setActiveStickerId((prev) => (prev === stickerId ? null : prev));
+    setStickerDrafts((prev) => {
+      if (!prev || !prev[stickerId]) return prev;
+      const next = { ...prev };
+      delete next[stickerId];
+      return next;
+    });
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+    removeSticker(stickerId);
+  }, [removeSticker]);
+
+  const clearActiveStickerSelection = useCallback((event) => {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    // Clear hover overlays immediately when dismissing a sticker selection.
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredPanel(null);
+    setHoveredBorder(null);
+    setActiveStickerId(null);
+    setStickerInteraction(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+  }, []);
+
+  const handleStickerDone = useCallback((event) => {
+    clearActiveStickerSelection(event);
+  }, [clearActiveStickerSelection]);
+
+  useEffect(() => {
+    if (!stickerInteraction || typeof updateSticker !== 'function') return;
+
+    const applyPointerSample = () => {
+      const pending = pendingStickerPointerRef.current;
+      if (!pending) return;
+      pendingStickerPointerRef.current = null;
+      const nextDraft = getStickerDraftFromPointer(stickerInteraction, pending.clientX, pending.clientY);
+      if (!nextDraft) return;
+      setStickerDrafts((prev) => {
+        const current = prev?.[stickerInteraction.stickerId];
+        const sameX = (nextDraft.xPercent === undefined && current?.xPercent === undefined)
+          || Math.abs((current?.xPercent ?? Number.NaN) - (nextDraft.xPercent ?? Number.NaN)) < 0.001;
+        const sameY = (nextDraft.yPercent === undefined && current?.yPercent === undefined)
+          || Math.abs((current?.yPercent ?? Number.NaN) - (nextDraft.yPercent ?? Number.NaN)) < 0.001;
+        const sameW = (nextDraft.widthPercent === undefined && current?.widthPercent === undefined)
+          || Math.abs((current?.widthPercent ?? Number.NaN) - (nextDraft.widthPercent ?? Number.NaN)) < 0.001;
+        const sameA = (nextDraft.angleDeg === undefined && current?.angleDeg === undefined)
+          || Math.abs((current?.angleDeg ?? Number.NaN) - (nextDraft.angleDeg ?? Number.NaN)) < 0.001;
+        if (sameX && sameY && sameW && sameA) return prev;
+        return {
+          ...(prev || {}),
+          [stickerInteraction.stickerId]: {
+            ...(current || {}),
+            ...nextDraft,
+          },
+        };
+      });
+    };
+
+    const requestPointerApply = () => {
+      if (stickerRafRef.current !== null) return;
+      stickerRafRef.current = window.requestAnimationFrame(() => {
+        stickerRafRef.current = null;
+        applyPointerSample();
+      });
+    };
+
+    const commitDraft = () => {
+      const draft = stickerDraftsRef.current?.[stickerInteraction.stickerId];
+      if (draft) {
+        const updates = {};
+        if (Number.isFinite(draft.xPercent)) updates.xPercent = draft.xPercent;
+        if (Number.isFinite(draft.yPercent)) updates.yPercent = draft.yPercent;
+        if (Number.isFinite(draft.widthPercent)) updates.widthPercent = draft.widthPercent;
+        if (Number.isFinite(draft.angleDeg)) updates.angleDeg = draft.angleDeg;
+        if (Object.keys(updates).length > 0) {
+          updateSticker(stickerInteraction.stickerId, updates);
+        }
+      }
+      setStickerDrafts((prev) => {
+        if (!prev || !prev[stickerInteraction.stickerId]) return prev;
+        const next = { ...prev };
+        delete next[stickerInteraction.stickerId];
+        return next;
+      });
+    };
+
+    const handlePointerMove = (event) => {
+      pendingStickerPointerRef.current = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
+      requestPointerApply();
+    };
+
+    const handlePointerEnd = () => {
+      if (stickerRafRef.current !== null) {
+        window.cancelAnimationFrame(stickerRafRef.current);
+        stickerRafRef.current = null;
+      }
+      applyPointerSample();
+      commitDraft();
+      setStickerInteraction(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      if (stickerRafRef.current !== null) {
+        window.cancelAnimationFrame(stickerRafRef.current);
+        stickerRafRef.current = null;
+      }
+      pendingStickerPointerRef.current = null;
+    };
+  }, [getStickerDraftFromPointer, stickerInteraction, updateSticker]);
+
   // Update component dimensions and panel rectangles
   useEffect(() => {
     const updateDimensions = () => {
@@ -1252,59 +1672,61 @@ const CanvasCollagePreview = ({
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     const shouldHideCaptions = anyPanelInTransformMode || isReorderMode;
     
-    // Draw panels
+    const captionEntries = [];
+
+    // Draw panel backgrounds/images first
     panelRects.forEach((rect) => {
       const { x, y, width, height, panelId } = rect;
       const imageIndex = panelImageMapping[panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
       const panelText = panelTexts[panelId] || {};
-      
+
       // Draw panel background
-      ctx.fillStyle = hasImage 
+      ctx.fillStyle = hasImage
         ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
         : 'rgba(0,0,0,0.3)';
       ctx.fillRect(x, y, width, height);
-      
+
       // Note: Hover effects are now handled by CSS overlays, not canvas drawing
       // This ensures they don't interfere with collage generation
-      
+
       if (hasImage) {
         const img = loadedImages[imageIndex];
         if (img) {
           ctx.save();
-          
+
           // Clip to panel bounds
           ctx.beginPath();
           ctx.rect(x, y, width, height);
           ctx.clip();
-          
+
           // Calculate initial scale to cover the panel (like object-fit: cover)
           const imageAspectRatio = img.naturalWidth / img.naturalHeight;
           const panelAspectRatio = width / height;
-          
+
           let initialScale;
           if (imageAspectRatio > panelAspectRatio) {
             // Image is wider than panel, scale to fit height
             initialScale = height / img.naturalHeight;
           } else {
-            // Image is taller than panel, scale to fit width  
+            // Image is taller than panel, scale to fit width
             initialScale = width / img.naturalWidth;
           }
-          
+
           // Apply user transform on top of initial scale
           const finalScale = initialScale * transform.scale;
           const scaledWidth = img.naturalWidth * finalScale;
           const scaledHeight = img.naturalHeight * finalScale;
-          
+
           // Calculate centering offset (for initial positioning)
           const centerOffsetX = (width - scaledWidth) / 2;
           const centerOffsetY = (height - scaledHeight) / 2;
-          
+
           // Apply user position offset on top of centering
           const finalOffsetX = centerOffsetX + transform.positionX;
           const finalOffsetY = centerOffsetY + transform.positionY;
-          
+
           // Draw image with transforms
           ctx.drawImage(
             img,
@@ -1313,248 +1735,284 @@ const CanvasCollagePreview = ({
             scaledWidth,
             scaledHeight
           );
-          
+
           ctx.restore();
         }
+
+        captionEntries.push({ rect, panelText });
       } else {
         // Draw add icon for empty panels
         const iconSize = Math.min(width, height) * 0.3;
         const iconX = x + (width - iconSize) / 2;
         const iconY = y + (height - iconSize) / 2;
-        
+
         // Draw add icon background circle
         ctx.fillStyle = '#2196F3';
         ctx.beginPath();
-        ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
+        ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Draw plus sign
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.beginPath();
         // Horizontal line
-        ctx.moveTo(iconX + iconSize * 0.25, iconY + iconSize/2);
-        ctx.lineTo(iconX + iconSize * 0.75, iconY + iconSize/2);
+        ctx.moveTo(iconX + iconSize * 0.25, iconY + iconSize / 2);
+        ctx.lineTo(iconX + iconSize * 0.75, iconY + iconSize / 2);
         // Vertical line
-        ctx.moveTo(iconX + iconSize/2, iconY + iconSize * 0.25);
-        ctx.lineTo(iconX + iconSize/2, iconY + iconSize * 0.75);
+        ctx.moveTo(iconX + iconSize / 2, iconY + iconSize * 0.25);
+        ctx.lineTo(iconX + iconSize / 2, iconY + iconSize * 0.75);
         ctx.stroke();
       }
-      
-      // Draw text at the bottom of the panel (or placeholder if no text and has image)
-      if (hasImage) {
-        const rawCaption = panelText.rawContent ?? panelText.content ?? '';
-        const { cleanText, ranges } = parseFormattedText(rawCaption);
-        const hasActualText = cleanText && cleanText.trim();
-        const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
-        const displayText = hasActualText ? cleanText : 'Add Caption';
-        const activeRanges = hasActualText ? ranges : [];
+    });
 
-        // Hide all captions when any panel is in transform mode or reorder mode
-        if ((hasActualText || shouldShowPlaceholder) && !shouldHideCaptions) {
-          ctx.save();
-          
-          // Clip text to frame boundaries - text beyond frame is hidden (window effect)
-          ctx.beginPath();
-          ctx.rect(x, y, width, height);
-          ctx.clip();
-          
-          // Set text properties (use last used settings as defaults)
-          let baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 32;
-          
-          // Auto-calculate optimal font size if no explicit size is set and there's actual text
-          if (hasActualText && !panelText.fontSize) {
-            const optimalSize = calculateOptimalFontSize(cleanText, width, height);
-            baseFontSize = optimalSize;
+    // Draw stickers between images and captions so captions stay on top.
+    if (Array.isArray(stickers) && stickers.length > 0) {
+      stickers.forEach((sticker) => {
+        if (!sticker?.id) return;
+        const stickerImage = loadedStickers[sticker.id];
+        if (!stickerImage) return;
+        const stickerRect = getStickerRectPx(sticker, stickerImage);
+        if (!stickerRect) return;
+
+        try {
+          if (Math.abs(stickerRect.angleDeg || 0) > 0.01) {
+            const centerX = stickerRect.x + (stickerRect.width / 2);
+            const centerY = stickerRect.y + (stickerRect.height / 2);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate((stickerRect.angleDeg * Math.PI) / 180);
+            ctx.drawImage(
+              stickerImage,
+              -(stickerRect.width / 2),
+              -(stickerRect.height / 2),
+              stickerRect.width,
+              stickerRect.height
+            );
+            ctx.restore();
+            return;
           }
-          
-          // Scale font size based on canvas size
-          const fontSize = baseFontSize * textScaleFactor;
-          const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
-          const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
-          const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
-          const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
-          const baseInlineStyle = {
-            fontWeight,
-            fontStyle,
-            underline: false,
-          };
-          // Respect explicit 0 to disable stroke; fall back only when undefined
-          const requestedStrokeWidth =
-            (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
-          const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
-          const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
-          const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
-          
-          // Apply different opacity for placeholder vs actual text
-          let textColor;
-          let strokeColor;
-          let shadowColor;
-          if (hasActualText) {
-            textColor = baseTextColor;
-            // Choose black or white stroke based on contrast with the text color
-            strokeColor = getContrastingMonoStroke(baseTextColor);
-            // Subtle feathered shadow
-            shadowColor = 'rgba(0, 0, 0, 0.25)';
-          } else {
-            // For placeholder, use the same default styling but with reduced opacity
-            // Parse the base color to apply opacity
-            if (baseTextColor.startsWith('#')) {
-              // Convert hex to rgba with opacity
-              const hex = baseTextColor.slice(1);
-              const r = parseInt(hex.substr(0, 2), 16);
-              const g = parseInt(hex.substr(2, 2), 16);
-              const b = parseInt(hex.substr(4, 2), 16);
-              textColor = `rgba(${r}, ${g}, ${b}, 0.4)`; // 40% opacity for placeholder
-            } else if (baseTextColor.startsWith('rgb')) {
-              // Handle rgba/rgb colors
-              const rgbMatch = baseTextColor.match(/rgba?\(([^)]+)\)/);
-              if (rgbMatch) {
-                const values = rgbMatch[1].split(',').map(v => v.trim());
-                textColor = `rgba(${values[0]}, ${values[1]}, ${values[2]}, 0.4)`;
-              } else {
-                textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
-              }
+          ctx.drawImage(stickerImage, stickerRect.x, stickerRect.y, stickerRect.width, stickerRect.height);
+        } catch (_) {
+          // Ignore sticker draw failures so preview rendering still succeeds.
+        }
+      });
+    }
+
+    // Draw text at the bottom of each image panel (or placeholder when no caption is set)
+    captionEntries.forEach(({ rect, panelText }) => {
+      const { x, y, width, height } = rect;
+      const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+      const { cleanText, ranges } = parseFormattedText(rawCaption);
+      const hasActualText = cleanText && cleanText.trim();
+      const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
+      const displayText = hasActualText ? cleanText : 'Add Caption';
+      const activeRanges = hasActualText ? ranges : [];
+
+      // Hide all captions when any panel is in transform mode or reorder mode
+      if ((hasActualText || shouldShowPlaceholder) && !shouldHideCaptions) {
+        ctx.save();
+
+        // Clip text to frame boundaries - text beyond frame is hidden (window effect)
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        ctx.clip();
+
+        // Set text properties (use last used settings as defaults)
+        let baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 32;
+
+        // Auto-calculate optimal font size if no explicit size is set and there's actual text
+        if (hasActualText && !panelText.fontSize) {
+          const optimalSize = calculateOptimalFontSize(cleanText, width, height);
+          baseFontSize = optimalSize;
+        }
+
+        // Scale font size based on canvas size
+        const fontSize = baseFontSize * textScaleFactor;
+        const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
+        const fontStyle = panelText.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
+        const fontFamily = panelText.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
+        const baseTextColor = panelText.color || lastUsedTextSettings.color || '#ffffff';
+        const baseInlineStyle = {
+          fontWeight,
+          fontStyle,
+          underline: false,
+        };
+        // Respect explicit 0 to disable stroke; fall back only when undefined
+        const requestedStrokeWidth =
+          (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
+        const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
+        const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
+        const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
+
+        // Apply different opacity for placeholder vs actual text
+        let textColor;
+        let strokeColor;
+        let shadowColor;
+        if (hasActualText) {
+          textColor = baseTextColor;
+          // Choose black or white stroke based on contrast with the text color
+          strokeColor = getContrastingMonoStroke(baseTextColor);
+          // Subtle feathered shadow
+          shadowColor = 'rgba(0, 0, 0, 0.25)';
+        } else {
+          // For placeholder, use the same default styling but with reduced opacity
+          // Parse the base color to apply opacity
+          if (baseTextColor.startsWith('#')) {
+            // Convert hex to rgba with opacity
+            const hex = baseTextColor.slice(1);
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            textColor = `rgba(${r}, ${g}, ${b}, 0.4)`; // 40% opacity for placeholder
+          } else if (baseTextColor.startsWith('rgb')) {
+            // Handle rgba/rgb colors
+            const rgbMatch = baseTextColor.match(/rgba?\(([^)]+)\)/);
+            if (rgbMatch) {
+              const values = rgbMatch[1].split(',').map(v => v.trim());
+              textColor = `rgba(${values[0]}, ${values[1]}, ${values[2]}, 0.4)`;
             } else {
               textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
             }
-            // Stroke uses contrasting mono with reduced opacity
-            const mono = getContrastingMonoStroke(baseTextColor);
-            const monoRGBA = parseColorToRGBA(mono) || { r: 0, g: 0, b: 0, a: 1 };
-            strokeColor = rgbaString(monoRGBA.r, monoRGBA.g, monoRGBA.b, 0.4);
-            // Very subtle feathered shadow for placeholder
-            shadowColor = 'rgba(0, 0, 0, 0.2)';
-          }
-          
-          ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-          ctx.fillStyle = textColor;
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle'; // Change to middle for better positioning control
-          
-          // Set stroke properties for both actual text and placeholder
-          ctx.strokeStyle = strokeColor;
-          // Use a thicker, font-relative stroke by default for readability,
-          // but allow explicit 0 to disable strokes entirely.
-          const computedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
-          if (requestedStrokeWidth === 0) {
-            ctx.lineWidth = 0;
-          } else if (requestedStrokeWidth > 0) {
-            ctx.lineWidth = requestedStrokeWidth;
           } else {
-            ctx.lineWidth = computedStrokeWidth;
+            textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
           }
-          ctx.lineJoin = 'round';
-          ctx.lineCap = 'round';
+          // Stroke uses contrasting mono with reduced opacity
+          const mono = getContrastingMonoStroke(baseTextColor);
+          const monoRGBA = parseColorToRGBA(mono) || { r: 0, g: 0, b: 0, a: 1 };
+          strokeColor = rgbaString(monoRGBA.r, monoRGBA.g, monoRGBA.b, 0.4);
+          // Very subtle feathered shadow for placeholder
+          shadowColor = 'rgba(0, 0, 0, 0.2)';
+        }
 
-          // Add text shadow for better readability
-          ctx.shadowColor = shadowColor;
-          // Feathered drop shadow: low alpha, heavy blur, no offset
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 0;
-          ctx.shadowBlur = 14;
-          
-          // Calculate available text area (with padding on sides and bottom)
-          const textPadding = 10;
-          const maxTextWidth = width - (textPadding * 2);
-          
-          // Calculate text position based on position settings
-          // textPositionX: -100 (left) to 100 (right), 0 = center
-          // textPositionY: -100 (bottom anchored) to 100 (top anchored), 0 = default bottom position
-          const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
-          
-          const lineHeight = fontSize * 1.2;
-          const wrappedLines = buildWrappedLines(
-            ctx,
-            displayText,
-            activeRanges,
-            maxTextWidth,
-            baseInlineStyle,
-            fontSize,
-            fontFamily,
-          );
-          
-          // Calculate text block positioning with proper anchoring
-          const totalTextHeight = wrappedLines.length * lineHeight;
-          
-          // Improved vertical positioning logic:
-          // textPositionY = -100: bottom edge of text at bottom of panel (y + height - textPadding)
-          // textPositionY = 0: bottom edge of text at 95% of panel height (default position)
-          // textPositionY = 100: top edge of text at top of panel (y + textPadding)
-          
-          let textAnchorY;
-          if (textPositionY <= 0) {
-            // Position between default bottom (95%) and beyond frame bottom edge
-            const defaultBottomPosition = y + (height * 0.95);
-            const extendedBottomPosition = y + height + (height * 0.1); // Allow text to extend 10% beyond frame bottom
-            const t = Math.abs(textPositionY) / 100; // 0 to 1
-            textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
-            // Text is anchored by its bottom edge
-          } else {
-            // Position between default bottom (95%) and frame top edge (0%)
-            const defaultBottomPosition = y + (height * 0.95);
-            const frameTopPosition = y; // Allow text to extend to frame edge
-            const t = textPositionY / 100; // 0 to 1
-            textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
-            // Text is anchored by its bottom edge
-          }
-          
-          // Calculate where the first line should start (top of text block)
-          const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
-          
-          // Apply rotation transformation if needed
-          if (textRotation !== 0) {
-            ctx.save();
-            // Translate to the center of the text block
-            const textCenterX = textX;
-            const textCenterY = textAnchorY - totalTextHeight / 2;
-            ctx.translate(textCenterX, textCenterY);
-            ctx.rotate((textRotation * Math.PI) / 180);
-            ctx.translate(-textCenterX, -textCenterY);
-          }
-          
-          wrappedLines.forEach((line, lineIndex) => {
-            const lineY = startY + lineIndex * lineHeight;
-            const lineX = textX - (line.width / 2);
-            const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
-            let cursorX = lineX;
+        ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle'; // Change to middle for better positioning control
 
-            segments.forEach((segment) => {
-              const segmentText = displayText.slice(segment.start, segment.end);
-              const resolvedStyle = segment.style;
-              ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
-              const segmentWidth = ctx.measureText(segmentText).width;
+        // Set stroke properties for both actual text and placeholder
+        ctx.strokeStyle = strokeColor;
+        // Use a thicker, font-relative stroke by default for readability,
+        // but allow explicit 0 to disable strokes entirely.
+        const computedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
+        if (requestedStrokeWidth === 0) {
+          ctx.lineWidth = 0;
+        } else if (requestedStrokeWidth > 0) {
+          ctx.lineWidth = requestedStrokeWidth;
+        } else {
+          ctx.lineWidth = computedStrokeWidth;
+        }
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
 
-              if (ctx.lineWidth > 0) {
-                ctx.strokeText(segmentText, cursorX, lineY);
-              }
+        // Add text shadow for better readability
+        ctx.shadowColor = shadowColor;
+        // Feathered drop shadow: low alpha, heavy blur, no offset
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.shadowBlur = 14;
 
-              ctx.fillText(segmentText, cursorX, lineY);
+        // Calculate available text area (with padding on sides and bottom)
+        const textPadding = 10;
+        const maxTextWidth = width - (textPadding * 2);
 
-              if (resolvedStyle.underline) {
-                ctx.save();
-                ctx.shadowColor = 'transparent';
-                ctx.strokeStyle = textColor;
-                ctx.lineWidth = Math.max(1, fontSize * 0.08);
-                const underlineY = lineY + fontSize * 0.35;
-                ctx.beginPath();
-                ctx.moveTo(cursorX, underlineY);
-                ctx.lineTo(cursorX + segmentWidth, underlineY);
-                ctx.stroke();
-                ctx.restore();
-                ctx.shadowColor = shadowColor;
-              }
+        // Calculate text position based on position settings
+        // textPositionX: -100 (left) to 100 (right), 0 = center
+        // textPositionY: -100 (bottom anchored) to 100 (top anchored), 0 = default bottom position
+        const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
 
-              cursorX += segmentWidth;
-            });
+        const lineHeight = fontSize * 1.2;
+        const wrappedLines = buildWrappedLines(
+          ctx,
+          displayText,
+          activeRanges,
+          maxTextWidth,
+          baseInlineStyle,
+          fontSize,
+          fontFamily,
+        );
+
+        // Calculate text block positioning with proper anchoring
+        const totalTextHeight = wrappedLines.length * lineHeight;
+
+        // Improved vertical positioning logic:
+        // textPositionY = -100: bottom edge of text at bottom of panel (y + height - textPadding)
+        // textPositionY = 0: bottom edge of text at 95% of panel height (default position)
+        // textPositionY = 100: top edge of text at top of panel (y + textPadding)
+
+        let textAnchorY;
+        if (textPositionY <= 0) {
+          // Position between default bottom (95%) and beyond frame bottom edge
+          const defaultBottomPosition = y + (height * 0.95);
+          const extendedBottomPosition = y + height + (height * 0.1); // Allow text to extend 10% beyond frame bottom
+          const t = Math.abs(textPositionY) / 100; // 0 to 1
+          textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
+          // Text is anchored by its bottom edge
+        } else {
+          // Position between default bottom (95%) and frame top edge (0%)
+          const defaultBottomPosition = y + (height * 0.95);
+          const frameTopPosition = y; // Allow text to extend to frame edge
+          const t = textPositionY / 100; // 0 to 1
+          textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
+          // Text is anchored by its bottom edge
+        }
+
+        // Calculate where the first line should start (top of text block)
+        const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
+
+        // Apply rotation transformation if needed
+        if (textRotation !== 0) {
+          ctx.save();
+          // Translate to the center of the text block
+          const textCenterX = textX;
+          const textCenterY = textAnchorY - totalTextHeight / 2;
+          ctx.translate(textCenterX, textCenterY);
+          ctx.rotate((textRotation * Math.PI) / 180);
+          ctx.translate(-textCenterX, -textCenterY);
+        }
+
+        wrappedLines.forEach((line, lineIndex) => {
+          const lineY = startY + lineIndex * lineHeight;
+          const lineX = textX - (line.width / 2);
+          const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
+          let cursorX = lineX;
+
+          segments.forEach((segment) => {
+            const segmentText = displayText.slice(segment.start, segment.end);
+            const resolvedStyle = segment.style;
+            ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
+            const segmentWidth = ctx.measureText(segmentText).width;
+
+            if (ctx.lineWidth > 0) {
+              ctx.strokeText(segmentText, cursorX, lineY);
+            }
+
+            ctx.fillText(segmentText, cursorX, lineY);
+
+            if (resolvedStyle.underline) {
+              ctx.save();
+              ctx.shadowColor = 'transparent';
+              ctx.strokeStyle = textColor;
+              ctx.lineWidth = Math.max(1, fontSize * 0.08);
+              const underlineY = lineY + fontSize * 0.35;
+              ctx.beginPath();
+              ctx.moveTo(cursorX, underlineY);
+              ctx.lineTo(cursorX + segmentWidth, underlineY);
+              ctx.stroke();
+              ctx.restore();
+              ctx.shadowColor = shadowColor;
+            }
+
+            cursorX += segmentWidth;
           });
-          
-          // Restore transformation if rotation was applied
-          if (textRotation !== 0) {
-            ctx.restore();
-          }
-          
+        });
+
+        // Restore transformation if rotation was applied
+        if (textRotation !== 0) {
           ctx.restore();
         }
+
+        ctx.restore();
       }
     });
   }, [
@@ -1575,7 +2033,10 @@ const CanvasCollagePreview = ({
     isGeneratingCollage,
     calculateOptimalFontSize,
     textScaleFactor,
-    fontsReadyVersion
+    fontsReadyVersion,
+    stickers,
+    loadedStickers,
+    getStickerRectPx
   ]);
 
   // Helper function to calculate text area dimensions for a panel
@@ -1984,7 +2445,7 @@ const CanvasCollagePreview = ({
   // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
   useEffect(() => {
     const anyPanelInTransformMode = Object.values(isTransformMode).some(Boolean);
-    const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder;
+    const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder || Boolean(stickerInteraction);
     try {
       const canvas = canvasRef.current;
       if (canvas) canvas.dataset.editing = active ? '1' : '0';
@@ -1992,7 +2453,7 @@ const CanvasCollagePreview = ({
     if (typeof onEditingSessionChange === 'function') {
       onEditingSessionChange(active);
     }
-  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, onEditingSessionChange]);
+  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, stickerInteraction, onEditingSessionChange]);
 
 
 
@@ -2100,6 +2561,18 @@ const CanvasCollagePreview = ({
       
       updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
       setBorderDragStart({ x, y });
+      return;
+    }
+
+    // Suppress hover darkening briefly after sticker tap-away deselection.
+    if (Date.now() < (frameTapSuppressUntilRef.current || 0)) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      if (hoveredPanel !== null) setHoveredPanel(null);
+      if (hoveredBorder !== null) setHoveredBorder(null);
+      canvas.style.cursor = 'default';
       return;
     }
     
@@ -2374,9 +2847,10 @@ const CanvasCollagePreview = ({
     // Respect optional suppression window; guard against unexpected errors
     const suppressed = (() => {
       try {
+        if (Date.now() < (frameTapSuppressUntilRef.current || 0)) return true;
         return typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed();
       } catch (e) {
-        return false;
+        return Date.now() < (frameTapSuppressUntilRef.current || 0);
       }
     })();
     if (suppressed) return;
@@ -2405,6 +2879,11 @@ const CanvasCollagePreview = ({
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (activeStickerId) {
+      frameTapSuppressUntilRef.current = Date.now() + 260;
+      clearActiveStickerSelection(e);
+      return;
+    }
     
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -2502,7 +2981,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -2724,6 +3203,12 @@ const CanvasCollagePreview = ({
     const touches = Array.from(e.touches);
     
     if (touches.length === 1) {
+      if (activeStickerId) {
+        touchStartInfo.current = null;
+        frameTapSuppressUntilRef.current = Date.now() + 260;
+        clearActiveStickerSelection(e);
+        return;
+      }
       // Single touch - handle like mouse down
       const touch = touches[0];
       const x = touch.clientX - rect.left;
@@ -2901,7 +3386,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -3191,7 +3676,7 @@ const CanvasCollagePreview = ({
         // Confirmed tap on a frame: open actions menu (unless suppressed)
         if (textEditingPanel === null) {
           const touch = e.changedTouches[0];
-          if (!(typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed())) {
+          if (Date.now() >= (frameTapSuppressUntilRef.current || 0) && !(typeof isFrameActionSuppressed === 'function' && isFrameActionSuppressed())) {
             handleActionMenuOpen({ clientX: touch.clientX, clientY: touch.clientY }, touchStartInfo.current.panelId);
           }
         }
@@ -3335,52 +3820,54 @@ const CanvasCollagePreview = ({
           exportCtx.fillStyle = borderColor;
           exportCtx.fillRect(0, 0, componentWidth, componentHeight);
         }
-        
-        // Draw panels without placeholder text
+
+        const captionEntries = [];
+
+        // Draw panel backgrounds/images first
         panelRects.forEach((rect) => {
           const { x, y, width, height, panelId } = rect;
           const imageIndex = panelImageMapping[panelId];
           const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
           const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
           const panelText = panelTexts[panelId] || {};
-          
+
           // Draw panel background
-          exportCtx.fillStyle = hasImage 
+          exportCtx.fillStyle = hasImage
             ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
             : 'rgba(0,0,0,0.3)';
           exportCtx.fillRect(x, y, width, height);
-          
+
           if (hasImage) {
             const img = loadedImages[imageIndex];
             if (img) {
               exportCtx.save();
-              
+
               // Clip to panel bounds
               exportCtx.beginPath();
               exportCtx.rect(x, y, width, height);
               exportCtx.clip();
-              
+
               // Calculate initial scale to cover the panel
               const imageAspectRatio = img.naturalWidth / img.naturalHeight;
               const panelAspectRatio = width / height;
-              
+
               let initialScale;
               if (imageAspectRatio > panelAspectRatio) {
                 initialScale = height / img.naturalHeight;
               } else {
                 initialScale = width / img.naturalWidth;
               }
-              
+
               const finalScale = initialScale * transform.scale;
               const scaledWidth = img.naturalWidth * finalScale;
               const scaledHeight = img.naturalHeight * finalScale;
-              
+
               const centerOffsetX = (width - scaledWidth) / 2;
               const centerOffsetY = (height - scaledHeight) / 2;
-              
+
               const finalOffsetX = centerOffsetX + transform.positionX;
               const finalOffsetY = centerOffsetY + transform.positionY;
-              
+
               exportCtx.drawImage(
                 img,
                 x + finalOffsetX,
@@ -3388,51 +3875,105 @@ const CanvasCollagePreview = ({
                 scaledWidth,
                 scaledHeight
               );
-              
+
               exportCtx.restore();
             }
+
+            captionEntries.push({ rect, panelText });
           } else {
             // Draw add icon for empty panels
             const iconSize = Math.min(width, height) * 0.3;
             const iconX = x + (width - iconSize) / 2;
             const iconY = y + (height - iconSize) / 2;
-            
+
             exportCtx.fillStyle = '#2196F3';
             exportCtx.beginPath();
-            exportCtx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI * 2);
+            exportCtx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, Math.PI * 2);
             exportCtx.fill();
-            
+
             exportCtx.strokeStyle = '#ffffff';
             exportCtx.lineWidth = 3;
             exportCtx.beginPath();
-            exportCtx.moveTo(iconX + iconSize * 0.25, iconY + iconSize/2);
-            exportCtx.lineTo(iconX + iconSize * 0.75, iconY + iconSize/2);
-            exportCtx.moveTo(iconX + iconSize/2, iconY + iconSize * 0.25);
-            exportCtx.lineTo(iconX + iconSize/2, iconY + iconSize * 0.75);
+            exportCtx.moveTo(iconX + iconSize * 0.25, iconY + iconSize / 2);
+            exportCtx.lineTo(iconX + iconSize * 0.75, iconY + iconSize / 2);
+            exportCtx.moveTo(iconX + iconSize / 2, iconY + iconSize * 0.25);
+            exportCtx.lineTo(iconX + iconSize / 2, iconY + iconSize * 0.75);
             exportCtx.stroke();
           }
-          
-          const rawCaption = panelText.rawContent ?? panelText.content ?? '';
-          const { cleanText, ranges } = parseFormattedText(rawCaption);
-          const hasActualText = cleanText && cleanText.trim();
+        });
 
-          // Draw only actual text (not placeholder) for export
-          if (hasImage && hasActualText) {
+        const drawStickerLayers = async () => {
+          if (!Array.isArray(stickers) || stickers.length === 0) return;
+
+          const loadStickerImage = (src) => new Promise((done) => {
+            if (!src) {
+              done(null);
+              return;
+            }
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => done(img);
+            img.onerror = () => done(null);
+            img.src = src;
+          });
+
+          const assets = await Promise.all(stickers.map(async (sticker) => {
+            if (!sticker?.id) return null;
+            const fromCache = loadedStickers[sticker.id];
+            if (fromCache) return fromCache;
+            const src = sticker.originalUrl || sticker.thumbnailUrl || '';
+            return loadStickerImage(src);
+          }));
+
+          stickers.forEach((sticker, index) => {
+            if (!sticker) return;
+            const img = assets[index];
+            if (!img) return;
+            const rect = getStickerRectPx(sticker, img);
+            if (!rect) return;
+            try {
+              if (Math.abs(rect.angleDeg || 0) > 0.01) {
+                const centerX = rect.x + (rect.width / 2);
+                const centerY = rect.y + (rect.height / 2);
+                exportCtx.save();
+                exportCtx.translate(centerX, centerY);
+                exportCtx.rotate((rect.angleDeg * Math.PI) / 180);
+                exportCtx.drawImage(img, -(rect.width / 2), -(rect.height / 2), rect.width, rect.height);
+                exportCtx.restore();
+                return;
+              }
+              exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
+            } catch (_) {
+              // Ignore sticker draw failures so export still succeeds.
+            }
+          });
+        };
+
+        const drawCaptions = () => {
+          captionEntries.forEach(({ rect, panelText }) => {
+            const { x, y, width, height } = rect;
+            const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+            const { cleanText, ranges } = parseFormattedText(rawCaption);
+            const hasActualText = cleanText && cleanText.trim();
+
+            // Draw only actual text (not placeholder) for export
+            if (!hasActualText) return;
+
             exportCtx.save();
-            
+
             // Clip text to frame boundaries in export - text beyond frame is hidden (window effect)
             exportCtx.beginPath();
             exportCtx.rect(x, y, width, height);
             exportCtx.clip();
-            
+
             let baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-            
+
             // Auto-calculate optimal font size if no explicit size is set and there's actual text
-            if (hasActualText && !panelText.fontSize) {
+            if (!panelText.fontSize) {
               const optimalSize = calculateOptimalFontSize(cleanText, width, height);
               baseFontSize = optimalSize;
             }
-            
+
             // Scale font size based on canvas size for export
             const fontSize = baseFontSize * textScaleFactor;
             const fontWeight = panelText.fontWeight || lastUsedTextSettings.fontWeight || 400;
@@ -3450,7 +3991,7 @@ const CanvasCollagePreview = ({
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
-            
+
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = baseTextColor;
             exportCtx.textAlign = 'left';
@@ -3473,13 +4014,13 @@ const CanvasCollagePreview = ({
             exportCtx.shadowOffsetX = 0;
             exportCtx.shadowOffsetY = 0;
             exportCtx.shadowBlur = 14;
-            
+
             const textPadding = 10;
             const maxTextWidth = width - (textPadding * 2);
             const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
-            
+
             const lineHeight = fontSize * 1.2;
-            
+
             const lines = buildWrappedLines(
               exportCtx,
               cleanText,
@@ -3489,10 +4030,10 @@ const CanvasCollagePreview = ({
               fontSize,
               fontFamily,
             );
-            
+
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
-            
+
             let textAnchorY;
             if (textPositionY <= 0) {
               // Position between default bottom (95%) and beyond frame bottom edge
@@ -3507,10 +4048,10 @@ const CanvasCollagePreview = ({
               const t = textPositionY / 100; // 0 to 1
               textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
             }
-            
+
             // Calculate where the first line should start (top of text block)
             const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
-            
+
             // Apply rotation transformation if needed
             if (textRotation !== 0) {
               exportCtx.save();
@@ -3521,7 +4062,7 @@ const CanvasCollagePreview = ({
               exportCtx.rotate((textRotation * Math.PI) / 180);
               exportCtx.translate(-textCenterX, -textCenterY);
             }
-            
+
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
               const lineX = textX - (line.width / 2);
@@ -3556,21 +4097,27 @@ const CanvasCollagePreview = ({
                 cursorX += segmentWidth;
               });
             });
-            
+
             // Restore transformation if rotation was applied
             if (textRotation !== 0) {
               exportCtx.restore();
             }
-            
+
             exportCtx.restore();
-          }
-        });
-        
-        exportCanvas.toBlob(resolve, 'image/png');
+          });
+        };
+
+        Promise.resolve()
+          .then(drawStickerLayers)
+          .catch(() => undefined)
+          .then(drawCaptions)
+          .finally(() => {
+            exportCanvas.toBlob(resolve, 'image/png');
+          });
       } else {
         resolve(null);
       }
-    }), [componentWidth, componentHeight, panelRects, loadedImages, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
+    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor, getStickerRectPx]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -3616,6 +4163,23 @@ const CanvasCollagePreview = ({
 
   // Check if any panel has transform mode enabled for dynamic touch behavior
   const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+  const stickerLayers = Array.isArray(stickers)
+    ? stickers
+        .map((sticker, index) => {
+          if (!sticker?.id) return null;
+          const src = sticker.originalUrl || sticker.thumbnailUrl;
+          if (!src) return null;
+          const rect = getStickerRectPx(sticker);
+          if (!rect) return null;
+          return {
+            sticker,
+            index,
+            rect,
+            isActive: activeStickerId === sticker.id,
+          };
+        })
+        .filter(Boolean)
+    : [];
 
   return (
     <Box 
@@ -3675,6 +4239,195 @@ const CanvasCollagePreview = ({
             touchAction: anyPanelInTransformMode ? 'none' : 'pan-y pinch-zoom', // Disable all touch gestures when in transform mode
           }}
       />
+
+      {/* Sticker interaction hitboxes stay clipped; control handles can render outside the preview bounds. */}
+      {stickerLayers.length > 0 && (
+        <>
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              zIndex: 30,
+              pointerEvents: 'none',
+            }}
+          >
+            {stickerLayers.map(({ sticker, index, rect }) => (
+              <Box
+                key={`sticker-layer-${sticker.id}`}
+                onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'move')}
+                sx={{
+                  position: 'absolute',
+                  left: rect.x,
+                  top: rect.y,
+                  width: rect.width,
+                  height: rect.height,
+                  zIndex: 1 + index,
+                  pointerEvents: 'auto',
+                  cursor: stickerInteraction?.stickerId === sticker.id
+                    ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
+                    : 'grab',
+                  touchAction: 'none',
+                  transformOrigin: 'center center',
+                  transform: `rotate(${rect.angleDeg || 0}deg)`,
+                }}
+              />
+            ))}
+          </Box>
+
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'visible',
+              zIndex: 32,
+              pointerEvents: 'none',
+            }}
+          >
+            {stickerLayers.map(({ sticker, index, rect, isActive }) => {
+              if (!isActive) return null;
+              const handleSize = componentWidth < 560 ? 30 : 22;
+              const rotateHandleSize = componentWidth < 560 ? 26 : 20;
+              const deleteHandleSize = componentWidth < 560 ? 28 : 22;
+              const doneHandleSize = componentWidth < 560 ? 28 : 22;
+
+              return (
+                <Box
+                  key={`sticker-controls-${sticker.id}`}
+                  sx={{
+                    position: 'absolute',
+                    left: rect.x,
+                    top: rect.y,
+                    width: rect.width,
+                    height: rect.height,
+                    zIndex: 1 + index,
+                    pointerEvents: 'none',
+                    transformOrigin: 'center center',
+                    transform: `rotate(${rect.angleDeg || 0}deg)`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      border: '2px solid rgba(33, 150, 243, 0.95)',
+                      borderRadius: 1,
+                      boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -18,
+                      width: 2,
+                      height: 14,
+                      transform: 'translateX(-50%)',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'rotate')}
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -(rotateHandleSize + 14),
+                      width: rotateHandleSize,
+                      height: rotateHandleSize,
+                      transform: 'translateX(-50%)',
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(117, 117, 117, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
+                        ? 'grabbing'
+                        : 'grab',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
+                  </Box>
+                  <Box
+                    onPointerDown={handleStickerDone}
+                    sx={{
+                      position: 'absolute',
+                      left: -(doneHandleSize * 0.35),
+                      top: -(doneHandleSize * 0.35),
+                      width: doneHandleSize,
+                      height: doneHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(67, 160, 71, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Check sx={{ fontSize: doneHandleSize * 0.62 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleStickerDelete(event, sticker.id)}
+                    sx={{
+                      position: 'absolute',
+                      right: -(deleteHandleSize * 0.35),
+                      top: -(deleteHandleSize * 0.35),
+                      width: deleteHandleSize,
+                      height: deleteHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(229, 57, 53, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <DeleteOutline sx={{ fontSize: deleteHandleSize * 0.62 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
+                    sx={{
+                      position: 'absolute',
+                      right: -(handleSize * 0.35),
+                      bottom: -(handleSize * 0.35),
+                      width: handleSize,
+                      height: handleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: 'nwse-resize',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </>
+      )}
       
       {/* Control panels positioned over canvas */}
       {panelRects.map((rect) => {
@@ -4117,6 +4870,22 @@ CanvasCollagePreview.propTypes = {
   panelTransforms: PropTypes.object,
   updatePanelTransform: PropTypes.func,
   panelTexts: PropTypes.object,
+  stickers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string,
+      originalUrl: PropTypes.string,
+      thumbnailUrl: PropTypes.string,
+      metadata: PropTypes.object,
+      aspectRatio: PropTypes.number,
+      angleDeg: PropTypes.number,
+      widthPercent: PropTypes.number,
+      xPercent: PropTypes.number,
+      yPercent: PropTypes.number,
+    })
+  ),
+  updateSticker: PropTypes.func,
+  moveSticker: PropTypes.func,
+  removeSticker: PropTypes.func,
   updatePanelText: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   onCaptionEditorVisibleChange: PropTypes.func,

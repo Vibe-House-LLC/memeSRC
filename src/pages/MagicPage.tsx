@@ -2,9 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Container, Dialog, DialogActions, DialogContent, DialogTitle, Typography, CircularProgress } from '@mui/material';
 import { AutoFixHighRounded, CloseRounded } from '@mui/icons-material';
 import MagicEditor from '../components/magic-editor/MagicEditor';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore - JS module without types
-import LibraryBrowser from '../components/library/LibraryBrowser.jsx';
+import { LibraryPickerDialog } from '../components/library';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - JS module without types
 import { get as getFromLibrary } from '../utils/library/storage';
@@ -36,7 +34,6 @@ export default function MagicPage() {
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [versionChoice, setVersionChoice] = useState<'frame' | 'original' | null>(null);
   const [hasCompletedEdit, setHasCompletedEdit] = useState(false);
-  const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
   const returnToPath = location?.state?.returnTo as string | undefined;
   const collageEditContext = useMemo(() => location?.state?.collageEditContext, [location?.state]);
   const magicEditContext = useMemo(
@@ -227,6 +224,14 @@ export default function MagicPage() {
     setFinalSrc(null);
   };
 
+  const handleClosePickDialog = () => {
+    if (returnToPath) {
+      navigate(returnToPath, { replace: false });
+      return;
+    }
+    navigate('/editor/new', { replace: false });
+  };
+
   return (
     <>
     <Container maxWidth="lg" sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 4 } }}>
@@ -346,19 +351,32 @@ export default function MagicPage() {
       )}
 
       {stage === 'pick' && (
-        <Box>
+        <Box sx={{ py: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
             Choose a photo
           </Typography>
-          <AnyLibraryBrowser
-            multiple={false}
-            instantSelectOnClick
-            showActionBar
-            actionBarLabel="Use Selected"
-            onSelect={handlePick}
-          />
+          <Typography variant="body2" color="text.secondary">
+            Pick a photo from your Library to start editing.
+          </Typography>
         </Box>
       )}
+
+      <LibraryPickerDialog
+        open={stage === 'pick'}
+        onClose={handleClosePickDialog}
+        title="Choose a photo from your library"
+        onSelect={handlePick}
+        browserProps={{
+          multiple: false,
+          uploadEnabled: true,
+          deleteEnabled: false,
+          showActionBar: false,
+          selectionEnabled: true,
+          previewOnClick: true,
+          showSelectToggle: true,
+          initialSelectMode: true,
+        }}
+      />
 
       {stage === 'choose' && (
         <Box>

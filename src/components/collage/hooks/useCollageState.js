@@ -26,6 +26,36 @@ const revokeImageUrls = (images) => {
   });
 };
 
+const revokeStickerUrls = (stickers) => {
+  if (!Array.isArray(stickers)) return;
+  stickers.forEach((sticker) => {
+    if (!sticker || typeof sticker !== 'object') return;
+    const originalUrl = sticker.originalUrl;
+    const thumbnailUrl = sticker.thumbnailUrl;
+    if (typeof originalUrl === 'string' && originalUrl.startsWith('blob:')) {
+      try { URL.revokeObjectURL(originalUrl); } catch (_) { /* noop */ }
+    }
+    if (
+      typeof thumbnailUrl === 'string' &&
+      thumbnailUrl.startsWith('blob:') &&
+      thumbnailUrl !== originalUrl
+    ) {
+      try { URL.revokeObjectURL(thumbnailUrl); } catch (_) { /* noop */ }
+    }
+  });
+};
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const STICKER_POSITION_MIN = -220;
+const STICKER_POSITION_MAX = 220;
+const normalizeAngleDeg = (value) => {
+  if (!Number.isFinite(value)) return 0;
+  let next = value % 360;
+  if (next > 180) next -= 360;
+  if (next <= -180) next += 360;
+  return next;
+};
+
 /**
  * Custom hook to manage collage state
  */
@@ -38,6 +68,8 @@ export const useCollageState = () => {
   const [panelTransforms, setPanelTransforms] = useState({});
   // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number } }
   const [panelTexts, setPanelTexts] = useState({});
+  // stickers are global overlays on the full collage canvas (not inside individual panels)
+  const [stickers, setStickers] = useState([]);
   // lastUsedTextSettings to remember settings across panels
   const [lastUsedTextSettings] = useState({
     fontSize: 20,
@@ -217,6 +249,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
   useEffect(() => {
     latestImagesRef.current = selectedImages;
   }, [selectedImages]);
+  const latestStickersRef = useRef([]);
+  useEffect(() => {
+    latestStickersRef.current = stickers;
+  }, [stickers]);
 
   // Clean up ObjectURLs only when component unmounts
   // Targeted revocations during lifecycle are already handled in replace/remove/update/clear
@@ -230,6 +266,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
           URL.revokeObjectURL(imgObj.displayUrl);
         }
       });
+      revokeStickerUrls(latestStickersRef.current || []);
     } catch (_) { /* no-op */ }
   }, []);
 
@@ -627,6 +664,131 @@ const [borderThickness, setBorderThickness] = useState(() => {
     }
   }, [selectedImages, panelImageMapping, saveToLibraryIfEnabled]);
 
+  /**
+   * Add a sticker layer positioned over the full collage.
+   * @param {object} stickerInput - Sticker config/source
+   * @returns {string|null} created sticker id
+   */
+  const addSticker = useCallback((stickerInput) => {
+    if (!stickerInput || typeof stickerInput !== 'object') return null;
+
+    const baseId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const id = typeof stickerInput.id === 'string' && stickerInput.id.trim()
+      ? stickerInput.id
+      : `sticker-${baseId}`;
+    const aspectRatioRaw = Number(stickerInput.aspectRatio);
+    const aspectRatio = Number.isFinite(aspectRatioRaw) && aspectRatioRaw > 0 ? aspectRatioRaw : 1;
+    const angleRaw = Number(stickerInput.angleDeg);
+    const angleDeg = normalizeAngleDeg(Number.isFinite(angleRaw) ? angleRaw : 0);
+    const inputWidthPercent = Number(stickerInput.widthPercent);
+    const widthPercent = Number.isFinite(inputWidthPercent)
+      ? clamp(inputWidthPercent, 8, 80)
+      : 28;
+
+    setStickers((prev) => {
+      const count = Array.isArray(prev) ? prev.length : 0;
+      const offset = Math.min(count * 3.5, 22);
+      const xPercentRaw = Number(stickerInput.xPercent);
+      const yPercentRaw = Number(stickerInput.yPercent);
+      const defaultXPercent = clamp(36 + offset, 4, 88);
+      const defaultYPercent = clamp(12 + offset, 4, 72);
+
+      return [
+        ...(Array.isArray(prev) ? prev : []),
+        {
+          id,
+          originalUrl: stickerInput.originalUrl || stickerInput.url || '',
+          thumbnailUrl: stickerInput.thumbnailUrl || stickerInput.originalUrl || stickerInput.url || '',
+          metadata: (stickerInput.metadata && typeof stickerInput.metadata === 'object')
+            ? { ...stickerInput.metadata }
+            : {},
+          aspectRatio,
+          angleDeg,
+          widthPercent,
+          xPercent: Number.isFinite(xPercentRaw) ? clamp(xPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultXPercent,
+          yPercent: Number.isFinite(yPercentRaw) ? clamp(yPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultYPercent,
+        },
+      ];
+    });
+
+    return id;
+  }, []);
+
+  const updateSticker = useCallback((stickerId, updates) => {
+    if (!stickerId || !updates || typeof updates !== 'object') return;
+    setStickers((prev) => {
+      if (!Array.isArray(prev) || prev.length === 0) return prev;
+      return prev.map((sticker) => {
+        if (!sticker || sticker.id !== stickerId) return sticker;
+        const next = { ...sticker, ...updates };
+        if (updates.widthPercent !== undefined) {
+          const widthRaw = Number(updates.widthPercent);
+          next.widthPercent = Number.isFinite(widthRaw) ? clamp(widthRaw, 5, 95) : sticker.widthPercent;
+        }
+        if (updates.aspectRatio !== undefined) {
+          const ratioRaw = Number(updates.aspectRatio);
+          next.aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : sticker.aspectRatio;
+        }
+        if (updates.angleDeg !== undefined) {
+          const angleRaw = Number(updates.angleDeg);
+          next.angleDeg = Number.isFinite(angleRaw)
+            ? normalizeAngleDeg(angleRaw)
+            : normalizeAngleDeg(Number(sticker.angleDeg));
+        }
+        if (updates.xPercent !== undefined) {
+          const xRaw = Number(updates.xPercent);
+          next.xPercent = Number.isFinite(xRaw)
+            ? clamp(xRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX)
+            : sticker.xPercent;
+        }
+        if (updates.yPercent !== undefined) {
+          const yRaw = Number(updates.yPercent);
+          next.yPercent = Number.isFinite(yRaw)
+            ? clamp(yRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX)
+            : sticker.yPercent;
+        }
+        return next;
+      });
+    });
+  }, []);
+
+  const moveSticker = useCallback((stickerId, direction = 1) => {
+    if (!stickerId) return;
+    const step = Number(direction);
+    if (!Number.isFinite(step) || step === 0) return;
+    setStickers((prev) => {
+      if (!Array.isArray(prev) || prev.length <= 1) return prev;
+      const fromIndex = prev.findIndex((sticker) => sticker?.id === stickerId);
+      if (fromIndex < 0) return prev;
+      const toIndex = clamp(fromIndex + (step > 0 ? 1 : -1), 0, prev.length - 1);
+      if (toIndex === fromIndex) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  }, []);
+
+  const removeSticker = useCallback((stickerId) => {
+    if (!stickerId) return;
+    setStickers((prev) => {
+      if (!Array.isArray(prev) || prev.length === 0) return prev;
+      const index = prev.findIndex((sticker) => sticker?.id === stickerId);
+      if (index < 0) return prev;
+      const next = [...prev];
+      const [removed] = next.splice(index, 1);
+      revokeStickerUrls([removed]);
+      return next;
+    });
+  }, []);
+
+  const clearStickers = useCallback(() => {
+    setStickers((prev) => {
+      revokeStickerUrls(prev);
+      return [];
+    });
+  }, []);
+
 
   /**
    * Clear all selected images, mappings, and texts.
@@ -634,14 +796,16 @@ const [borderThickness, setBorderThickness] = useState(() => {
   const clearImages = useCallback(() => {
     // Clean up all potential blob URLs first
     revokeImageUrls(selectedImages);
+    revokeStickerUrls(stickers);
 
     setSelectedImages([]);
     setPanelImageMapping({});
     setPanelTransforms({}); // Clear transforms as well
     setPanelTexts({}); // Clear texts as well
+    setStickers([]);
     // Note: We don't clear savedImageDataUrls to prevent re-saving images across collages
-    if (DEBUG_MODE) console.log("Cleared all images, mapping, transforms, and texts");
-  }, [selectedImages]);
+    if (DEBUG_MODE) console.log("Cleared all images, stickers, mapping, transforms, and texts");
+  }, [selectedImages, stickers]);
 
   /**
    * Clear the tracking of saved image data URLs (for debugging or reset purposes)
@@ -657,12 +821,14 @@ const [borderThickness, setBorderThickness] = useState(() => {
       mapping,
       transforms,
       texts,
+      stickers: incomingStickers,
     } = nextState || {};
 
     const nextImages = Array.isArray(images) ? images : [];
     const nextMapping = (mapping && typeof mapping === 'object') ? mapping : {};
     const nextTransforms = (transforms && typeof transforms === 'object') ? transforms : {};
     const nextTexts = (texts && typeof texts === 'object') ? texts : {};
+    const nextStickers = Array.isArray(incomingStickers) ? incomingStickers : [];
 
     const run = () => {
       setSelectedImages((prev) => {
@@ -672,6 +838,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
       setPanelImageMapping(nextMapping);
       setPanelTransforms(nextTransforms);
       setPanelTexts(nextTexts);
+      setStickers((prev) => {
+        revokeStickerUrls(prev);
+        return nextStickers;
+      });
     };
 
     if (typeof unstable_batchedUpdates === 'function') {
@@ -679,7 +849,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     } else {
       run();
     }
-  }, [setPanelImageMapping, setPanelTexts, setPanelTransforms, setSelectedImages]);
+  }, [setPanelImageMapping, setPanelTexts, setPanelTransforms, setSelectedImages, setStickers]);
 
   /**
    * Update the mapping between panels and image indices, and auto-assign subtitles.
@@ -868,6 +1038,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     panelImageMapping, // Still { panelId: imageIndex }
     panelTransforms, // { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
           panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleShowing? } }
+    stickers, // [{ id, originalUrl, thumbnailUrl, metadata, aspectRatio, angleDeg, widthPercent, xPercent, yPercent }]
     lastUsedTextSettings, // NEW: Default text settings for new panels
     selectedTemplate,
     setSelectedTemplate,
@@ -893,6 +1064,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
     updateImage, // Updates displayUrl
     replaceImage, // Replaces image object
     clearImages, // Clears images, mapping, transforms & texts
+    addSticker,
+    updateSticker,
+    moveSticker,
+    removeSticker,
+    clearStickers,
     applySnapshotState,
     setHydrationMode,
     updatePanelImageMapping, // UPDATED: Also auto-assigns subtitles

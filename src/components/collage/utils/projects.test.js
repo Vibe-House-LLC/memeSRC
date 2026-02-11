@@ -75,4 +75,71 @@ describe('collage projects util', () => {
       },
     ]);
   });
+
+  it('omits data-url sticker fallbacks when libraryKey exists', () => {
+    const snap = buildSnapshotFromState({
+      selectedImages: [],
+      selectedStickers: [
+        {
+          id: 'sticker-1',
+          originalUrl: 'data:image/png;base64,AAA',
+          thumbnailUrl: 'data:image/png;base64,BBB',
+          metadata: { libraryKey: 'private/library/sticker-1.png', isFromLibrary: true },
+          aspectRatio: 1.4,
+          widthPercent: 31,
+          xPercent: 18,
+          yPercent: 22,
+        },
+      ],
+      panelImageMapping: {},
+      panelTransforms: {},
+      panelTexts: {},
+      selectedTemplate: { id: 't-1' },
+      selectedAspectRatio: 'square',
+      panelCount: 2,
+      borderThickness: 1.5,
+      borderColor: '#fff',
+      customLayout: null,
+      canvasWidth: 1000,
+      canvasHeight: 1000,
+    });
+
+    expect(snap.stickers).toHaveLength(1);
+    const savedSticker = snap.stickers[0];
+    expect(savedSticker.id).toBe('sticker-1');
+    expect(savedSticker.libraryKey).toBe('private/library/sticker-1.png');
+    expect(savedSticker.url).toBeUndefined();
+    expect(savedSticker.thumbnailUrl).toBeUndefined();
+  });
+
+  it('keeps non-data sticker fallback URLs when libraryKey exists', () => {
+    const snap = buildSnapshotFromState({
+      selectedImages: [],
+      selectedStickers: [
+        {
+          id: 'sticker-2',
+          originalUrl: 'https://cdn.example.com/sticker.png',
+          thumbnailUrl: 'https://cdn.example.com/sticker-thumb.png',
+          metadata: { libraryKey: 'private/library/sticker-2.png' },
+        },
+      ],
+      panelImageMapping: {},
+      panelTransforms: {},
+      panelTexts: {},
+      selectedTemplate: { id: 't-1' },
+      selectedAspectRatio: 'square',
+      panelCount: 2,
+      borderThickness: 1.5,
+      borderColor: '#fff',
+      customLayout: null,
+      canvasWidth: 1000,
+      canvasHeight: 1000,
+    });
+
+    expect(snap.stickers).toHaveLength(1);
+    const savedSticker = snap.stickers[0];
+    expect(savedSticker.libraryKey).toBe('private/library/sticker-2.png');
+    expect(savedSticker.url).toBe('https://cdn.example.com/sticker.png');
+    expect(savedSticker.thumbnailUrl).toBe('https://cdn.example.com/sticker-thumb.png');
+  });
 });

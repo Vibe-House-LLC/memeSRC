@@ -1,13 +1,12 @@
 import { useContext, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Box, IconButton } from '@mui/material';
+import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
-import CloseIcon from '@mui/icons-material/Close';
 import BasePage from './BasePage';
-import { LibraryBrowser } from '../components/library';
+import { LibraryPickerDialog } from '../components/library';
 import { UserContext } from '../UserContext';
 import { get as getFromLibrary } from '../utils/library/storage';
 
@@ -266,69 +265,22 @@ export default function EditorNewProjectPage() {
             </Stack>
           </DialogActions>
         </Dialog>
-        <Dialog
-          fullScreen
+        <LibraryPickerDialog
           open={libraryOpen}
           onClose={resetUploadState}
-          PaperProps={{
-            sx: {
-              bgcolor: '#0b0b0f',
-              color: '#f5f5f7',
-              display: 'flex',
-              flexDirection: 'column',
-            },
+          title="Choose a photo from your Library"
+          onSelect={handleLibrarySelect}
+          browserProps={{
+            multiple: false,
+            uploadEnabled: true,
+            deleteEnabled: false,
+            showActionBar: false,
+            selectionEnabled: true,
+            previewOnClick: true,
+            showSelectToggle: true,
+            initialSelectMode: true,
           }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              px: 2.5,
-              py: 2,
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#f5f5f7' }}>
-              Choose a photo from your Library
-            </Typography>
-            <IconButton onClick={resetUploadState} sx={{ color: '#f5f5f7' }} aria-label="Close library">
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          <DialogContent
-            sx={{
-              flex: 1,
-              px: { xs: 1.5, sm: 2.5 },
-              py: 2,
-              bgcolor: '#0b0b0f',
-            }}
-          >
-            <LibraryBrowser
-              multiple={false}
-              uploadEnabled
-              deleteEnabled={false}
-              onSelect={handleLibrarySelect}
-              showActionBar={false}
-              selectionEnabled
-              previewOnClick
-              showSelectToggle
-              initialSelectMode
-            />
-          </DialogContent>
-          <DialogActions
-            sx={{
-              px: 2.5,
-              py: 2,
-              borderTop: '1px solid rgba(255,255,255,0.08)',
-              bgcolor: '#0b0b0f',
-            }}
-          >
-            <Button onClick={resetUploadState} color="inherit" sx={{ color: '#f5f5f7' }}>
-              Cancel
-            </Button>
-          </DialogActions>
-        </Dialog>
+        />
         </BasePage>
   );
 }

@@ -24,15 +24,17 @@ import {
   ChevronRight,
   AspectRatio,
   GridView,
-  Check,
-  Add,
-  Remove,
-  Tag,
   BorderAll,
   Palette,
-  Colorize
+  Colorize,
+  EmojiEmotions,
+  ArrowUpward,
+  ArrowDownward,
+  DeleteOutline,
+  AddPhotoAlternate
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
+import { LibraryPickerDialog } from "../../library";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -58,61 +60,24 @@ const AspectRatioCard = styled(Paper)(({ theme, selected }) => ({
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  transition: theme.transitions.create(
-    ['border-color', 'background-color', 'box-shadow'],
-    { duration: theme.transitions.duration.shorter }
-  ),
+  transition: 'none',
   border: selected 
-    ? `2px solid ${theme.palette.primary.main}` 
-    : `1px solid ${theme.palette.divider}`,
-  backgroundColor: selected 
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.15 : 0.08)
-    : theme.palette.background.paper,
+    ? `2px solid ${alpha('#ffffff', 0.95)}`
+    : `1px solid ${alpha('#f5f5f5', 0.26)}`,
+  backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.12),
+  boxShadow: 'none',
   borderRadius: theme.shape.borderRadius,
-  '&:hover': {
-    boxShadow: selected 
-      ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
-      : theme.palette.mode === 'dark'
-        ? '0 4px 12px rgba(0,0,0,0.25)'
-        : '0 4px 12px rgba(0,0,0,0.1)',
-    borderColor: selected ? theme.palette.primary.main : theme.palette.primary.light
-  },
   // Card dimensions
   width: 80,
   height: 80,
   padding: theme.spacing(1),
   flexShrink: 0,
-  // Subtle animation on click
-  '&:active': {
-    transform: 'scale(0.98)',
-    transition: 'transform 0.1s',
-  }
-}));
-
-// Panel Counter component for panel count selector
-const PanelCounter = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: theme.spacing(2),
-  padding: theme.spacing(1.25),
-  backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.96),
-  borderRadius: theme.shape.borderRadius,
-  border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8)}`,
-  marginTop: 0,
-  marginBottom: theme.spacing(2)
-}));
-
-// Panel Count Button
-const PanelCountButton = styled(IconButton)(({ theme }) => ({
-  backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.18) : alpha(theme.palette.primary.main, 0.1),
-  color: theme.palette.text.primary,
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.primary.main, 0.2),
-  },
-  '&.Mui-disabled': {
-    backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.action.disabled, 0.2) : alpha(theme.palette.action.disabled, 0.1),
-    color: theme.palette.action.disabled,
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover': {
+      boxShadow: 'none',
+      borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.38),
+      backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.16),
+    },
   }
 }));
 
@@ -164,28 +129,14 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   zIndex: 10,
   // Consistent styling across all devices
   backgroundColor: theme.palette.mode === 'dark' 
-    ? alpha(theme.palette.background.paper, 0.8)
-    : alpha(theme.palette.background.paper, 0.9),
-  // Better shadow for depth without overwhelming the UI
-  boxShadow: `0 2px 8px ${theme.palette.mode === 'dark' 
-    ? 'rgba(0,0,0,0.3)' 
-    : 'rgba(0,0,0,0.15)'}`,
+    ? alpha(theme.palette.background.paper, 0.7)
+    : alpha(theme.palette.background.paper, 0.92),
+  boxShadow: 'none',
   // Clean border
   border: `1px solid ${theme.palette.mode === 'dark'
-    ? alpha(theme.palette.divider, 0.5)
-    : theme.palette.divider}`,
-  // Primary color for better visibility
-  color: theme.palette.primary.main,
-  '&:hover': {
-    backgroundColor: theme.palette.mode === 'dark' 
-      ? alpha(theme.palette.background.paper, 0.9)
-      : alpha(theme.palette.background.default, 0.95),
-    color: theme.palette.primary.dark,
-    transform: 'translateY(-50%) scale(1.05)',
-    boxShadow: `0 3px 10px ${theme.palette.mode === 'dark' 
-      ? 'rgba(0,0,0,0.4)' 
-      : 'rgba(0,0,0,0.2)'}`,
-  },
+    ? alpha('#f5f5f5', 0.3)
+    : alpha('#101214', 0.2)}`,
+  color: theme.palette.mode === 'dark' ? alpha('#f5f5f5', 0.85) : alpha('#101214', 0.78),
   // Consistent positioning for both directions
   ...(direction === 'left' ? { left: -8 } : { right: -8 }),
   // Consistent sizing across devices
@@ -195,11 +146,17 @@ const ScrollButton = styled(IconButton)(({ theme, direction }) => ({
   padding: 0,
   // Consistent circular shape on all devices
   borderRadius: '50%',
-  // Better transition for hover states
-  transition: theme.transitions.create(
-    ['background-color', 'color', 'box-shadow', 'transform', 'opacity'], 
-    { duration: theme.transitions.duration.shorter }
-  ),
+  transition: 'none',
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover': {
+      backgroundColor: theme.palette.mode === 'dark'
+        ? alpha(theme.palette.background.paper, 0.82)
+        : alpha(theme.palette.background.paper, 0.98),
+      color: theme.palette.mode === 'dark' ? '#ffffff' : alpha('#101214', 0.95),
+      transform: 'translateY(-50%)',
+      boxShadow: 'none',
+    },
+  },
   // Same styling for mobile and desktop
   [theme.breakpoints.up('sm')]: {
     width: 36,
@@ -264,20 +221,32 @@ const MobileSettingsTypeButton = styled(Button, {
   minHeight: 38,
   minWidth: 0,
   padding: theme.spacing(0.6, 1.9),
-  color: selected ? theme.palette.text.primary : theme.palette.text.secondary,
-  border: `1px solid ${selected ? alpha(theme.palette.primary.main, 0.85) : alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8)}`,
+  color: selected ? '#111213' : alpha('#f5f5f5', 0.66),
+  border: `1px solid ${selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.2)}`,
   backgroundColor: selected
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.14)
-    : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.88),
+    ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+    : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.18),
+  boxShadow: 'none',
+  transition: 'none',
+  WebkitTapHighlightColor: 'transparent',
   '&:hover': {
+    color: selected ? '#111213' : alpha('#f5f5f5', 0.66),
+    borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.2),
     backgroundColor: selected
-      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.34 : 0.2)
-      : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.55 : 1),
-    borderColor: selected ? theme.palette.primary.main : alpha(theme.palette.text.secondary, 0.55),
+      ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+      : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.18),
+    boxShadow: 'none',
+  },
+  '&:active': {
+    transform: 'none',
+    boxShadow: 'none',
   },
   '&.Mui-focusVisible': {
-    outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+    outline: `2px solid ${alpha('#ffffff', 0.4)}`,
     outlineOffset: 1,
+  },
+  '& .MuiTouchRipple-root': {
+    display: 'none',
   },
 }));
 
@@ -285,7 +254,7 @@ const MOBILE_SETTING_OPTIONS = [
   { id: 'aspect-ratio', label: 'Size', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
-  { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
+  { id: 'stickers', label: 'Stickers', panelId: 'collage-settings-panel-stickers' },
 ];
 
 // Helper function to convert aspect ratio value to a friendly format
@@ -316,9 +285,9 @@ const ColorSwatch = styled(Box)(({ theme, selected }) => ({
   borderRadius: '50%',
   cursor: 'pointer',
   boxSizing: 'border-box',
-  border: selected ? `3px solid ${theme.palette.primary.main}` : `2px solid ${alpha(theme.palette.background.paper, 0.95)}`,
+  border: selected ? `3px solid ${alpha('#ffffff', 0.95)}` : `2px solid ${alpha(theme.palette.background.paper, 0.95)}`,
   boxShadow: selected 
-    ? `0 0 0 2px ${theme.palette.primary.main}` 
+    ? `0 0 0 2px ${alpha('#ffffff', 0.35)}` 
     : `0 0 0 1px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.28 : 0.14)}`,
   transition: theme.transitions.create(
     ['transform', 'box-shadow'],
@@ -368,7 +337,6 @@ const CollageLayoutSettings = ({
   selectedAspectRatio, 
   setSelectedAspectRatio,
   panelCount,
-  setPanelCount,
   handleNext,
   aspectRatioPresets,
   layoutTemplates,
@@ -377,9 +345,11 @@ const CollageLayoutSettings = ({
   borderColor,
   setBorderColor,
   borderThicknessOptions,
-  // New props for safe panel reduction
-  panelImageMapping,
-  removeImage,
+  stickers = [],
+  canManageStickers = false,
+  onAddStickerFromLibrary,
+  onMoveSticker,
+  onRemoveSticker,
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -390,9 +360,10 @@ const CollageLayoutSettings = ({
   const [borderRightScroll, setBorderRightScroll] = useState(false);
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
-  // Confirm dialog state for panel reduction when last panel has an image
-  const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
   const [activeMobileSetting, setActiveMobileSetting] = useState('aspect-ratio');
+  const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
+  const [stickerLoading, setStickerLoading] = useState(false);
+  const [stickerError, setStickerError] = useState('');
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -485,70 +456,30 @@ const CollageLayoutSettings = ({
     }
   };
 
-  // Handle panel count changes
-  const handlePanelCountIncrease = () => {
-    if (panelCount < 5) {
-      const newCount = panelCount + 1;
-      setPanelCount(newCount);
-      
-      // Get optimized templates for the new panel count
-      const newTemplates = (typeof getLayoutsForPanelCount === 'function')
-        ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
-        : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
-      
-      // Select the best template for the new panel count
-      if (newTemplates.length > 0) {
-        setSelectedTemplate(newTemplates[0]);
-      } else {
-        setSelectedTemplate(null);
-      }
-    }
+  const openStickerLibrary = () => {
+    if (!canManageStickers) return;
+    setStickerError('');
+    setStickerLibraryOpen(true);
   };
 
-  const handlePanelCountDecrease = () => {
-    if (panelCount <= 1) return;
+  const closeStickerLibrary = () => {
+    if (stickerLoading) return;
+    setStickerLibraryOpen(false);
+  };
 
-    const newCount = panelCount - 1;
-
-    // Identify the panel that would be removed (last panel in current layout)
-    let lastPanelId = null;
+  const handleStickerLibrarySelect = async (items) => {
+    const selected = Array.isArray(items) ? items[0] : null;
+    if (!selected || typeof onAddStickerFromLibrary !== 'function') return;
+    setStickerLoading(true);
+    setStickerError('');
     try {
-      const panelsArr = selectedTemplate?.layout?.panels || selectedTemplate?.panels || [];
-      lastPanelId = panelsArr?.[panelCount - 1]?.id ?? `panel-${panelCount}`;
-    } catch (_) {
-      lastPanelId = `panel-${panelCount}`;
-    }
-
-    const imageIndexToRemove = panelImageMapping?.[lastPanelId];
-    const hasImageToRemove = typeof imageIndexToRemove === 'number' && imageIndexToRemove >= 0;
-
-    const proceedToDecrease = () => {
-      setPanelCount(newCount);
-
-      // Get optimized templates for the new panel count
-      const newTemplates = (typeof getLayoutsForPanelCount === 'function')
-        ? getLayoutsForPanelCount(newCount, selectedAspectRatio)
-        : layoutTemplates.filter(t => t.minImages <= newCount && t.maxImages >= newCount);
-
-      // Select the best template for the new panel count
-      if (newTemplates.length > 0) {
-        setSelectedTemplate(newTemplates[0]);
-      } else {
-        setSelectedTemplate(null);
-      }
-    };
-
-    if (hasImageToRemove && typeof removeImage === 'function') {
-      setConfirmState({
-        open: true,
-        imageIndex: imageIndexToRemove,
-        onConfirm: () => {
-          try { removeImage(imageIndexToRemove); } catch (_) { /* ignore */ }
-          proceedToDecrease();
-        },
-      });
-    } else {
-      proceedToDecrease();
+      await onAddStickerFromLibrary(selected);
+      setStickerLibraryOpen(false);
+    } catch (error) {
+      console.error('Failed to add sticker from library', error);
+      setStickerError('Unable to add that sticker right now.');
+    } finally {
+      setStickerLoading(false);
     }
   };
   
@@ -788,35 +719,32 @@ const CollageLayoutSettings = ({
         justifyContent: 'center',
         padding: 0.5
       }}>
-        <Box 
-          sx={{
-            width: `${width}%`,
-            height: `${height}%`,
-            border: theme => `2px solid ${alpha(
-              theme.palette.mode === 'dark' 
-                ? theme.palette.primary.light 
-                : theme.palette.primary.main, 
-              0.8
-            )}`,
-            borderRadius: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: theme => alpha(
-              theme.palette.mode === 'dark' 
-                ? theme.palette.primary.dark 
-                : theme.palette.primary.light, 
-              0.15
-            ),
-            boxShadow: '0px 2px 4px rgba(0,0,0,0.1)'
-          }}
-        />
-      </Box>
+                <Box 
+                  sx={{
+                    width: `${width}%`,
+                    height: `${height}%`,
+                    border: theme => `2px solid ${alpha(
+                      '#f5f5f5',
+                      theme.palette.mode === 'dark' ? 0.72 : 0.55
+                    )}`,
+                    borderRadius: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: theme => alpha(
+                      '#f5f5f5',
+                      theme.palette.mode === 'dark' ? 0.12 : 0.18
+                    ),
+                    boxShadow: 'none'
+                  }}
+                />
+              </Box>
     );
   };
 
   const compatibleTemplates = getCompatibleTemplates();
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
+  const stickerLayers = Array.isArray(stickers) ? [...stickers].reverse() : [];
   
   // Clean up all the duplicate state variables and use a single savedCustomColor state
   const [savedCustomColor, setSavedCustomColor] = useState(() => {
@@ -841,54 +769,6 @@ const CollageLayoutSettings = ({
   
   return (
     <Box sx={{ pt: isMobile ? 0.5 : 0, pb: isMobile ? 0.25 : 0 }}>
-      {/* Confirm removal when reducing panel count hides an image */}
-      <Dialog
-        open={!!confirmState.open}
-        onClose={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}
-        maxWidth="xs"
-        fullWidth
-        BackdropProps={{
-          sx: {
-            backgroundColor: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(2px)'
-          }
-        }}
-        PaperProps={{
-          elevation: 16,
-          sx: theme => ({
-            bgcolor: theme.palette.mode === 'dark' ? '#1f2126' : '#ffffff',
-            border: `1px solid ${theme.palette.divider}`,
-            borderRadius: 2,
-            boxShadow: theme.palette.mode === 'dark'
-              ? '0 12px 32px rgba(0,0,0,0.7)'
-              : '0 12px 32px rgba(0,0,0,0.25)'
-          })
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', px: 3, py: 2, letterSpacing: 0, lineHeight: 1.3 }}>Remove panel?</DialogTitle>
-        <DialogContent sx={{ color: 'text.primary', '&&': { px: 3, pt: 2, pb: 2 } }}>
-          <Typography variant="body1" sx={{ m: 0, letterSpacing: 0, lineHeight: 1.5 }}>
-            This removes a panel and image {panelCount}
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid', borderColor: 'divider', px: 3, py: 1.5, gap: 1 }}>
-          <Button onClick={() => setConfirmState({ open: false, imageIndex: null, onConfirm: null })}>
-            Cancel
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={() => {
-              const fn = confirmState.onConfirm;
-              setConfirmState({ open: false, imageIndex: null, onConfirm: null });
-              if (typeof fn === 'function') fn();
-            }}
-          >
-            Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {isMobile && (
         <Box sx={{ mb: 1.25 }}>
           <MobileSettingsTypeScroller role="tablist" aria-label="Collage settings categories">
@@ -902,6 +782,9 @@ const CollageLayoutSettings = ({
                   role="tab"
                   type="button"
                   selected={isSelected}
+                  disableRipple
+                  disableTouchRipple
+                  disableFocusRipple
                   aria-selected={isSelected}
                   aria-controls={panelId}
                   tabIndex={isSelected || defaultFocusable ? 0 : -1}
@@ -915,77 +798,6 @@ const CollageLayoutSettings = ({
           </MobileSettingsTypeScroller>
         </Box>
       )}
-
-      {/* Panel Count Selector - Moved to the top */}
-      <Box
-        id="collage-settings-panel-panel-count"
-        role={isMobile ? 'tabpanel' : undefined}
-        aria-labelledby={isMobile ? 'collage-settings-tab-panel-count' : undefined}
-        hidden={!isSectionVisible('panel-count')}
-        sx={{
-          display: isSectionVisible('panel-count') ? 'block' : 'none',
-          mb: isMobile ? 0.75 : 1,
-        }}
-      >
-        {!isMobile && (
-          <StepSectionHeading>
-            <Tag sx={{ mr: 1.5, color: 'text.secondary', fontSize: '1.3rem' }} />
-            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
-              Panel Count
-            </Typography>
-          </StepSectionHeading>
-        )}
-        
-        <PanelCounter>
-          <PanelCountButton 
-            aria-label="Decrease panel count" 
-            disabled={panelCount <= 1}
-            onClick={handlePanelCountDecrease}
-            size="medium"
-            sx={{
-              color: 'text.primary',
-              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
-              },
-              width: 32,
-              height: 32,
-              padding: 0.5
-            }}
-          >
-            <Remove />
-          </PanelCountButton>
-          
-          <Typography variant="h4" sx={{ 
-            minWidth: 50, 
-            textAlign: 'center',
-            fontWeight: 700,
-            color: 'text.primary',
-            fontSize: '2rem',
-          }}>
-            {panelCount}
-          </Typography>
-          
-          <PanelCountButton 
-            aria-label="Increase panel count" 
-            disabled={panelCount >= 5}
-            onClick={handlePanelCountIncrease}
-            size="medium"
-            sx={{
-              color: 'text.primary',
-              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1),
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2),
-              },
-              width: 32,
-              height: 32,
-              padding: 0.5
-            }}
-          >
-            <Add />
-          </PanelCountButton>
-        </PanelCounter>
-      </Box>
     
       {/* Aspect Ratio Section - with horizontal scrolling */}
       <Box
@@ -1066,25 +878,6 @@ const CollageLayoutSettings = ({
               >
                 {renderAspectRatioPreview(preset)}
                 
-                {selectedAspectRatio === preset.id && (
-                  <Box 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 4, 
-                      right: 4, 
-                      bgcolor: 'primary.main',
-                      borderRadius: '50%',
-                      width: 20,
-                      height: 20,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Check sx={{ fontSize: 14, color: 'primary.contrastText' }} />
-                  </Box>
-                )}
-                
                 <Chip
                   label={getFriendlyAspectRatio(preset.value)}
                   size="small"
@@ -1098,14 +891,17 @@ const CollageLayoutSettings = ({
                     fontSize: '0.65rem',
                     fontWeight: 'bold',
                     px: 0.75,
-                    backgroundColor: theme => selectedAspectRatio === preset.id 
-                      ? theme.palette.primary.main
-                      : theme.palette.mode === 'dark' 
-                        ? 'rgba(255, 255, 255, 0.15)' 
-                        : 'rgba(0, 0, 0, 0.08)',
-                    color: theme => selectedAspectRatio === preset.id 
-                      ? theme.palette.primary.contrastText
-                      : theme.palette.text.primary,
+                    border: '1px solid',
+                    borderColor: theme => selectedAspectRatio === preset.id
+                      ? alpha('#ffffff', 0.9)
+                      : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.52 : 0.42),
+                    backgroundColor: theme => selectedAspectRatio === preset.id
+                      ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.98 : 0.94)
+                      : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.38 : 0.32),
+                    color: theme => selectedAspectRatio === preset.id
+                      ? '#101214'
+                      : (theme.palette.mode === 'dark' ? alpha('#f5f5f5', 0.95) : alpha('#101214', 0.86)),
+                    boxShadow: 'none',
                     '& .MuiChip-label': {
                       px: 0.75,
                       py: 0
@@ -1230,21 +1026,19 @@ const CollageLayoutSettings = ({
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: theme.spacing(1),
-                        transition: theme.transitions.create(
-                          ['border-color', 'background-color', 'box-shadow'],
-                          { duration: theme.transitions.duration.shorter }
-                        ),
-                        '&:hover': {
-                          boxShadow: isSelected 
-                            ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`
-                            : theme.palette.mode === 'dark'
-                              ? '0 4px 12px rgba(0,0,0,0.25)'
-                              : '0 4px 12px rgba(0,0,0,0.1)',
+                        transition: 'none',
+                        border: isSelected
+                          ? `2px solid ${alpha('#ffffff', 0.95)}`
+                          : `1px solid ${alpha('#f5f5f5', 0.26)}`,
+                        backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.12),
+                        boxShadow: 'none',
+                        '@media (hover: hover) and (pointer: fine)': {
+                          '&:hover': {
+                            boxShadow: 'none',
+                            borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.38),
+                            backgroundColor: alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.16),
+                          },
                         },
-                        '&:active': {
-                          transform: 'scale(0.98)',
-                          transition: 'transform 0.1s',
-                        }
                       }}
                     >
                       {/* Container to properly handle aspect ratio */}
@@ -1270,24 +1064,6 @@ const CollageLayoutSettings = ({
                         </Box>
                       </Box>
                       
-                      {isSelected && (
-                        <Box 
-                          sx={{ 
-                            position: 'absolute', 
-                            top: 4, 
-                            right: 4, 
-                            bgcolor: 'primary.main',
-                            borderRadius: '50%',
-                            width: 20,
-                            height: 20,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                        >
-                          <Check sx={{ fontSize: 14, color: 'primary.contrastText' }} />
-                        </Box>
-                      )}
                     </TemplateCard>
                   </Box>
                 );
@@ -1405,26 +1181,29 @@ const CollageLayoutSettings = ({
                     key={option.label}
                     label={option.label}
                     clickable
-                    color={isSelected ? 'primary' : 'default'}
                     onClick={() => setBorderThickness(option.label.toLowerCase())}
                     sx={{ 
                       fontWeight,
                       height: 34,
                       borderRadius: 999,
                       px: 1.1,
+                      transition: 'none',
                       border: '1px solid',
-                      borderColor: isSelected ? alpha(theme.palette.primary.main, 0.9) : alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8),
-                      color: isSelected ? 'text.primary' : 'text.secondary',
+                      borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.2),
+                      color: isSelected ? '#111213' : alpha('#f5f5f5', 0.7),
                       backgroundColor: isSelected
-                        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.14)
-                        : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.88),
+                        ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+                        : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.15),
                       '& .MuiChip-label': {
                         px: 1.25,
                       },
-                      '&:hover': {
-                        backgroundColor: isSelected
-                          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.34 : 0.2)
-                          : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.55 : 1),
+                      '@media (hover: hover) and (pointer: fine)': {
+                        '&:hover': {
+                          backgroundColor: isSelected
+                            ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+                            : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.2),
+                          borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.3),
+                        },
                       },
                     }}
                   />
@@ -1567,6 +1346,184 @@ const CollageLayoutSettings = ({
           </Box>
         </Box>
       </Box>
+
+      <Box
+        id="collage-settings-panel-stickers"
+        role={isMobile ? 'tabpanel' : undefined}
+        aria-labelledby={isMobile ? 'collage-settings-tab-stickers' : undefined}
+        hidden={!isSectionVisible('stickers')}
+        sx={{
+          display: isSectionVisible('stickers') ? 'block' : 'none',
+          mb: isMobile ? 0.75 : 0.5,
+        }}
+      >
+        {!isMobile && (
+          <StepSectionHeading sx={{ mb: 0.75 }}>
+            <EmojiEmotions sx={{ mr: 1, color: 'text.secondary', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
+              Stickers
+            </Typography>
+          </StepSectionHeading>
+        )}
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1.25,
+            mb: 1.1,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, minWidth: 180 }}>
+            Global sticker layers over the full collage.
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<AddPhotoAlternate />}
+            onClick={openStickerLibrary}
+            disabled={!canManageStickers}
+            sx={{
+              borderRadius: 999,
+              textTransform: 'none',
+              fontWeight: 700,
+              minHeight: 40,
+              px: 2.25,
+            }}
+          >
+            Add sticker
+          </Button>
+        </Box>
+
+        {!canManageStickers && (
+          <Alert severity="info" sx={{ mb: 1.25 }}>
+            Log in with library access to add sticker layers.
+          </Alert>
+        )}
+
+        {canManageStickers && stickerLayers.length === 0 && (
+          <Box
+            sx={{
+              px: 1.5,
+              py: 1.4,
+              borderRadius: 1.5,
+              border: `1px dashed ${alpha(theme.palette.divider, 0.9)}`,
+              color: 'text.secondary',
+              fontSize: '0.9rem',
+            }}
+          >
+            No stickers yet. Add one from your library.
+          </Box>
+        )}
+
+        {canManageStickers && stickerLayers.length > 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {stickerLayers.map((sticker, displayIndex) => {
+              if (!sticker?.id) return null;
+              const canMoveUp = displayIndex > 0;
+              const canMoveDown = displayIndex < stickerLayers.length - 1;
+              const layerLabel = `Sticker ${stickerLayers.length - displayIndex}`;
+              const thumbSrc = sticker.thumbnailUrl || sticker.originalUrl || '';
+              return (
+                <Box
+                  key={`sticker-layer-row-${sticker.id}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 1,
+                    borderRadius: 1.5,
+                    border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82)}`,
+                    backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.9),
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      bgcolor: alpha(theme.palette.common.black, 0.08),
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {thumbSrc ? (
+                      <Box
+                        component="img"
+                        src={thumbSrc}
+                        alt={layerLabel}
+                        sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <EmojiEmotions sx={{ color: 'text.disabled', fontSize: 20 }} />
+                    )}
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {layerLabel}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {displayIndex === 0 ? 'Top layer' : (displayIndex === stickerLayers.length - 1 ? 'Bottom layer' : 'Middle layer')}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveUp && typeof onMoveSticker === 'function' && onMoveSticker(sticker.id, 1)}
+                      disabled={!canMoveUp}
+                      aria-label={`Move ${layerLabel} up`}
+                    >
+                      <ArrowUpward fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveDown && typeof onMoveSticker === 'function' && onMoveSticker(sticker.id, -1)}
+                      disabled={!canMoveDown}
+                      aria-label={`Move ${layerLabel} down`}
+                    >
+                      <ArrowDownward fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => typeof onRemoveSticker === 'function' && onRemoveSticker(sticker.id)}
+                      aria-label={`Delete ${layerLabel}`}
+                    >
+                      <DeleteOutline fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+
+      <LibraryPickerDialog
+        open={stickerLibraryOpen}
+        onClose={closeStickerLibrary}
+        title="Choose a sticker from your library"
+        onSelect={(arr) => { void handleStickerLibrarySelect(arr); }}
+        busy={stickerLoading}
+        errorText={stickerError}
+        browserProps={{
+          multiple: false,
+          uploadEnabled: true,
+          deleteEnabled: false,
+          showActionBar: false,
+          selectionEnabled: true,
+          previewOnClick: true,
+          showSelectToggle: true,
+          initialSelectMode: true,
+        }}
+      />
     </Box>
   );
 };
