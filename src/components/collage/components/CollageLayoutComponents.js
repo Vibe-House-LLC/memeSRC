@@ -424,8 +424,6 @@ export const CollageLayout = ({
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
           <Stack spacing={2} sx={{ p: 1.5, px: 1 }}>
-            {renderEditTipCard()}
-            {renderCollapsedEditTip()}
             {/* Compact Controls Bar for Mobile */}
             <MobileControlsBar
               onBack={onBack}
@@ -461,6 +459,8 @@ export const CollageLayout = ({
                 handleOpenExportDialog={handleOpenExportDialog}
               />
             </Box>
+            {renderEditTipCard()}
+            {renderCollapsedEditTip()}
           </Stack>
         ) : (
           // Desktop/Tablet: Keep side-by-side layout, NO BulkUploadSection after images are added
@@ -497,8 +497,6 @@ export const CollageLayout = ({
               borderColor: 'divider'
             }}>
               <SectionHeading icon={PhotoLibrary} title="Your Collage" />
-              {renderEditTipCard({ mt: 1, mb: 2 })}
-              {renderCollapsedEditTip({ mt: 1, mb: 2 })}
               <Box sx={{ 
                 width: '100%',
                 overflow: 'visible', // Allow caption editor to overflow
@@ -513,6 +511,8 @@ export const CollageLayout = ({
                   handleOpenExportDialog={handleOpenExportDialog}
                 />
               </Box>
+              {renderEditTipCard({ mt: 2 })}
+              {renderCollapsedEditTip({ mt: 2 })}
             </Box>
           </Box>
         )}
