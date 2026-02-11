@@ -282,7 +282,7 @@ const MobileSettingsTypeButton = styled(Button, {
 }));
 
 const MOBILE_SETTING_OPTIONS = [
-  { id: 'aspect-ratio', label: 'Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
+  { id: 'aspect-ratio', label: 'Size', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
   { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
@@ -392,7 +392,7 @@ const CollageLayoutSettings = ({
   const [colorRightScroll, setColorRightScroll] = useState(false);
   // Confirm dialog state for panel reduction when last panel has an image
   const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
-  const [activeMobileSetting, setActiveMobileSetting] = useState(null);
+  const [activeMobileSetting, setActiveMobileSetting] = useState('aspect-ratio');
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -901,7 +901,7 @@ const CollageLayoutSettings = ({
                   aria-selected={isSelected}
                   aria-controls={panelId}
                   tabIndex={isSelected || defaultFocusable ? 0 : -1}
-                  onClick={() => setActiveMobileSetting((prev) => (prev === id ? null : id))}
+                  onClick={() => setActiveMobileSetting(id)}
                   onKeyDown={(event) => handleMobileSettingKeyDown(event, index)}
                 >
                   {label}

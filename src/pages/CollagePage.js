@@ -193,6 +193,10 @@ export default function CollagePage() {
   
   // Projects state: track only the active project id for editor flows
   const [activeProjectId, setActiveProjectId] = useState(null);
+  const activeProjectIdRef = useRef(null);
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
   // Simplified autosave: no throttling/deferral; save only on tool exit
   const lastRenderedSigRef = useRef(null);
   const editingSessionActiveRef = useRef(false);
@@ -1214,8 +1218,8 @@ export default function CollagePage() {
   useEffect(() => {
     if (hasProjectsAccess && projectId) {
       const isAlreadyActiveProject = (
-        activeProjectId &&
-        projectId === activeProjectId &&
+        activeProjectIdRef.current &&
+        projectId === activeProjectIdRef.current &&
         !loadingProjectRef.current &&
         !isHydratingProjectRef.current
       );
@@ -1223,7 +1227,7 @@ export default function CollagePage() {
       void triggerProjectLoad(projectId).catch(() => {});
     }
     return () => {};
-  }, [hasProjectsAccess, projectId, activeProjectId, triggerProjectLoad]);
+  }, [hasProjectsAccess, projectId, triggerProjectLoad]);
 
   const handleRemoteProjectUpdate = useCallback((record) => {
     if (!record || record.id !== activeProjectId) return;
