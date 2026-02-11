@@ -207,6 +207,7 @@ export function buildSnapshotFromState({
       metadata?: { [key: string]: unknown };
     } = {};
     const isBlobUrl = (value: unknown): value is string => typeof value === 'string' && value.startsWith('blob:');
+    const isDataUrl = (value: unknown): value is string => typeof value === 'string' && value.startsWith('data:');
 
     if (typeof sticker === 'string') {
       ref.id = `sticker-${index + 1}`;
@@ -240,13 +241,22 @@ export function buildSnapshotFromState({
 
     if (!ref.libraryKey) {
       ref.url = persistableOriginal || persistableThumb || sourceUrlFromMetadata || originalUrl || thumbnailUrl || '';
-    } else if (persistableOriginal) {
-      // Keep a fallback even when libraryKey exists for resilience.
-      ref.url = persistableOriginal;
-    }
-
-    if (persistableThumb) {
-      ref.thumbnailUrl = persistableThumb;
+      if (persistableThumb) {
+        ref.thumbnailUrl = persistableThumb;
+      }
+    } else {
+      const fallbackCandidates = [persistableOriginal, persistableThumb, sourceUrlFromMetadata]
+        .map((value) => (typeof value === 'string' ? value.trim() : ''))
+        .filter((value) => value && !isDataUrl(value));
+      if (fallbackCandidates.length > 0) {
+        // Keep only non-data fallbacks when a libraryKey exists so snapshots stay compact.
+        ref.url = fallbackCandidates[0];
+      }
+      const thumbFallback = [persistableThumb, persistableOriginal]
+        .find((value) => typeof value === 'string' && value.trim() && !isDataUrl(value));
+      if (thumbFallback) {
+        ref.thumbnailUrl = thumbFallback;
+      }
     }
 
     const aspectRatio = Number(sticker?.aspectRatio);
