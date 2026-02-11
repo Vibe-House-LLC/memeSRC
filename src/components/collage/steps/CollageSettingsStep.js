@@ -240,20 +240,32 @@ const MobileSettingsTypeButton = styled(Button, {
   minHeight: 38,
   minWidth: 0,
   padding: theme.spacing(0.6, 1.9),
-  color: selected ? theme.palette.text.primary : theme.palette.text.secondary,
-  border: `1px solid ${selected ? alpha(theme.palette.primary.main, 0.85) : alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.8)}`,
+  color: selected ? '#111213' : alpha('#f5f5f5', 0.66),
+  border: `1px solid ${selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.2)}`,
   backgroundColor: selected
-    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.14)
-    : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.88),
+    ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+    : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.18),
+  boxShadow: 'none',
+  transition: 'none',
+  WebkitTapHighlightColor: 'transparent',
   '&:hover': {
+    color: selected ? '#111213' : alpha('#f5f5f5', 0.66),
+    borderColor: selected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.2),
     backgroundColor: selected
-      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.34 : 0.2)
-      : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.55 : 1),
-    borderColor: selected ? theme.palette.primary.main : alpha(theme.palette.text.secondary, 0.55),
+      ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.95 : 0.98)
+      : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.08 : 0.18),
+    boxShadow: 'none',
+  },
+  '&:active': {
+    transform: 'none',
+    boxShadow: 'none',
   },
   '&.Mui-focusVisible': {
-    outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+    outline: `2px solid ${alpha('#ffffff', 0.4)}`,
     outlineOffset: 1,
+  },
+  '& .MuiTouchRipple-root': {
+    display: 'none',
   },
 }));
 
@@ -793,6 +805,9 @@ const CollageLayoutSettings = ({
                   role="tab"
                   type="button"
                   selected={isSelected}
+                  disableRipple
+                  disableTouchRipple
+                  disableFocusRipple
                   aria-selected={isSelected}
                   aria-controls={panelId}
                   tabIndex={isSelected || defaultFocusable ? 0 : -1}

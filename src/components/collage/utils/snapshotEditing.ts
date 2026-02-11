@@ -60,6 +60,7 @@ const cleanStickerLayers = (stickers: CollageSnapshot['stickers']): NonNullable<
     .map((sticker, index) => {
       if (!sticker || typeof sticker !== 'object') return null;
       const ratioRaw = Number(sticker.aspectRatio);
+      const angleRaw = Number((sticker as { angleDeg?: number }).angleDeg);
       const widthRaw = Number(sticker.widthPercent);
       const xRaw = Number(sticker.xPercent);
       const yRaw = Number(sticker.yPercent);
@@ -67,6 +68,7 @@ const cleanStickerLayers = (stickers: CollageSnapshot['stickers']): NonNullable<
         ...sticker,
         id: (typeof sticker.id === 'string' && sticker.id.trim()) ? sticker.id : `sticker-${index + 1}`,
         aspectRatio: Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : 1,
+        angleDeg: Number.isFinite(angleRaw) ? angleRaw : 0,
         widthPercent: Number.isFinite(widthRaw) ? widthRaw : 28,
         xPercent: Number.isFinite(xRaw) ? xRaw : 36,
         yPercent: Number.isFinite(yRaw) ? yRaw : 12,

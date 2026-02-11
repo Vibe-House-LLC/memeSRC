@@ -1173,6 +1173,7 @@ CollagePreview.propTypes = {
       thumbnailUrl: PropTypes.string,
       metadata: PropTypes.object,
       aspectRatio: PropTypes.number,
+      angleDeg: PropTypes.number,
       widthPercent: PropTypes.number,
       xPercent: PropTypes.number,
       yPercent: PropTypes.number,

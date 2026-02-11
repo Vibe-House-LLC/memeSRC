@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme, alpha } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
@@ -936,6 +936,7 @@ export default function CollagePage() {
           thumbnailUrl: ref,
           metadata: {},
           aspectRatio: 1,
+          angleDeg: 0,
           widthPercent: 28,
           xPercent: 36,
           yPercent: 12,
@@ -960,6 +961,7 @@ export default function CollagePage() {
       if (!resolvedUrl) return null;
 
       const parsedAspectRatio = Number(ref.aspectRatio);
+      const parsedAngle = Number(ref.angleDeg);
       const parsedWidth = Number(ref.widthPercent);
       const parsedX = Number(ref.xPercent);
       const parsedY = Number(ref.yPercent);
@@ -970,6 +972,7 @@ export default function CollagePage() {
         thumbnailUrl: (typeof ref.thumbnailUrl === 'string' && ref.thumbnailUrl) ? ref.thumbnailUrl : resolvedUrl,
         metadata,
         aspectRatio: Number.isFinite(parsedAspectRatio) && parsedAspectRatio > 0 ? parsedAspectRatio : 1,
+        angleDeg: Number.isFinite(parsedAngle) ? parsedAngle : 0,
         widthPercent: Number.isFinite(parsedWidth) ? parsedWidth : 28,
         xPercent: Number.isFinite(parsedX) ? parsedX : 36,
         yPercent: Number.isFinite(parsedY) ? parsedY : 12,
@@ -2050,6 +2053,28 @@ export default function CollagePage() {
         : neutralButtonShadow,
     },
   };
+  const stickerCount = Array.isArray(stickers) ? stickers.length : 0;
+  const settingsButtonIcon = (
+    <Badge
+      color="error"
+      badgeContent={stickerCount}
+      invisible={stickerCount <= 0}
+      overlap="circular"
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      sx={{
+        '& .MuiBadge-badge': {
+          minWidth: 16,
+          height: 16,
+          px: 0.4,
+          fontSize: '0.62rem',
+          fontWeight: 700,
+          border: `1px solid ${alpha(theme.palette.background.paper, 0.75)}`,
+        },
+      }}
+    >
+      <Settings />
+    </Badge>
+  );
 
   return (
     <>
@@ -2330,7 +2355,7 @@ export default function CollagePage() {
                                   variant="contained"
                                   onClick={handleToggleSettings}
                                   disabled={isCreatingCollage}
-                                  startIcon={<Settings />}
+                                  startIcon={settingsButtonIcon}
                                   aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                                   sx={settingsActionButtonSx}
                                 >
@@ -2377,7 +2402,7 @@ export default function CollagePage() {
                                 variant="contained"
                                 onClick={handleToggleSettings}
                                 disabled={isCreatingCollage}
-                                startIcon={<Settings />}
+                                startIcon={settingsButtonIcon}
                                 aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                                 sx={settingsActionButtonSx}
                               >

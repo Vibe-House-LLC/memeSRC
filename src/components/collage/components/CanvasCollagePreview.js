@@ -9,6 +9,17 @@ import { getMetadataForKey } from '../../../utils/library/metadata';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const normalizeAngleDeg = (value) => {
+  if (!Number.isFinite(value)) return 0;
+  let next = value % 360;
+  if (next > 180) next -= 360;
+  if (next <= -180) next += 360;
+  return next;
+};
+const shortestAngleDeltaDeg = (next, prev) => normalizeAngleDeg(next - prev);
+const angleFromPointDeg = (centerX, centerY, pointX, pointY) => (
+  Math.atan2(pointY - centerY, pointX - centerX) * (180 / Math.PI)
+);
 
 
 
@@ -1196,6 +1207,25 @@ const CanvasCollagePreview = ({
     return clamp(widthPx, 12, maxWidth);
   }, [componentHeight, componentWidth]);
 
+  const clampStickerPositionPx = useCallback((xPx, yPx, widthPx, heightPx) => {
+    const minVisibleX = Math.min(32, widthPx);
+    const minVisibleY = Math.min(32, heightPx);
+    const minX = -widthPx + minVisibleX;
+    const maxX = componentWidth - minVisibleX;
+    const minY = -heightPx + minVisibleY;
+    const maxY = componentHeight - minVisibleY;
+    const safeWidth = Math.max(componentWidth, 1);
+    const safeHeight = Math.max(componentHeight, 1);
+    const clampedX = clamp(xPx, minX, maxX);
+    const clampedY = clamp(yPx, minY, maxY);
+    return {
+      xPx: clampedX,
+      yPx: clampedY,
+      xPercent: (clampedX / safeWidth) * 100,
+      yPercent: (clampedY / safeHeight) * 100,
+    };
+  }, [componentHeight, componentWidth]);
+
   const getStickerRectPx = useCallback((sticker, ratioFallbackImage = null) => {
     if (!sticker) return null;
     const stickerId = sticker.id;
@@ -1211,45 +1241,41 @@ const CanvasCollagePreview = ({
     const widthPxUnbounded = (widthPercent / 100) * componentWidth;
     const widthPx = clampStickerWidthPx(widthPxUnbounded, aspectRatio);
     const heightPx = Math.max(12, widthPx / aspectRatio);
+    const angleRaw = Number(draft?.angleDeg ?? sticker.angleDeg);
+    const angleDeg = normalizeAngleDeg(Number.isFinite(angleRaw) ? angleRaw : 0);
 
     const xRaw = Number(draft?.xPercent ?? sticker.xPercent);
     const yRaw = Number(draft?.yPercent ?? sticker.yPercent);
     const safeWidth = Math.max(componentWidth, 1);
-    const safeHeight = Math.max(componentHeight, 1);
-    const maxX = Math.max(0, componentWidth - widthPx);
-    const maxY = Math.max(0, componentHeight - heightPx);
-    const xPx = clamp((Number.isFinite(xRaw) ? xRaw : 36) / 100 * componentWidth, 0, maxX);
-    const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * componentHeight, 0, maxY);
+    const xPxRaw = (Number.isFinite(xRaw) ? xRaw : 36) / 100 * componentWidth;
+    const yPxRaw = (Number.isFinite(yRaw) ? yRaw : 12) / 100 * componentHeight;
+    const clampedPosition = clampStickerPositionPx(xPxRaw, yPxRaw, widthPx, heightPx);
 
     return {
-      x: xPx,
-      y: yPx,
+      x: clampedPosition.xPx,
+      y: clampedPosition.yPx,
       width: widthPx,
       height: heightPx,
       aspectRatio,
-      xPercent: (xPx / safeWidth) * 100,
-      yPercent: (yPx / safeHeight) * 100,
+      angleDeg,
+      xPercent: clampedPosition.xPercent,
+      yPercent: clampedPosition.yPercent,
       widthPercent: (widthPx / safeWidth) * 100,
     };
-  }, [clampStickerWidthPx, componentHeight, componentWidth, loadedStickers, stickerDrafts]);
-
-  const clampStickerPositionPx = useCallback((xPx, yPx, widthPx, heightPx) => {
-    const safeWidth = Math.max(componentWidth, 1);
-    const safeHeight = Math.max(componentHeight, 1);
-    const maxX = Math.max(0, componentWidth - widthPx);
-    const maxY = Math.max(0, componentHeight - heightPx);
-    const clampedX = clamp(xPx, 0, maxX);
-    const clampedY = clamp(yPx, 0, maxY);
-    return {
-      xPercent: (clampedX / safeWidth) * 100,
-      yPercent: (clampedY / safeHeight) * 100,
-    };
-  }, [componentHeight, componentWidth]);
+  }, [clampStickerPositionPx, clampStickerWidthPx, componentHeight, componentWidth, loadedStickers, stickerDrafts]);
 
   const getStickerDraftFromPointer = useCallback((interaction, clientX, clientY) => {
     if (!interaction) return null;
     const dx = clientX - interaction.startClientX;
     const dy = clientY - interaction.startClientY;
+
+    if (interaction.mode === 'rotate') {
+      const pointerAngle = angleFromPointDeg(interaction.centerX, interaction.centerY, clientX, clientY);
+      const delta = shortestAngleDeltaDeg(pointerAngle, interaction.startPointerAngleDeg);
+      return {
+        angleDeg: normalizeAngleDeg(interaction.startAngleDeg + delta),
+      };
+    }
 
     if (interaction.mode === 'resize') {
       const widthDeltaPercent = (dx / Math.max(componentWidth, 1)) * 100;
@@ -1314,6 +1340,10 @@ const CanvasCollagePreview = ({
       startYPercent: rect.yPercent,
       startWidthPercent: rect.widthPercent,
       aspectRatio: rect.aspectRatio,
+      startAngleDeg: rect.angleDeg || 0,
+      centerX: rect.x + (rect.width / 2),
+      centerY: rect.y + (rect.height / 2),
+      startPointerAngleDeg: angleFromPointDeg(rect.x + (rect.width / 2), rect.y + (rect.height / 2), event.clientX, event.clientY),
     });
   }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
 
@@ -1328,11 +1358,15 @@ const CanvasCollagePreview = ({
       if (!nextDraft) return;
       setStickerDrafts((prev) => {
         const current = prev?.[stickerInteraction.stickerId];
-        const sameX = Math.abs((current?.xPercent ?? Number.NaN) - nextDraft.xPercent) < 0.001;
-        const sameY = Math.abs((current?.yPercent ?? Number.NaN) - nextDraft.yPercent) < 0.001;
+        const sameX = (nextDraft.xPercent === undefined && current?.xPercent === undefined)
+          || Math.abs((current?.xPercent ?? Number.NaN) - (nextDraft.xPercent ?? Number.NaN)) < 0.001;
+        const sameY = (nextDraft.yPercent === undefined && current?.yPercent === undefined)
+          || Math.abs((current?.yPercent ?? Number.NaN) - (nextDraft.yPercent ?? Number.NaN)) < 0.001;
         const sameW = (nextDraft.widthPercent === undefined && current?.widthPercent === undefined)
           || Math.abs((current?.widthPercent ?? Number.NaN) - (nextDraft.widthPercent ?? Number.NaN)) < 0.001;
-        if (sameX && sameY && sameW) return prev;
+        const sameA = (nextDraft.angleDeg === undefined && current?.angleDeg === undefined)
+          || Math.abs((current?.angleDeg ?? Number.NaN) - (nextDraft.angleDeg ?? Number.NaN)) < 0.001;
+        if (sameX && sameY && sameW && sameA) return prev;
         return {
           ...(prev || {}),
           [stickerInteraction.stickerId]: {
@@ -1358,6 +1392,7 @@ const CanvasCollagePreview = ({
         if (Number.isFinite(draft.xPercent)) updates.xPercent = draft.xPercent;
         if (Number.isFinite(draft.yPercent)) updates.yPercent = draft.yPercent;
         if (Number.isFinite(draft.widthPercent)) updates.widthPercent = draft.widthPercent;
+        if (Number.isFinite(draft.angleDeg)) updates.angleDeg = draft.angleDeg;
         if (Object.keys(updates).length > 0) {
           updateSticker(stickerInteraction.stickerId, updates);
         }
@@ -3907,7 +3942,21 @@ const CanvasCollagePreview = ({
             if (!img) return;
             const rect = getStickerRectPx(sticker, img);
             if (!rect) return;
-            exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
+            try {
+              if (Math.abs(rect.angleDeg || 0) > 0.01) {
+                const centerX = rect.x + (rect.width / 2);
+                const centerY = rect.y + (rect.height / 2);
+                exportCtx.save();
+                exportCtx.translate(centerX, centerY);
+                exportCtx.rotate((rect.angleDeg * Math.PI) / 180);
+                exportCtx.drawImage(img, -(rect.width / 2), -(rect.height / 2), rect.width, rect.height);
+                exportCtx.restore();
+                return;
+              }
+              exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
+            } catch (_) {
+              // Ignore sticker draw failures so export still succeeds.
+            }
           });
         };
 
@@ -4026,74 +4075,124 @@ const CanvasCollagePreview = ({
           }}
       />
 
-      {/* Global sticker overlays (canvas-wide layers) */}
-      {Array.isArray(stickers) && stickers.map((sticker, index) => {
-        if (!sticker?.id) return null;
-        const src = sticker.originalUrl || sticker.thumbnailUrl;
-        if (!src) return null;
-        const rect = getStickerRectPx(sticker);
-        if (!rect) return null;
-        const isActive = activeStickerId === sticker.id;
-        const handleSize = componentWidth < 560 ? 30 : 22;
+      {/* Global sticker overlays (canvas-wide layers, clipped to preview bounds) */}
+      {Array.isArray(stickers) && stickers.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+            zIndex: 30,
+            pointerEvents: 'none',
+          }}
+        >
+          {stickers.map((sticker, index) => {
+            if (!sticker?.id) return null;
+            const src = sticker.originalUrl || sticker.thumbnailUrl;
+            if (!src) return null;
+            const rect = getStickerRectPx(sticker);
+            if (!rect) return null;
+            const isActive = activeStickerId === sticker.id;
+            const handleSize = componentWidth < 560 ? 30 : 22;
+            const rotateHandleSize = componentWidth < 560 ? 26 : 20;
 
-        return (
-          <Box
-            key={`sticker-layer-${sticker.id}`}
-            onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'move')}
-            sx={{
-              position: 'absolute',
-              left: rect.x,
-              top: rect.y,
-              width: rect.width,
-              height: rect.height,
-              zIndex: 30 + index,
-              cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'move'
-                ? 'grabbing'
-                : 'grab',
-              touchAction: 'none',
-              border: isActive ? '2px solid rgba(33, 150, 243, 0.95)' : '2px solid transparent',
-              borderRadius: 1,
-              boxShadow: isActive
-                ? '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)'
-                : 'none',
-            }}
-          >
-            <Box
-              component="img"
-              src={src}
-              alt=""
-              draggable={false}
-              sx={{
-                width: '100%',
-                height: '100%',
-                display: 'block',
-                objectFit: 'contain',
-                userSelect: 'none',
-                pointerEvents: 'none',
-              }}
-            />
-
-            {isActive && (
+            return (
               <Box
-                onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
+                key={`sticker-layer-${sticker.id}`}
+                onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'move')}
                 sx={{
                   position: 'absolute',
-                  right: -(handleSize * 0.35),
-                  bottom: -(handleSize * 0.35),
-                  width: handleSize,
-                  height: handleSize,
-                  borderRadius: '50%',
-                  border: '2px solid rgba(255,255,255,0.95)',
-                  backgroundColor: 'rgba(33, 150, 243, 0.95)',
-                  boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                  cursor: 'nwse-resize',
+                  left: rect.x,
+                  top: rect.y,
+                  width: rect.width,
+                  height: rect.height,
+                  zIndex: 30 + index,
+                  pointerEvents: 'auto',
+                  cursor: stickerInteraction?.stickerId === sticker.id
+                    ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
+                    : 'grab',
                   touchAction: 'none',
+                  transformOrigin: 'center center',
+                  transform: `rotate(${rect.angleDeg || 0}deg)`,
+                  border: isActive ? '2px solid rgba(33, 150, 243, 0.95)' : '2px solid transparent',
+                  borderRadius: 1,
+                  boxShadow: isActive
+                    ? '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)'
+                    : 'none',
                 }}
-              />
-            )}
-          </Box>
-        );
-      })}
+              >
+                <Box
+                  component="img"
+                  src={src}
+                  alt=""
+                  draggable={false}
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'block',
+                    objectFit: 'contain',
+                    userSelect: 'none',
+                    pointerEvents: 'none',
+                  }}
+                />
+
+                {isActive && (
+                  <>
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: -18,
+                        width: 2,
+                        height: 14,
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'rgba(255,255,255,0.9)',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                    <Box
+                      onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'rotate')}
+                      sx={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: -(rotateHandleSize + 14),
+                        width: rotateHandleSize,
+                        height: rotateHandleSize,
+                        transform: 'translateX(-50%)',
+                        borderRadius: '50%',
+                        border: '2px solid rgba(255,255,255,0.95)',
+                        backgroundColor: 'rgba(244, 67, 54, 0.95)',
+                        boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                        cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
+                          ? 'grabbing'
+                          : 'grab',
+                        touchAction: 'none',
+                      }}
+                    />
+                    <Box
+                      onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
+                      sx={{
+                        position: 'absolute',
+                        right: -(handleSize * 0.35),
+                        bottom: -(handleSize * 0.35),
+                        width: handleSize,
+                        height: handleSize,
+                        borderRadius: '50%',
+                        border: '2px solid rgba(255,255,255,0.95)',
+                        backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                        boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                        cursor: 'nwse-resize',
+                        touchAction: 'none',
+                      }}
+                    />
+                  </>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
       
       {/* Control panels positioned over canvas */}
       {panelRects.map((rect) => {
@@ -4543,6 +4642,7 @@ CanvasCollagePreview.propTypes = {
       thumbnailUrl: PropTypes.string,
       metadata: PropTypes.object,
       aspectRatio: PropTypes.number,
+      angleDeg: PropTypes.number,
       widthPercent: PropTypes.number,
       xPercent: PropTypes.number,
       yPercent: PropTypes.number,

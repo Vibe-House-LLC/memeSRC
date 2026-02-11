@@ -541,21 +541,39 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       if (!img) return;
 
       const ratioRaw = Number(stickerRef?.aspectRatio);
+      const angleRaw = Number(stickerRef?.angleDeg);
       const imageRatio = img.naturalWidth && img.naturalHeight
         ? (img.naturalWidth / img.naturalHeight)
         : 1;
       const aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : imageRatio || 1;
+      const angleDeg = Number.isFinite(angleRaw) ? angleRaw : 0;
       const widthRaw = Number(stickerRef?.widthPercent);
       const xRaw = Number(stickerRef?.xPercent);
       const yRaw = Number(stickerRef?.yPercent);
       const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
       const widthPx = clamp((widthPercent / 100) * width, 12, width * 0.98);
       const heightPx = clamp(widthPx / aspectRatio, 12, height * 0.98);
-      const xPx = (Number.isFinite(xRaw) ? xRaw : 36) / 100 * width;
-      const yPx = (Number.isFinite(yRaw) ? yRaw : 12) / 100 * height;
+      const minVisibleX = Math.min(32, widthPx);
+      const minVisibleY = Math.min(32, heightPx);
+      const minX = -widthPx + minVisibleX;
+      const maxX = width - minVisibleX;
+      const minY = -heightPx + minVisibleY;
+      const maxY = height - minVisibleY;
+      const xPx = clamp((Number.isFinite(xRaw) ? xRaw : 36) / 100 * width, minX, maxX);
+      const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * height, minY, maxY);
 
       try {
-        ctx.drawImage(img, xPx, yPx, widthPx, heightPx);
+        if (Math.abs(angleDeg) > 0.01) {
+          const centerX = xPx + (widthPx / 2);
+          const centerY = yPx + (heightPx / 2);
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          ctx.rotate((angleDeg * Math.PI) / 180);
+          ctx.drawImage(img, -(widthPx / 2), -(heightPx / 2), widthPx, heightPx);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, xPx, yPx, widthPx, heightPx);
+        }
       } catch (_) {
         // Ignore sticker draw failures so thumbnail generation still succeeds.
       }

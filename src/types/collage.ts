@@ -26,6 +26,7 @@ export interface CollageStickerRef {
   url?: string;
   thumbnailUrl?: string;
   aspectRatio?: number;
+  angleDeg?: number;
   widthPercent?: number;
   xPercent?: number;
   yPercent?: number;

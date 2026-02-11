@@ -46,6 +46,15 @@ const revokeStickerUrls = (stickers) => {
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const STICKER_POSITION_MIN = -220;
+const STICKER_POSITION_MAX = 220;
+const normalizeAngleDeg = (value) => {
+  if (!Number.isFinite(value)) return 0;
+  let next = value % 360;
+  if (next > 180) next -= 360;
+  if (next <= -180) next += 360;
+  return next;
+};
 
 /**
  * Custom hook to manage collage state
@@ -669,6 +678,8 @@ const [borderThickness, setBorderThickness] = useState(() => {
       : `sticker-${baseId}`;
     const aspectRatioRaw = Number(stickerInput.aspectRatio);
     const aspectRatio = Number.isFinite(aspectRatioRaw) && aspectRatioRaw > 0 ? aspectRatioRaw : 1;
+    const angleRaw = Number(stickerInput.angleDeg);
+    const angleDeg = normalizeAngleDeg(Number.isFinite(angleRaw) ? angleRaw : 0);
     const inputWidthPercent = Number(stickerInput.widthPercent);
     const widthPercent = Number.isFinite(inputWidthPercent)
       ? clamp(inputWidthPercent, 8, 80)
@@ -692,9 +703,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
             ? { ...stickerInput.metadata }
             : {},
           aspectRatio,
+          angleDeg,
           widthPercent,
-          xPercent: Number.isFinite(xPercentRaw) ? clamp(xPercentRaw, 0, 100) : defaultXPercent,
-          yPercent: Number.isFinite(yPercentRaw) ? clamp(yPercentRaw, 0, 100) : defaultYPercent,
+          xPercent: Number.isFinite(xPercentRaw) ? clamp(xPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultXPercent,
+          yPercent: Number.isFinite(yPercentRaw) ? clamp(yPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultYPercent,
         },
       ];
     });
@@ -717,13 +729,23 @@ const [borderThickness, setBorderThickness] = useState(() => {
           const ratioRaw = Number(updates.aspectRatio);
           next.aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : sticker.aspectRatio;
         }
+        if (updates.angleDeg !== undefined) {
+          const angleRaw = Number(updates.angleDeg);
+          next.angleDeg = Number.isFinite(angleRaw)
+            ? normalizeAngleDeg(angleRaw)
+            : normalizeAngleDeg(Number(sticker.angleDeg));
+        }
         if (updates.xPercent !== undefined) {
           const xRaw = Number(updates.xPercent);
-          next.xPercent = Number.isFinite(xRaw) ? clamp(xRaw, 0, 100) : sticker.xPercent;
+          next.xPercent = Number.isFinite(xRaw)
+            ? clamp(xRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX)
+            : sticker.xPercent;
         }
         if (updates.yPercent !== undefined) {
           const yRaw = Number(updates.yPercent);
-          next.yPercent = Number.isFinite(yRaw) ? clamp(yRaw, 0, 100) : sticker.yPercent;
+          next.yPercent = Number.isFinite(yRaw)
+            ? clamp(yRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX)
+            : sticker.yPercent;
         }
         return next;
       });
@@ -1016,7 +1038,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     panelImageMapping, // Still { panelId: imageIndex }
     panelTransforms, // { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
           panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleShowing? } }
-    stickers, // [{ id, originalUrl, thumbnailUrl, metadata, aspectRatio, widthPercent, xPercent, yPercent }]
+    stickers, // [{ id, originalUrl, thumbnailUrl, metadata, aspectRatio, angleDeg, widthPercent, xPercent, yPercent }]
     lastUsedTextSettings, // NEW: Default text settings for new panels
     selectedTemplate,
     setSelectedTemplate,

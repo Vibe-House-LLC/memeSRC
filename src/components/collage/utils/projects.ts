@@ -200,6 +200,7 @@ export function buildSnapshotFromState({
       url?: string;
       thumbnailUrl?: string;
       aspectRatio?: number;
+      angleDeg?: number;
       widthPercent?: number;
       xPercent?: number;
       yPercent?: number;
@@ -250,6 +251,8 @@ export function buildSnapshotFromState({
 
     const aspectRatio = Number(sticker?.aspectRatio);
     if (Number.isFinite(aspectRatio) && aspectRatio > 0) ref.aspectRatio = aspectRatio;
+    const angleDeg = Number((sticker as { angleDeg?: number } | undefined)?.angleDeg);
+    if (Number.isFinite(angleDeg)) ref.angleDeg = angleDeg;
     const widthPercent = Number(sticker?.widthPercent);
     if (Number.isFinite(widthPercent)) ref.widthPercent = widthPercent;
     const xPercent = Number(sticker?.xPercent);
