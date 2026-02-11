@@ -27,7 +27,6 @@ import {
   Check,
   Add,
   Remove,
-  Settings,
   Tag,
   BorderAll,
   Palette,
@@ -240,6 +239,55 @@ const StepSectionHeading = styled(Box)(({ theme }) => ({
   paddingRight: theme.spacing(0.5),
 }));
 
+const MobileSettingsTypeScroller = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  scrollbarWidth: 'none',
+  '&::-webkit-scrollbar': {
+    display: 'none',
+  },
+  msOverflowStyle: 'none',
+  gap: theme.spacing(1),
+  paddingBottom: theme.spacing(0.25),
+  WebkitOverflowScrolling: 'touch',
+}));
+
+const MobileSettingsTypeButton = styled(Button, {
+  shouldForwardProp: (prop) => prop !== 'selected',
+})(({ theme, selected }) => ({
+  flexShrink: 0,
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: selected ? 700 : 600,
+  letterSpacing: 0.1,
+  minHeight: 36,
+  minWidth: 0,
+  padding: theme.spacing(0.5, 1.1),
+  color: selected ? theme.palette.primary.main : theme.palette.text.secondary,
+  border: `1px solid ${selected ? theme.palette.primary.main : theme.palette.divider}`,
+  backgroundColor: selected
+    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.12)
+    : alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.3 : 0.8),
+  '&:hover': {
+    backgroundColor: selected
+      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.2)
+      : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.25 : 0.7),
+    borderColor: selected ? theme.palette.primary.main : theme.palette.text.disabled,
+  },
+  '&.Mui-focusVisible': {
+    outline: `2px solid ${alpha(theme.palette.primary.main, 0.6)}`,
+    outlineOffset: 1,
+  },
+}));
+
+const MOBILE_SETTING_OPTIONS = [
+  { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
+  { id: 'aspect-ratio', label: 'Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
+  { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
+  { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
+];
+
 // Helper function to convert aspect ratio value to a friendly format
 const getFriendlyAspectRatio = (value) => {
   if (value === 1) return '1:1';
@@ -344,6 +392,7 @@ const CollageLayoutSettings = ({
   const [colorRightScroll, setColorRightScroll] = useState(false);
   // Confirm dialog state for panel reduction when last panel has an image
   const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
+  const [activeMobileSetting, setActiveMobileSetting] = useState(MOBILE_SETTING_OPTIONS[0].id);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -357,6 +406,35 @@ const CollageLayoutSettings = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+
+  const isSectionVisible = (sectionId) => !isMobile || activeMobileSetting === sectionId;
+
+  const handleMobileSettingKeyDown = (event, currentIndex) => {
+    if (!isMobile) return;
+
+    const { key } = event;
+    const supportsKey = key === 'ArrowRight' || key === 'ArrowLeft' || key === 'Home' || key === 'End';
+    if (!supportsKey) return;
+
+    event.preventDefault();
+    const lastIndex = MOBILE_SETTING_OPTIONS.length - 1;
+    let nextIndex = currentIndex;
+
+    if (key === 'ArrowRight') {
+      nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1;
+    } else if (key === 'ArrowLeft') {
+      nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1;
+    } else if (key === 'Home') {
+      nextIndex = 0;
+    } else if (key === 'End') {
+      nextIndex = lastIndex;
+    }
+
+    const nextSettingId = MOBILE_SETTING_OPTIONS[nextIndex].id;
+    setActiveMobileSetting(nextSettingId);
+    const nextTab = document.getElementById(`collage-settings-tab-${nextSettingId}`);
+    if (nextTab) nextTab.focus();
+  };
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
@@ -653,6 +731,25 @@ const CollageLayoutSettings = ({
       handleColorScroll();
     }, 100);
   }, [borderColor]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const refreshActiveSectionScroll = () => {
+      if (activeMobileSetting === 'aspect-ratio') {
+        handleAspectScroll();
+      } else if (activeMobileSetting === 'layout') {
+        handleLayoutScroll();
+      } else if (activeMobileSetting === 'borders') {
+        handleBorderScroll();
+        handleColorScroll();
+      }
+    };
+
+    refreshActiveSectionScroll();
+    const timer = setTimeout(refreshActiveSectionScroll, 120);
+    return () => clearTimeout(timer);
+  }, [activeMobileSetting, isMobile, panelCount, selectedAspectRatio, borderThickness, borderColor]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
@@ -787,18 +884,52 @@ const CollageLayoutSettings = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {isMobile && (
+        <Box sx={{ mb: 1 }}>
+          <MobileSettingsTypeScroller role="tablist" aria-label="Collage settings categories">
+            {MOBILE_SETTING_OPTIONS.map(({ id, label, panelId }, index) => {
+              const isSelected = activeMobileSetting === id;
+              return (
+                <MobileSettingsTypeButton
+                  key={id}
+                  id={`collage-settings-tab-${id}`}
+                  role="tab"
+                  type="button"
+                  selected={isSelected}
+                  aria-selected={isSelected}
+                  aria-controls={panelId}
+                  tabIndex={isSelected ? 0 : -1}
+                  onClick={() => setActiveMobileSetting(id)}
+                  onKeyDown={(event) => handleMobileSettingKeyDown(event, index)}
+                >
+                  {label}
+                </MobileSettingsTypeButton>
+              );
+            })}
+          </MobileSettingsTypeScroller>
+        </Box>
+      )}
+
       {/* Panel Count Selector - Moved to the top */}
-      <Box sx={{ mb: isMobile ? 0 : 1 }}>
-        <StepSectionHeading>
-          <Tag sx={{ 
-            mr: 1.5, 
-            color: '#fff', 
-            fontSize: '1.3rem' 
-          }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Panel Count
-          </Typography>
-        </StepSectionHeading>
+      <Box
+        id="collage-settings-panel-panel-count"
+        role={isMobile ? 'tabpanel' : undefined}
+        aria-labelledby={isMobile ? 'collage-settings-tab-panel-count' : undefined}
+        hidden={!isSectionVisible('panel-count')}
+        sx={{
+          display: isSectionVisible('panel-count') ? 'block' : 'none',
+          mb: isMobile ? 0 : 1,
+        }}
+      >
+        {!isMobile && (
+          <StepSectionHeading>
+            <Tag sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+              Panel Count
+            </Typography>
+          </StepSectionHeading>
+        )}
         
         <PanelCounter>
           <PanelCountButton 
@@ -807,10 +938,10 @@ const CollageLayoutSettings = ({
             onClick={handlePanelCountDecrease}
             size="medium"
             sx={{
-              color: '#fff',
-              bgcolor: 'rgba(255, 255, 255, 0.15)',
+              color: isMobile ? 'text.primary' : '#fff',
+              bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.12) : 'rgba(255, 255, 255, 0.15)',
               '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.25)',
+                bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.22) : 'rgba(255, 255, 255, 0.25)',
               },
               width: 32,
               height: 32,
@@ -824,7 +955,7 @@ const CollageLayoutSettings = ({
             minWidth: 50, 
             textAlign: 'center',
             fontWeight: 700,
-            color: '#fff',
+            color: isMobile ? 'text.primary' : '#fff',
             fontSize: '2rem',
             textShadow: '0px 2px 3px rgba(0,0,0,0.1)'
           }}>
@@ -837,10 +968,10 @@ const CollageLayoutSettings = ({
             onClick={handlePanelCountIncrease}
             size="medium"
             sx={{
-              color: '#fff',
-              bgcolor: 'rgba(255, 255, 255, 0.15)',
+              color: isMobile ? 'text.primary' : '#fff',
+              bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.12) : 'rgba(255, 255, 255, 0.15)',
               '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.25)',
+                bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.22) : 'rgba(255, 255, 255, 0.25)',
               },
               width: 32,
               height: 32,
@@ -853,17 +984,24 @@ const CollageLayoutSettings = ({
       </Box>
     
       {/* Aspect Ratio Section - with horizontal scrolling */}
-      <Box sx={{ mb: isMobile ? 1 : 2 }}>
-        <StepSectionHeading>
-          <AspectRatio sx={{ 
-            mr: 1.5, 
-            color: '#fff', 
-            fontSize: '1.3rem' 
-          }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Aspect Ratio
-          </Typography>
-        </StepSectionHeading>
+      <Box
+        id="collage-settings-panel-aspect-ratio"
+        role={isMobile ? 'tabpanel' : undefined}
+        aria-labelledby={isMobile ? 'collage-settings-tab-aspect-ratio' : undefined}
+        hidden={!isSectionVisible('aspect-ratio')}
+        sx={{
+          display: isSectionVisible('aspect-ratio') ? 'block' : 'none',
+          mb: isMobile ? 1 : 2,
+        }}
+      >
+        {!isMobile && (
+          <StepSectionHeading>
+            <AspectRatio sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+              Aspect Ratio
+            </Typography>
+          </StepSectionHeading>
+        )}
         
         <Box sx={{ 
           position: 'relative', 
@@ -991,17 +1129,24 @@ const CollageLayoutSettings = ({
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}
-      <Box sx={{ mb: isMobile ? 1 : 2 }}>
-        <StepSectionHeading>
-          <GridView sx={{ 
-            mr: 1.5, 
-            color: '#fff', 
-            fontSize: '1.3rem' 
-          }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Layout
-          </Typography>
-        </StepSectionHeading>
+      <Box
+        id="collage-settings-panel-layout"
+        role={isMobile ? 'tabpanel' : undefined}
+        aria-labelledby={isMobile ? 'collage-settings-tab-layout' : undefined}
+        hidden={!isSectionVisible('layout')}
+        sx={{
+          display: isSectionVisible('layout') ? 'block' : 'none',
+          mb: isMobile ? 1 : 2,
+        }}
+      >
+        {!isMobile && (
+          <StepSectionHeading>
+            <GridView sx={{ mr: 1.5, color: '#fff', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+              Layout
+            </Typography>
+          </StepSectionHeading>
+        )}
         
         {compatibleTemplates.length === 0 ? (
           <Alert severity="info" sx={{ mb: 1 }}>
@@ -1165,13 +1310,25 @@ const CollageLayoutSettings = ({
       
       
       {/* Border Thickness UI with Horizontal Scroller - Moved below Choose Layout */}
-      <Box sx={{ mb: isMobile ? 0.25 : 0.5, position: 'relative' }}>
-        <StepSectionHeading sx={{ mb: 0.5 }}>
-          <BorderAll sx={{ mr: 1, color: '#fff', fontSize: '1.3rem' }} />
-          <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
-            Borders
-          </Typography>
-        </StepSectionHeading>
+      <Box
+        id="collage-settings-panel-borders"
+        role={isMobile ? 'tabpanel' : undefined}
+        aria-labelledby={isMobile ? 'collage-settings-tab-borders' : undefined}
+        hidden={!isSectionVisible('borders')}
+        sx={{
+          display: isSectionVisible('borders') ? 'block' : 'none',
+          mb: isMobile ? 0.25 : 0.5,
+          position: 'relative',
+        }}
+      >
+        {!isMobile && (
+          <StepSectionHeading sx={{ mb: 0.5 }}>
+            <BorderAll sx={{ mr: 1, color: '#fff', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: '#fff' }}>
+              Borders
+            </Typography>
+          </StepSectionHeading>
+        )}
 
         <Box sx={{ 
           position: 'relative', 

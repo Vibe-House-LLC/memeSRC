@@ -1212,15 +1212,37 @@ export default function CollagePage() {
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
     if (hasProjectsAccess && projectId) {
+      const isAlreadyActiveProject = (
+        activeProjectId &&
+        projectId === activeProjectId &&
+        !loadingProjectRef.current &&
+        !isHydratingProjectRef.current
+      );
+      if (isAlreadyActiveProject) return undefined;
       void triggerProjectLoad(projectId).catch(() => {});
     }
     return () => {};
-  }, [hasProjectsAccess, projectId, triggerProjectLoad]);
+  }, [hasProjectsAccess, projectId, activeProjectId, triggerProjectLoad]);
 
   const handleRemoteProjectUpdate = useCallback((record) => {
     if (!record || record.id !== activeProjectId) return;
     const remoteVersion = typeof record.snapshotVersion === 'number' ? record.snapshotVersion : null;
     if (remoteVersion === null) return;
+    // Ignore self-echo subscription updates where the incoming snapshot matches
+    // the current in-memory state to prevent unnecessary rehydration/reload.
+    try {
+      if (record.state) {
+        const incomingSig = computeSnapshotSignature(record.state);
+        if (incomingSig && incomingSig === currentSigRef.current) {
+          activeSnapshotVersionRef.current = remoteVersion;
+          acknowledgedRemoteVersionRef.current = remoteVersion;
+          setRemoteUpdateWarning(null);
+          return;
+        }
+      }
+    } catch (_) {
+      // Ignore signature parse issues and fall back to version-based handling.
+    }
     const localVersion = typeof activeSnapshotVersionRef.current === 'number' ? activeSnapshotVersionRef.current : null;
     if (localVersion !== null && remoteVersion <= localVersion) {
       if ((acknowledgedRemoteVersionRef.current ?? -1) < remoteVersion) {
@@ -2134,29 +2156,30 @@ export default function CollagePage() {
                               {isCreatingCollage ? 'Generating Meme...' : 'Generate Meme'}
                             </Button>
 
-                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                              <Button
-                                variant="contained"
-                                onClick={handleToggleSettings}
-                                disabled={isCreatingCollage}
-                                startIcon={!isMobile ? <Settings sx={{ color: '#ffffff' }} /> : undefined}
-                                aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                                sx={{
-                                  minHeight: 48,
-                                  minWidth: isMobile ? 48 : undefined,
-                                  px: isMobile ? 1.25 : 2,
-                                  fontWeight: 700,
-                                  textTransform: 'none',
-                                  background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                  border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                                  boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                  color: '#e0e0e0',
-                                  '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                }}
-                              >
-                                {isMobile ? <Settings sx={{ color: '#ffffff' }} /> : (settingsOpen ? 'Close' : 'Settings')}
-                              </Button>
-                            </Collapse>
+                            {!isMobile && (
+                              <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                                <Button
+                                  variant="contained"
+                                  onClick={handleToggleSettings}
+                                  disabled={isCreatingCollage}
+                                  startIcon={<Settings sx={{ color: '#ffffff' }} />}
+                                  aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                                  sx={{
+                                    minHeight: 48,
+                                    px: 2,
+                                    fontWeight: 700,
+                                    textTransform: 'none',
+                                    background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                    border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                                    boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                    color: '#e0e0e0',
+                                    '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                  }}
+                                >
+                                  {settingsOpen ? 'Close' : 'Settings'}
+                                </Button>
+                              </Collapse>
+                            )}
                           </>
                         )}
                       </>
@@ -2213,29 +2236,30 @@ export default function CollagePage() {
                             {isCreatingCollage ? 'Generating Meme...' : 'Generate Meme'}
                           </Button>
 
-                          <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                            <Button
-                              variant="contained"
-                              onClick={handleToggleSettings}
-                              disabled={isCreatingCollage}
-                              startIcon={!isMobile ? <Settings sx={{ color: '#ffffff' }} /> : undefined}
-                              aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                              sx={{
-                                minHeight: 48,
-                                minWidth: isMobile ? 48 : undefined,
-                                px: isMobile ? 1.25 : 2,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                                boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                color: '#e0e0e0',
-                                '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                              }}
-                            >
-                              {isMobile ? <Settings sx={{ color: '#ffffff' }} /> : (settingsOpen ? 'Close' : 'Settings')}
-                            </Button>
-                          </Collapse>
+                          {!isMobile && (
+                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                              <Button
+                                variant="contained"
+                                onClick={handleToggleSettings}
+                                disabled={isCreatingCollage}
+                                startIcon={<Settings sx={{ color: '#ffffff' }} />}
+                                aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                                sx={{
+                                  minHeight: 48,
+                                  px: 2,
+                                  fontWeight: 700,
+                                  textTransform: 'none',
+                                  background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
+                                  border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
+                                  boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
+                                  color: '#e0e0e0',
+                                  '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
+                                }}
+                              >
+                                {settingsOpen ? 'Close' : 'Settings'}
+                              </Button>
+                            </Collapse>
+                          )}
                         </>
                       )
                     )}
