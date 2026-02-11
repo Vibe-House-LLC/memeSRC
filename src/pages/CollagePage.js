@@ -67,7 +67,7 @@ function countGridTracks(template) {
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
     if (!customLayout || typeof customLayout !== 'object') return false;
-    const needed = Math.max(2, panelCount || 2);
+    const needed = Math.max(1, panelCount || 1);
     if (Array.isArray(customLayout.areas)) return customLayout.areas.length >= needed;
     if (Array.isArray(customLayout.items)) return customLayout.items.length >= needed;
     const cols = countGridTracks(customLayout.gridTemplateColumns);
@@ -219,7 +219,7 @@ export default function CollagePage() {
   
   // Unified bottom bar control (no animation)
   const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
-  const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
+  const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 1 });
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
   const [startInLibrary, setStartInLibrary] = useState(false);
 
@@ -765,11 +765,12 @@ export default function CollagePage() {
         // Auto-assign images to panels like bulk upload does
         setTimeout(() => {
           // First adjust panel count if needed to accommodate all images
-          const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+          const desiredPanelCount = Math.max(1, Math.min(transformedImages.length, 5)); // Max 5 panels supported
           debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
           debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
 
-          if (transformedImages.length > panelCount && setPanelCount) {
+          const panelCountWillChange = desiredPanelCount !== panelCount;
+          if (panelCountWillChange && setPanelCount) {
             setPanelCount(desiredPanelCount);
             debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
           }
@@ -789,7 +790,7 @@ export default function CollagePage() {
 
             debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
             updatePanelImageMapping(newMapping);
-          }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+          }, panelCountWillChange ? 200 : 0); // Extra delay if panel count changed
         }, 100); // Small delay to ensure images are added first
 
         // Clear the navigation state to prevent re-loading on refresh
@@ -840,7 +841,7 @@ export default function CollagePage() {
     if (!snap) return;
 
     const nextAspectRatio = snap.selectedAspectRatio || 'square';
-    const nextPanelCount = snap.panelCount || 2;
+    const nextPanelCount = snap.panelCount || 1;
 
     let templateForSnapshot = null;
     try {
@@ -1450,7 +1451,7 @@ export default function CollagePage() {
     if (isHydratingProject || isCreatingCollage) return;
     if ((panelCount || 0) >= MAX_IMAGES) return;
 
-    const nextCount = Math.min(MAX_IMAGES, Math.max(2, (panelCount || 2) + 1));
+    const nextCount = Math.min(MAX_IMAGES, Math.max(1, (panelCount || 1) + 1));
     setPanelCount(nextCount);
     syncTemplateForPanelCount(nextCount);
     resetCustomLayoutArtifacts();
@@ -1466,14 +1467,14 @@ export default function CollagePage() {
   ]);
 
   const executePanelRemoval = useCallback((panelId) => {
-    if (!panelId || panelCount <= 2) return;
+    if (!panelId || panelCount <= 1) return;
     const parsedIndex = parsePanelIndexFromId(panelId);
     if (parsedIndex === null) return;
 
     const boundedIndex = Math.max(0, Math.min(parsedIndex, panelCount - 1));
     removePanelAtIndex(boundedIndex);
 
-    const nextCount = Math.max(2, panelCount - 1);
+    const nextCount = Math.max(1, panelCount - 1);
     setPanelCount(nextCount);
     syncTemplateForPanelCount(nextCount);
     resetCustomLayoutArtifacts();
@@ -1487,10 +1488,10 @@ export default function CollagePage() {
 
   const handleRemovePanelRequest = useCallback((panelId) => {
     if (!panelId) return;
-    if (panelCount <= 2) {
+    if (panelCount <= 1) {
       setSnackbar({
         open: true,
-        message: 'A collage needs at least 2 panels.',
+        message: 'A collage needs at least 1 panel.',
         severity: 'info',
       });
       return;
@@ -1937,7 +1938,7 @@ export default function CollagePage() {
                 setSettingsOpen={setSettingsOpen}
                 settingsRef={settingsRef}
                 onViewChange={(v) => setCurrentView(v)}
-                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
+                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 1 })}
                 onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
                 // Mobile controls bar actions
                 onBack={hasProjectsAccess ? handleBackToProjects : undefined}

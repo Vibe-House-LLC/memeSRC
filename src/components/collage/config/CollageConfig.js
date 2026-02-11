@@ -18,7 +18,7 @@ export const aspectRatioPresets = [
 
 
 /**
- * Main exported layoutTemplates array with Auto Layout and dynamic templates for 2-5 panels
+ * Main exported layoutTemplates array with Auto Layout and dynamic templates for 1-5 panels
  */
 export const layoutTemplates = [
   // Auto Layout - handles cases automatically
@@ -27,14 +27,14 @@ export const layoutTemplates = [
     name: 'Auto Layout',
     panels: 5,
     arrangement: 'auto',
-    minImages: 2,
+    minImages: 1,
     maxImages: 5,
     renderPreview: (aspectRatio, theme, imageCount = 0) =>
-      createAutoLayout(Math.max(2, imageCount || 2), aspectRatio, theme, aspectRatioPresets)
+      createAutoLayout(Math.max(1, imageCount || 1), aspectRatio, theme, aspectRatioPresets)
   },
   
-  // Dynamic templates for each panel count (2-5)
-  ...Array.from({ length: 4 }, (_, i) => i + 2).map(panelCount => ({
+  // Dynamic templates for each panel count (1-5)
+  ...Array.from({ length: 5 }, (_, i) => i + 1).map(panelCount => ({
     id: `dynamic-${panelCount}-panel`,
     name: `${panelCount} Panel Templates`,
     panels: panelCount,

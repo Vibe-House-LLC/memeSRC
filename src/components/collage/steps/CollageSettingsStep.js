@@ -424,7 +424,7 @@ const CollageLayoutSettings = ({
   };
 
   const handlePanelCountDecrease = () => {
-    if (panelCount <= 2) return;
+    if (panelCount <= 1) return;
 
     const newCount = panelCount - 1;
 
@@ -803,7 +803,7 @@ const CollageLayoutSettings = ({
         <PanelCounter>
           <PanelCountButton 
             aria-label="Decrease panel count" 
-            disabled={panelCount <= 2}
+            disabled={panelCount <= 1}
             onClick={handlePanelCountDecrease}
             size="medium"
             sx={{

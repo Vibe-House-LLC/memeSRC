@@ -187,7 +187,7 @@ export function buildSnapshotFromState({
     panelTexts: panelTexts || {},
     selectedTemplateId: selectedTemplate?.id || null,
     selectedAspectRatio: (selectedAspectRatio ?? 'square') as AspectRatio,
-    panelCount: panelCount || 2,
+    panelCount: panelCount || 1,
     borderThickness,
     borderColor,
     // Persist custom layout grid when user drags inner borders

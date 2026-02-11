@@ -249,7 +249,7 @@ const createLayoutConfig = (template, panelCount) => {
   
   try {
     // Look up the original layout in the layout definitions
-    const panelCountKey = Math.max(2, Math.min(panelCount, 5));
+    const panelCountKey = Math.max(1, Math.min(panelCount, 5));
     const categories = layoutDefinitions[panelCountKey];
     
     // Search for the layout in all categories (wide, tall, square)
@@ -783,7 +783,7 @@ const CanvasCollagePreview = ({
   const isCustomLayoutCompatible = useCallback((layout, count) => {
     try {
       if (!layout || typeof layout !== 'object') return false;
-      const needed = Math.max(2, count || 2);
+      const needed = Math.max(1, count || 1);
       if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
       if (Array.isArray(layout.items)) return layout.items.length >= needed;
       const cols = countGridTracks(layout.gridTemplateColumns);
@@ -4058,7 +4058,7 @@ const CanvasCollagePreview = ({
                 </ListItemIcon>
                 Replace Image
               </MenuItem>
-              <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 2} sx={{ color: 'error.main' }}>
+              <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 1} sx={{ color: 'error.main' }}>
                 <ListItemIcon sx={{ color: 'inherit' }}>
                   <DeleteOutline fontSize="small" />
                 </ListItemIcon>

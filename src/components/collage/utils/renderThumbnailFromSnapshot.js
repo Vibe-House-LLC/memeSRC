@@ -14,11 +14,11 @@ function isCustomLayoutCompatible(customLayout, panelCount) {
     if (!customLayout || typeof customLayout !== 'object') return false;
     // Prefer explicit areas length when present
     if (Array.isArray(customLayout.areas)) {
-      return customLayout.areas.length >= Math.max(2, panelCount || 2);
+      return customLayout.areas.length >= Math.max(1, panelCount || 1);
     }
     // Fallback to items array length if provided
     if (Array.isArray(customLayout.items)) {
-      return customLayout.items.length >= Math.max(2, panelCount || 2);
+      return customLayout.items.length >= Math.max(1, panelCount || 1);
     }
     // If neither is present, be conservative and treat as incompatible
     return false;
@@ -38,7 +38,7 @@ function createLayoutConfigById(templateId, panelCount, customLayout) {
     } catch (_) {}
   }
   try {
-    const pc = Math.max(2, Math.min(panelCount || 2, 5));
+    const pc = Math.max(1, Math.min(panelCount || 1, 5));
     const categories = layoutDefinitions[pc];
     if (!categories) return null;
     let layout = null;
@@ -62,13 +62,13 @@ function createLayoutConfigById(templateId, panelCount, customLayout) {
     };
   }
 
-  const cols = Math.ceil(Math.sqrt(panelCount || 2));
-  const rows = Math.ceil((panelCount || 2) / cols);
+  const cols = Math.ceil(Math.sqrt(panelCount || 1));
+  const rows = Math.ceil((panelCount || 1) / cols);
   return {
     gridTemplateColumns: `repeat(${cols}, 1fr)`,
     gridTemplateRows: `repeat(${rows}, 1fr)`,
     gridTemplateAreas: null,
-    items: Array(panelCount || 2).fill({ gridArea: null }),
+    items: Array(panelCount || 1).fill({ gridArea: null }),
   };
 }
 
@@ -274,7 +274,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   const aspectRatio = snap.selectedAspectRatio || 'square';
   const arMap = { square: 1, portrait: 0.8, 'ratio-2-3': 2/3, story: 0.5625, classic: 1.33, 'ratio-3-2': 1.5, landscape: 1.78 };
   const ar = arMap[aspectRatio] || 1;
-  const panelCount = Math.max(2, Math.min(snap.panelCount || 2, 5));
+  const panelCount = Math.max(1, Math.min(snap.panelCount || 1, 5));
   const borderPct = normalizeBorderThickness(snap.borderThickness);
   const borderColor = snap.borderColor || '#000000';
 

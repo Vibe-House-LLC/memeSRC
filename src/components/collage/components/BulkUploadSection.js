@@ -387,12 +387,19 @@ const BulkUploadSection = ({
 
       const numEmptyPanels = emptyPanels.length;
       const numNewImages = imageObjs.length;
+      const hasNoExistingImages = (selectedImages?.length || 0) === 0;
 
       debugLog(`Found ${numEmptyPanels} empty panels (${emptyPanels}) for ${numNewImages} new images`);
 
       // Calculate if we need to increase panel count
       let newPanelCount = panelCount;
-      if (numNewImages > numEmptyPanels) {
+      if (hasNoExistingImages) {
+        newPanelCount = Math.max(1, Math.min(numNewImages, 5));
+        if (setPanelCount && newPanelCount !== panelCount) {
+          setPanelCount(newPanelCount);
+          debugLog(`Initialized panel count from ${panelCount} to ${newPanelCount} for first upload`);
+        }
+      } else if (numNewImages > numEmptyPanels) {
         // Need more panels - increase by the difference
         const additionalPanelsNeeded = numNewImages - numEmptyPanels;
         newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12); // Max 12 panels
@@ -499,8 +506,8 @@ const BulkUploadSection = ({
 
   // Handler for removing a frame/panel
   const handleRemoveFrame = (panelIdToRemove) => {
-    if (!setPanelCount || panelCount <= 2) {
-      debugLog('Cannot remove frame: minimum panel count is 2 or setPanelCount not available');
+    if (!setPanelCount || panelCount <= 1) {
+      debugLog('Cannot remove frame: minimum panel count is 1 or setPanelCount not available');
       return;
     }
 
@@ -785,9 +792,15 @@ const BulkUploadSection = ({
 
     const numEmptyPanels = emptyPanels.length;
     const numNewImages = items.length;
+    const hasNoExistingImages = (selectedImages?.length || 0) === 0;
 
     let newPanelCount = panelCount;
-    if (numNewImages > numEmptyPanels) {
+    if (hasNoExistingImages) {
+      newPanelCount = Math.max(1, Math.min(numNewImages, 5));
+      if (setPanelCount && newPanelCount !== panelCount) {
+        setPanelCount(newPanelCount);
+      }
+    } else if (numNewImages > numEmptyPanels) {
       const additionalPanelsNeeded = numNewImages - numEmptyPanels;
       newPanelCount = Math.min(panelCount + additionalPanelsNeeded, 12);
       if (setPanelCount && newPanelCount !== panelCount) {
@@ -877,7 +890,7 @@ const BulkUploadSection = ({
                   if (panel.hasImage) {
                     handleImagePanelClick(event, panel);
                   } else if (!panel.hasImage) {
-                    if (panelCount > 2) {
+                    if (panelCount > 1) {
                       handleEmptyPanelClick(event, panel);
                     } else {
                       setSelectedPanelForAction(panel);
@@ -989,7 +1002,7 @@ const BulkUploadSection = ({
                   <Clear sx={{ mr: 1, fontSize: 18 }} />
                   Remove
                 </MenuItem>
-                {panelCount > 2 && (
+                {panelCount > 1 && (
                   <MenuItem onClick={handleDeleteFrameWithImage}>
                     <Delete sx={{ mr: 1, fontSize: 18 }} />
                     Delete frame
@@ -1002,7 +1015,7 @@ const BulkUploadSection = ({
                   <Upload sx={{ mr: 1, fontSize: 18 }} />
                   Add image
                 </MenuItem>
-                {panelCount > 2 && (
+                {panelCount > 1 && (
                   <MenuItem onClick={handleRemoveFrameFromMenu}>
                     <RemoveCircle sx={{ mr: 1, fontSize: 18 }} />
                     Remove frame
@@ -1130,7 +1143,7 @@ const BulkUploadSection = ({
                       <LibraryBrowser
                         isAdmin={isAdmin}
                         multiple
-                        minSelected={2}
+                        minSelected={1}
                         maxSelected={5}
                         refreshTrigger={libraryRefreshTrigger}
                         onSelect={(items) => handleLibrarySelect(items)}
