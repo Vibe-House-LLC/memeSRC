@@ -76,29 +76,32 @@ export const FeedCardSurface = forwardRef<HTMLDivElement, FeedCardSurfaceProps>(
 ) {
   const theme = useTheme();
   const toneStyles = useMemo(() => buildGradientTone(theme, tone), [theme, tone]);
+  const sxList = Array.isArray(sx) ? sx : sx ? [sx] : [];
 
   return (
     <Box
       ref={ref}
       component="article"
-      sx={{
-        width: '100%',
-        borderRadius: { xs: '28px', md: 3.5 },
-        position: 'relative',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        px: { xs: 2, sm: 2, md: 2, lg: 3 },
-        py: { xs: 2, sm: 2, md: 2, lg: 3 },
-        gap: { xs: 2.2, sm: 2.4 },
-        maxWidth: { xs: '100%', sm: '100%', md: '100%', lg: 780 },
-        mx: { xs: 0, sm: 'auto' },
-        border: toneStyles.border,
-        background: gradient ?? toneStyles.background,
-        boxShadow: toneStyles.shadow,
-        backdropFilter: 'blur(18px)',
-        ...sx,
-      }}
+      sx={[
+        {
+          width: '100%',
+          borderRadius: { xs: '28px', md: 3.5 },
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          px: { xs: 2, sm: 2, md: 2, lg: 3 },
+          py: { xs: 2, sm: 2, md: 2, lg: 3 },
+          gap: { xs: 2.2, sm: 2.4 },
+          maxWidth: { xs: '100%', sm: '100%', md: '100%', lg: 780 },
+          mx: { xs: 0, sm: 'auto' },
+          border: toneStyles.border,
+          background: gradient ?? toneStyles.background,
+          boxShadow: toneStyles.shadow,
+          backdropFilter: 'blur(18px)',
+        },
+        ...sxList,
+      ]}
       {...rest}
     />
   );
@@ -113,21 +116,24 @@ export const ReleaseCardSurface = forwardRef<HTMLDivElement, ReleaseCardSurfaceP
   function ReleaseCardSurface({ tone = 'neutral', highlighted = false, sx, ...rest }, ref) {
     const theme = useTheme();
     const toneStyles = useMemo(() => buildTintTone(theme, tone, highlighted), [theme, tone, highlighted]);
+    const sxList = Array.isArray(sx) ? sx : sx ? [sx] : [];
 
     return (
       <Card
         ref={ref}
         component="article"
         elevation={0}
-        sx={{
-          borderRadius: { xs: 2, sm: 3 },
-          border: toneStyles.border,
-          background: toneStyles.background,
-          boxShadow: toneStyles.shadow,
-          backdropFilter: 'blur(12px)',
-          transition: 'box-shadow 0.3s ease',
-          ...sx,
-        }}
+        sx={[
+          {
+            borderRadius: { xs: 2, sm: 3 },
+            border: toneStyles.border,
+            background: toneStyles.background,
+            boxShadow: toneStyles.shadow,
+            backdropFilter: 'blur(12px)',
+            transition: 'box-shadow 0.3s ease',
+          },
+          ...sxList,
+        ]}
         {...rest}
       />
     );
