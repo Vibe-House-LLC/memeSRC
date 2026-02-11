@@ -484,6 +484,8 @@ export const CollageLayout = ({
               <CollageSettingsStep 
                 {...settingsStepProps}
               />
+              {renderEditTipCard({ mt: 2 })}
+              {renderCollapsedEditTip({ mt: 2 })}
             </Box>
             
             {/* Images Section */}
@@ -511,8 +513,6 @@ export const CollageLayout = ({
                   handleOpenExportDialog={handleOpenExportDialog}
                 />
               </Box>
-              {renderEditTipCard({ mt: 2 })}
-              {renderCollapsedEditTip({ mt: 2 })}
             </Box>
           </Box>
         )}
