@@ -153,13 +153,19 @@ const CollageImagesStep = ({
   }, [selectedImages]);
 
   // Bulk upload handler and related functions removed since moved to BulkUploadSection
+  const canTriggerAddPanel = canAddPanel && !isCreatingCollage && !isHydratingProject;
+  const triggerAddPanelRequest = (position = 'end') => {
+    if (typeof onAddPanelRequest === 'function') {
+      onAddPanelRequest(position);
+    }
+  };
 
   return (
     <Box sx={{ my: isMobile ? 0 : 0.25 }}>
       {/* Layout Preview */}
       <Box sx={{
-        p: isMobile ? 1.5 : 1.5,
-        mb: isMobile ? 1.5 : 1.5,
+        p: isMobile ? 1 : 1.5,
+        mb: isMobile ? 1 : 1.5,
         borderRadius: 2,
         textAlign: 'center',
         display: 'flex',
@@ -167,10 +173,33 @@ const CollageImagesStep = ({
         alignItems: 'center',
         position: 'relative',
       }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
+          <Button
+            variant="outlined"
+            color="inherit"
+            size={isMobile ? 'small' : 'medium'}
+            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+            onClick={() => triggerAddPanelRequest('start')}
+            disabled={!canTriggerAddPanel}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderColor: 'rgba(255,255,255,0.35)',
+              color: '#fff',
+              '&:hover': {
+                borderColor: 'rgba(255,255,255,0.65)',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+              },
+            }}
+          >
+            Add panel
+          </Button>
+        </Box>
+
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
-          mb: 1.5,
+          mb: 1,
           position: 'relative'
         }} id="collage-preview-container">
           <CollagePreview 
@@ -224,12 +253,8 @@ const CollageImagesStep = ({
             color="inherit"
             size={isMobile ? 'small' : 'medium'}
             startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
-            onClick={() => {
-              if (typeof onAddPanelRequest === 'function') {
-                onAddPanelRequest();
-              }
-            }}
-            disabled={!canAddPanel || isCreatingCollage || isHydratingProject}
+            onClick={() => triggerAddPanelRequest('end')}
+            disabled={!canTriggerAddPanel}
             sx={{
               textTransform: 'none',
               fontWeight: 700,

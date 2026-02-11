@@ -310,6 +310,7 @@ export default function CollagePage() {
     addMultipleImages,
     removeImage,
     removePanelAtIndex,
+    insertPanelAtIndex,
     updateImage,
     replaceImage,
     clearImages,
@@ -1469,19 +1470,24 @@ export default function CollagePage() {
     ));
   }, []);
 
-  const handleAddPanelRequested = useCallback(() => {
+  const handleAddPanelRequested = useCallback((position = 'end') => {
     if (isHydratingProject || isCreatingCollage) return;
     if ((panelCount || 0) >= MAX_IMAGES) return;
 
+    const insertAtStart = position === 'start';
     const nextCount = Math.min(MAX_IMAGES, Math.max(1, (panelCount || 1) + 1));
+    if (insertAtStart) {
+      insertPanelAtIndex(0);
+    }
     setPanelCount(nextCount);
     syncTemplateForPanelCount(nextCount);
     resetCustomLayoutArtifacts();
-    queuePanelAutoOpen(nextCount - 1);
+    queuePanelAutoOpen(insertAtStart ? 0 : (nextCount - 1));
   }, [
     isHydratingProject,
     isCreatingCollage,
     panelCount,
+    insertPanelAtIndex,
     setPanelCount,
     syncTemplateForPanelCount,
     resetCustomLayoutArtifacts,

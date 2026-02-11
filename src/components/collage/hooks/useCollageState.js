@@ -499,6 +499,50 @@ const [borderThickness, setBorderThickness] = useState(() => {
   }, [panelImageMapping]);
 
   /**
+   * Insert an empty panel at a specific zero-based index by shifting panel IDs up.
+   * Existing image assignments remain attached to their original visual panels.
+   * @param {number} panelIndexToInsert - zero-based insertion index
+   * @returns {boolean}
+   */
+  const insertPanelAtIndex = useCallback((panelIndexToInsert) => {
+    if (!Number.isInteger(panelIndexToInsert) || panelIndexToInsert < 0) return false;
+
+    const shiftPanelStateKeys = (stateMap) => {
+      const nextState = {};
+      Object.entries(stateMap || {}).forEach(([panelId, value]) => {
+        const panelIndex = parsePanelIndex(panelId);
+        if (panelIndex === null) {
+          nextState[panelId] = value;
+          return;
+        }
+        const nextPanelId = panelIndex >= panelIndexToInsert
+          ? `panel-${panelIndex + 2}`
+          : panelId;
+        nextState[nextPanelId] = value;
+      });
+      return nextState;
+    };
+
+    const run = () => {
+      setPanelImageMapping((prevMapping) => shiftPanelStateKeys(prevMapping));
+      setPanelTransforms((prevTransforms) => shiftPanelStateKeys(prevTransforms));
+      setPanelTexts((prevTexts) => shiftPanelStateKeys(prevTexts));
+    };
+
+    if (typeof unstable_batchedUpdates === 'function') {
+      unstable_batchedUpdates(run);
+    } else {
+      run();
+    }
+
+    if (DEBUG_MODE) {
+      console.log(`Inserted panel at index ${panelIndexToInsert}`);
+    }
+
+    return true;
+  }, []);
+
+  /**
    * Update only the displayUrl for an image at a specific index (after cropping).
    * @param {number} index - The index of the image object to update
    * @param {string} croppedDataUrl - The new display image URL (cropped)
@@ -854,6 +898,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     addMultipleImages, // UPDATED: Adds multiple objects with optional subtitle data
     removeImage, // Removes object, updates mapping & transform
     removePanelAtIndex, // Removes one panel and reindexes panel IDs/mapping
+    insertPanelAtIndex, // Inserts one panel and reindexes panel IDs/mapping
     updateImage, // Updates displayUrl
     replaceImage, // Replaces image object
     clearImages, // Clears images, mapping, transforms & texts

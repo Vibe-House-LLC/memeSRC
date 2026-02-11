@@ -325,7 +325,7 @@ export const CollageLayout = ({
           </Box>
         ) : isMobile ? (
           // Mobile: Stack vertically with tighter spacing, NO BulkUploadSection after images are added
-          <Stack spacing={2} sx={{ p: 1.5, px: 1 }}>
+          <Stack spacing={1.25} sx={{ p: 1.5, px: 1 }}>
             {/* Always-visible settings on mobile */}
             <Box ref={settingsRef}>
               <CollageSettingsStep {...settingsStepProps} />
