@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -627,6 +627,7 @@ const CanvasCollagePreview = ({
   panelCount,
   images = [],
   onPanelClick,
+  onRemovePanel,
   onEditImage, // new: request magic edit for a panel
   canEditImage = false, // new: control visibility of magic edit option
   onSaveGestureDetected, // new: notify parent when long-press/right-click implies save intent
@@ -3312,6 +3313,13 @@ const CanvasCollagePreview = ({
     handleActionMenuClose();
   }, [actionMenuPanelId, handleTextEdit, handleActionMenuClose]);
 
+  const handleMenuRemovePanel = useCallback(() => {
+    if (actionMenuPanelId && typeof onRemovePanel === 'function') {
+      onRemovePanel(actionMenuPanelId);
+    }
+    handleActionMenuClose();
+  }, [actionMenuPanelId, onRemovePanel, handleActionMenuClose]);
+
   // Get final canvas for export
   const getCanvasBlob = useCallback(() => new Promise((resolve) => {
       const canvas = canvasRef.current;
@@ -4050,6 +4058,12 @@ const CanvasCollagePreview = ({
                 </ListItemIcon>
                 Replace Image
               </MenuItem>
+              <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 2} sx={{ color: 'error.main' }}>
+                <ListItemIcon sx={{ color: 'inherit' }}>
+                  <DeleteOutline fontSize="small" />
+                </ListItemIcon>
+                Remove Panel
+              </MenuItem>
               <MenuItem onClick={handleMenuEditCaption} disabled={!hasImageForPanel}>
                 <ListItemIcon>
                   <Subtitles fontSize="small" />
@@ -4077,6 +4091,7 @@ CanvasCollagePreview.propTypes = {
     }),
   ])),
   onPanelClick: PropTypes.func,
+  onRemovePanel: PropTypes.func,
   onEditImage: PropTypes.func,
   canEditImage: PropTypes.bool,
   onSaveGestureDetected: PropTypes.func,

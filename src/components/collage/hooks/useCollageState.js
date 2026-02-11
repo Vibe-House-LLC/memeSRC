@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { unstable_batchedUpdates } from 'react-dom';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
+import { parsePanelIndexFromId } from '../utils/panelId';
 
 // Debug flag - opt-in via localStorage while in development
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -392,6 +393,103 @@ const [borderThickness, setBorderThickness] = useState(() => {
   }, [selectedImages, panelImageMapping]);
 
   /**
+   * Remove a specific panel by index, shifting higher panel IDs down by one.
+   * If the removed panel contains an image, that image is removed from the list.
+   * @param {number} panelIndexToRemove - zero-based panel index to remove
+   * @returns {{removedPanelId: string, removedImageIndex: (number|null)}|null}
+   */
+  const removePanelAtIndex = useCallback((panelIndexToRemove) => {
+    if (!Number.isInteger(panelIndexToRemove) || panelIndexToRemove < 0) return null;
+
+    const removedPanelId = `panel-${panelIndexToRemove + 1}`;
+    const mappedImageIndex = panelImageMapping?.[removedPanelId];
+    const mappedElsewhere = Object.entries(panelImageMapping || {}).some(([panelId, mappedIndex]) => (
+      panelId !== removedPanelId &&
+      typeof mappedIndex === 'number' &&
+      mappedIndex === mappedImageIndex
+    ));
+    const removedImageIndex = (
+      typeof mappedImageIndex === 'number' &&
+      mappedImageIndex >= 0 &&
+      !mappedElsewhere
+    ) ? mappedImageIndex : null;
+
+    const shiftPanelStateKeys = (stateMap) => {
+      const nextState = {};
+      Object.entries(stateMap || {}).forEach(([panelId, value]) => {
+        const panelIndex = parsePanelIndexFromId(panelId);
+        if (panelIndex === null) {
+          nextState[panelId] = value;
+          return;
+        }
+        if (panelIndex === panelIndexToRemove) return;
+        const nextPanelId = panelIndex > panelIndexToRemove ? `panel-${panelIndex}` : panelId;
+        nextState[nextPanelId] = value;
+      });
+      return nextState;
+    };
+
+    const shiftPanelMapping = (mapping) => {
+      const nextMapping = {};
+      Object.entries(mapping || {}).forEach(([panelId, mappedIndex]) => {
+        const panelIndex = parsePanelIndexFromId(panelId);
+        if (panelIndex === null) {
+          nextMapping[panelId] = mappedIndex;
+          return;
+        }
+        if (panelIndex === panelIndexToRemove) return;
+
+        const nextPanelId = panelIndex > panelIndexToRemove ? `panel-${panelIndex}` : panelId;
+        if (typeof mappedIndex !== 'number') {
+          nextMapping[nextPanelId] = mappedIndex;
+          return;
+        }
+
+        if (removedImageIndex !== null) {
+          if (mappedIndex === removedImageIndex) return;
+          nextMapping[nextPanelId] = mappedIndex > removedImageIndex
+            ? mappedIndex - 1
+            : mappedIndex;
+          return;
+        }
+
+        nextMapping[nextPanelId] = mappedIndex;
+      });
+      return nextMapping;
+    };
+
+    const run = () => {
+      if (removedImageIndex !== null) {
+        setSelectedImages((prevImages) => {
+          if (!Array.isArray(prevImages)) return prevImages;
+          if (removedImageIndex < 0 || removedImageIndex >= prevImages.length) return prevImages;
+
+          const nextImages = [...prevImages];
+          const [removedImageObj] = nextImages.splice(removedImageIndex, 1);
+          revokeImageUrls([removedImageObj]);
+          return nextImages;
+        });
+      }
+
+      setPanelImageMapping((prevMapping) => shiftPanelMapping(prevMapping));
+      setPanelTransforms((prevTransforms) => shiftPanelStateKeys(prevTransforms));
+      setPanelTexts((prevTexts) => shiftPanelStateKeys(prevTexts));
+    };
+
+    if (typeof unstable_batchedUpdates === 'function') {
+      unstable_batchedUpdates(run);
+    } else {
+      run();
+    }
+
+    if (DEBUG_MODE) {
+      console.log(`Removed panel ${removedPanelId}`, { removedImageIndex });
+    }
+
+    return { removedPanelId, removedImageIndex };
+  }, [panelImageMapping]);
+
+  /**
    * Update only the displayUrl for an image at a specific index (after cropping).
    * @param {number} index - The index of the image object to update
    * @param {string} croppedDataUrl - The new display image URL (cropped)
@@ -746,6 +844,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     addImage, // UPDATED: Adds new object with optional subtitle data
     addMultipleImages, // UPDATED: Adds multiple objects with optional subtitle data
     removeImage, // Removes object, updates mapping & transform
+    removePanelAtIndex, // Removes one panel and reindexes panel IDs/mapping
     updateImage, // Updates displayUrl
     replaceImage, // Replaces image object
     clearImages, // Clears images, mapping, transforms & texts

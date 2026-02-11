@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useContext, useMemo, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
@@ -29,6 +29,7 @@ import { UserContext } from '../../../UserContext';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 import { V2SearchContext } from '../../../contexts/v2-search-context';
+import { parsePanelIndexFromId } from '../utils/panelId';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -59,6 +60,9 @@ const CollagePreview = ({
   replaceImage,
   updatePanelImageMapping,
   panelImageMapping,
+  panelAutoOpenRequest,
+  onPanelAutoOpenHandled,
+  onRemovePanelRequest,
   borderThickness = 0,
   borderColor = '#000000',
   panelTransforms,
@@ -109,6 +113,7 @@ const CollagePreview = ({
   const [isCaptionDecisionOpen, setIsCaptionDecisionOpen] = useState(false);
   const [incomingCaptionPreview, setIncomingCaptionPreview] = useState('');
   const captionDecisionResolveRef = useRef(null);
+  const handledAutoOpenRequestRef = useRef(null);
   // Legacy Magic Editor dialog flow removed; navigation to MagicPage is primary
   
   // Dialog-based magic editor removed in favor of page navigation
@@ -166,7 +171,7 @@ const CollagePreview = ({
     })
   );
 
-  const resolvePanelIdFromIndex = (index) => {
+  const resolvePanelIdFromIndex = useCallback((index) => {
     try {
       const layoutPanel = selectedTemplate?.layout?.panels?.[index];
       const templatePanel = selectedTemplate?.panels?.[index];
@@ -174,9 +179,9 @@ const CollagePreview = ({
     } catch (_) {
       return `panel-${index + 1}`;
     }
-  };
+  }, [selectedTemplate]);
 
-  const openSourceSelectorForActivePanel = () => {
+  const openSourceSelectorForActivePanel = useCallback(() => {
     if (hasLibraryAccess) {
       setIsLibraryOpen(false);
       setIsSearchModalOpen(false);
@@ -184,7 +189,7 @@ const CollagePreview = ({
       return;
     }
     fileInputRef.current?.click();
-  };
+  }, [hasLibraryAccess]);
 
   // Handle panel click - pro/admin users choose between Library and memeSRC search, others use file picker fallback
   const handlePanelClick = (index, panelId) => {
@@ -213,6 +218,59 @@ const CollagePreview = ({
       openSourceSelectorForActivePanel();
     }
   };
+
+  useEffect(() => {
+    if (!panelAutoOpenRequest) return;
+    const requestId = panelAutoOpenRequest.requestId;
+    if (!requestId || handledAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelIndex = (
+      typeof panelAutoOpenRequest.panelIndex === 'number' &&
+      panelAutoOpenRequest.panelIndex >= 0
+    ) ? panelAutoOpenRequest.panelIndex : null;
+    let requestedPanelId = panelAutoOpenRequest.panelId || null;
+
+    if (!requestedPanelId && requestedPanelIndex !== null) {
+      requestedPanelId = resolvePanelIdFromIndex(requestedPanelIndex);
+    }
+    if (requestedPanelIndex === null && requestedPanelId) {
+      requestedPanelIndex = parsePanelIndexFromId(requestedPanelId);
+    }
+    if (requestedPanelIndex === null || !requestedPanelId) return;
+
+    handledAutoOpenRequestRef.current = requestId;
+
+    setActivePanelIndex(requestedPanelIndex);
+    setActivePanelId(requestedPanelId);
+
+    const imageIndex = panelImageMapping?.[requestedPanelId];
+    const hasValidImage =
+      imageIndex !== undefined &&
+      imageIndex !== null &&
+      imageIndex >= 0 &&
+      imageIndex < (selectedImages?.length || 0) &&
+      selectedImages?.[imageIndex];
+
+    if (hasValidImage) {
+      setIsReplaceMode(true);
+      setActiveExistingImageIndex(imageIndex);
+    } else {
+      setIsReplaceMode(false);
+      setActiveExistingImageIndex(null);
+    }
+
+    openSourceSelectorForActivePanel();
+    if (typeof onPanelAutoOpenHandled === 'function') {
+      onPanelAutoOpenHandled(requestId);
+    }
+  }, [
+    panelAutoOpenRequest,
+    panelImageMapping,
+    selectedImages,
+    resolvePanelIdFromIndex,
+    openSourceSelectorForActivePanel,
+    onPanelAutoOpenHandled,
+  ]);
 
   // Helper: convert Blob to data URL
   const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
@@ -832,6 +890,7 @@ const CollagePreview = ({
         panelCount={panelCount}
         images={selectedImages}
         onPanelClick={handlePanelClick}
+        onRemovePanel={onRemovePanelRequest}
         onEditImage={isAdmin ? handleEditImageRequest : undefined}
         canEditImage={isAdmin}
         onSaveGestureDetected={onGenerateNudgeRequested}
@@ -1162,6 +1221,13 @@ CollagePreview.propTypes = {
   replaceImage: PropTypes.func.isRequired,
   updatePanelImageMapping: PropTypes.func.isRequired,
   panelImageMapping: PropTypes.object.isRequired,
+  panelAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelAutoOpenHandled: PropTypes.func,
+  onRemovePanelRequest: PropTypes.func,
   borderThickness: PropTypes.number,
   borderColor: PropTypes.string,
   panelTransforms: PropTypes.object,
