@@ -1402,6 +1402,13 @@ const CanvasCollagePreview = ({
   const clearActiveStickerSelection = useCallback((event) => {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    // Clear hover overlays immediately when dismissing a sticker selection.
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredPanel(null);
+    setHoveredBorder(null);
     setActiveStickerId(null);
     setStickerInteraction(null);
     pendingStickerPointerRef.current = null;
@@ -2554,6 +2561,18 @@ const CanvasCollagePreview = ({
       
       updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
       setBorderDragStart({ x, y });
+      return;
+    }
+
+    // Suppress hover darkening briefly after sticker tap-away deselection.
+    if (Date.now() < (frameTapSuppressUntilRef.current || 0)) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      if (hoveredPanel !== null) setHoveredPanel(null);
+      if (hoveredBorder !== null) setHoveredBorder(null);
+      canvas.style.cursor = 'default';
       return;
     }
     
@@ -4321,7 +4340,7 @@ const CanvasCollagePreview = ({
                       transform: 'translateX(-50%)',
                       borderRadius: '50%',
                       border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(244, 67, 54, 0.95)',
+                      backgroundColor: 'rgba(117, 117, 117, 0.96)',
                       boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
                       cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
                         ? 'grabbing'
