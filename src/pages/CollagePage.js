@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { useTheme } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid } from "@mui/material";
 import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
@@ -68,7 +68,7 @@ function countGridTracks(template) {
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
     if (!customLayout || typeof customLayout !== 'object') return false;
-    const needed = Math.max(2, panelCount || 2);
+    const needed = Math.max(1, panelCount || 1);
     if (Array.isArray(customLayout.areas)) return customLayout.areas.length >= needed;
     if (Array.isArray(customLayout.items)) return customLayout.items.length >= needed;
     const cols = countGridTracks(customLayout.gridTemplateColumns);
@@ -185,6 +185,10 @@ export default function CollagePage() {
   
   // Projects state: track only the active project id for editor flows
   const [activeProjectId, setActiveProjectId] = useState(null);
+  const activeProjectIdRef = useRef(null);
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
   // Simplified autosave: no throttling/deferral; save only on tool exit
   const lastRenderedSigRef = useRef(null);
   const editingSessionActiveRef = useRef(false);
@@ -211,7 +215,7 @@ export default function CollagePage() {
   
   // Unified bottom bar control (no animation)
   const [currentView, setCurrentView] = useState('editor'); // 'library' | 'editor'
-  const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 2 });
+  const [librarySelection, setLibrarySelection] = useState({ count: 0, minSelected: 1 });
   const libraryActionsRef = useRef({ primary: null, clearSelection: null });
   const [startInLibrary, setStartInLibrary] = useState(false);
 
@@ -302,6 +306,7 @@ export default function CollagePage() {
     addMultipleImages,
     removeImage,
     removePanelAtIndex,
+    insertPanelAtIndex,
     updateImage,
     replaceImage,
     clearImages,
@@ -757,11 +762,12 @@ export default function CollagePage() {
         // Auto-assign images to panels like bulk upload does
         setTimeout(() => {
           // First adjust panel count if needed to accommodate all images
-          const desiredPanelCount = Math.min(transformedImages.length, 5); // Max 5 panels supported
+          const desiredPanelCount = Math.max(1, Math.min(transformedImages.length, 5)); // Max 5 panels supported
           debugLog(`[PANEL DEBUG] Current panel count: ${panelCount}, desired: ${desiredPanelCount}, images: ${transformedImages.length}`);
           debugLog(`[PANEL DEBUG] Current template:`, selectedTemplate);
 
-          if (transformedImages.length > panelCount && setPanelCount) {
+          const panelCountWillChange = desiredPanelCount !== panelCount;
+          if (panelCountWillChange && setPanelCount) {
             setPanelCount(desiredPanelCount);
             debugLog(`[PANEL DEBUG] Adjusted panel count to ${desiredPanelCount} for ${transformedImages.length} images`);
           }
@@ -781,7 +787,7 @@ export default function CollagePage() {
 
             debugLog('[PANEL DEBUG] Auto-assigning collage images to panels:', newMapping);
             updatePanelImageMapping(newMapping);
-          }, transformedImages.length > panelCount ? 200 : 0); // Extra delay if panel count changed
+          }, panelCountWillChange ? 200 : 0); // Extra delay if panel count changed
         }, 100); // Small delay to ensure images are added first
 
         // Clear the navigation state to prevent re-loading on refresh
@@ -832,7 +838,7 @@ export default function CollagePage() {
     if (!snap) return;
 
     const nextAspectRatio = snap.selectedAspectRatio || 'square';
-    const nextPanelCount = snap.panelCount || 2;
+    const nextPanelCount = snap.panelCount || 1;
 
     let templateForSnapshot = null;
     try {
@@ -1203,6 +1209,13 @@ export default function CollagePage() {
   // Use a ref-backed loader to avoid re-running due to changing callback identity
   useEffect(() => {
     if (hasProjectsAccess && projectId) {
+      const isAlreadyActiveProject = (
+        activeProjectIdRef.current &&
+        projectId === activeProjectIdRef.current &&
+        !loadingProjectRef.current &&
+        !isHydratingProjectRef.current
+      );
+      if (isAlreadyActiveProject) return undefined;
       void triggerProjectLoad(projectId).catch(() => {});
     }
     return () => {};
@@ -1212,6 +1225,21 @@ export default function CollagePage() {
     if (!record || record.id !== activeProjectId) return;
     const remoteVersion = typeof record.snapshotVersion === 'number' ? record.snapshotVersion : null;
     if (remoteVersion === null) return;
+    // Ignore self-echo subscription updates where the incoming snapshot matches
+    // the current in-memory state to prevent unnecessary rehydration/reload.
+    try {
+      if (record.state) {
+        const incomingSig = computeSnapshotSignature(record.state);
+        if (incomingSig && incomingSig === currentSigRef.current) {
+          activeSnapshotVersionRef.current = remoteVersion;
+          acknowledgedRemoteVersionRef.current = remoteVersion;
+          setRemoteUpdateWarning(null);
+          return;
+        }
+      }
+    } catch (_) {
+      // Ignore signature parse issues and fall back to version-based handling.
+    }
     const localVersion = typeof activeSnapshotVersionRef.current === 'number' ? activeSnapshotVersionRef.current : null;
     if (localVersion !== null && remoteVersion <= localVersion) {
       if ((acknowledgedRemoteVersionRef.current ?? -1) < remoteVersion) {
@@ -1438,19 +1466,24 @@ export default function CollagePage() {
     ));
   }, []);
 
-  const handleAddPanelRequested = useCallback(() => {
+  const handleAddPanelRequested = useCallback((position = 'end') => {
     if (isHydratingProject || isCreatingCollage) return;
     if ((panelCount || 0) >= MAX_IMAGES) return;
 
-    const nextCount = Math.min(MAX_IMAGES, Math.max(2, (panelCount || 2) + 1));
+    const insertAtStart = position === 'start';
+    const nextCount = Math.min(MAX_IMAGES, Math.max(1, (panelCount || 1) + 1));
+    if (insertAtStart) {
+      insertPanelAtIndex(0);
+    }
     setPanelCount(nextCount);
     syncTemplateForPanelCount(nextCount);
     resetCustomLayoutArtifacts();
-    queuePanelAutoOpen(nextCount - 1);
+    queuePanelAutoOpen(insertAtStart ? 0 : (nextCount - 1));
   }, [
     isHydratingProject,
     isCreatingCollage,
     panelCount,
+    insertPanelAtIndex,
     setPanelCount,
     syncTemplateForPanelCount,
     resetCustomLayoutArtifacts,
@@ -1458,14 +1491,14 @@ export default function CollagePage() {
   ]);
 
   const executePanelRemoval = useCallback((panelId) => {
-    if (!panelId || panelCount <= 2) return;
+    if (!panelId || panelCount <= 1) return;
     const parsedIndex = parsePanelIndexFromId(panelId);
     if (parsedIndex === null) return;
 
     const boundedIndex = Math.max(0, Math.min(parsedIndex, panelCount - 1));
     removePanelAtIndex(boundedIndex);
 
-    const nextCount = Math.max(2, panelCount - 1);
+    const nextCount = Math.max(1, panelCount - 1);
     setPanelCount(nextCount);
     syncTemplateForPanelCount(nextCount);
     resetCustomLayoutArtifacts();
@@ -1479,10 +1512,10 @@ export default function CollagePage() {
 
   const handleRemovePanelRequest = useCallback((panelId) => {
     if (!panelId) return;
-    if (panelCount <= 2) {
+    if (panelCount <= 1) {
       setSnackbar({
         open: true,
-        message: 'A collage needs at least 2 panels.',
+        message: 'A collage needs at least 1 panel.',
         severity: 'info',
       });
       return;
@@ -1799,6 +1832,73 @@ export default function CollagePage() {
     }
   }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, panelTransforms]);
 
+  const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
+  const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
+  const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
+  const neutralButtonHoverBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.36 : 0.22);
+  const neutralButtonShadow = `0 4px 14px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.32 : 0.14)}`;
+  const neutralActionButtonSx = {
+    minHeight: 48,
+    minWidth: isMobile ? 48 : undefined,
+    px: isMobile ? 1.25 : 2,
+    borderRadius: 1.5,
+    fontWeight: 700,
+    textTransform: 'none',
+    color: 'text.primary',
+    backgroundColor: neutralButtonBg,
+    border: '1px solid',
+    borderColor: neutralButtonBorder,
+    boxShadow: neutralButtonShadow,
+    '&:hover': {
+      backgroundColor: neutralButtonHoverBg,
+      borderColor: neutralButtonHoverBorder,
+      boxShadow: neutralButtonShadow,
+    },
+  };
+  const primaryActionButtonSx = {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 1.5,
+    fontWeight: 700,
+    textTransform: 'none',
+    backgroundColor: theme.palette.primary.main,
+    border: '1px solid',
+    borderColor: alpha(theme.palette.primary.dark, 0.95),
+    boxShadow: nudgeVisualActive
+      ? `0 10px 28px ${alpha(theme.palette.primary.main, 0.52)}`
+      : `0 6px 18px ${alpha(theme.palette.primary.main, 0.34)}`,
+    transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
+    transition: 'transform 180ms ease, box-shadow 220ms ease, background-color 160ms ease',
+    color: 'primary.contrastText',
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+      boxShadow: nudgeVisualActive
+        ? `0 10px 28px ${alpha(theme.palette.primary.main, 0.56)}`
+        : `0 6px 18px ${alpha(theme.palette.primary.main, 0.4)}`,
+    },
+  };
+  const settingsActionButtonSx = {
+    ...neutralActionButtonSx,
+    px: 2,
+    color: settingsOpen ? 'text.primary' : 'text.primary',
+    backgroundColor: settingsOpen
+      ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.12)
+      : neutralButtonBg,
+    borderColor: settingsOpen ? alpha(theme.palette.primary.main, 0.72) : neutralButtonBorder,
+    boxShadow: settingsOpen
+      ? `0 0 0 1px ${alpha(theme.palette.primary.main, 0.4)}, ${neutralButtonShadow}`
+      : neutralButtonShadow,
+    '&:hover': {
+      backgroundColor: settingsOpen
+        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.28 : 0.18)
+        : neutralButtonHoverBg,
+      borderColor: settingsOpen ? alpha(theme.palette.primary.main, 0.9) : neutralButtonHoverBorder,
+      boxShadow: settingsOpen
+        ? `0 0 0 1px ${alpha(theme.palette.primary.main, 0.55)}, ${neutralButtonShadow}`
+        : neutralButtonShadow,
+    },
+  };
+
   return (
     <>
       <Helmet><title>Collage Tool - Editor - memeSRC</title></Helmet>
@@ -1838,9 +1938,8 @@ export default function CollagePage() {
                   mb: isMobile ? 0.25 : 0.75,
                   pl: isMobile ? 0.5 : 0,
                   ml: isMobile ? 0 : -0.5,
-                  color: '#fff',
+                  color: 'text.primary',
                   fontSize: isMobile ? '2.2rem' : '2.5rem',
-                  textShadow: '0px 2px 4px rgba(0,0,0,0.15)'
                 }}>
                   <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
                   <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -1851,8 +1950,10 @@ export default function CollagePage() {
                         size="small" 
                         onClick={() => setShowEarlyAccess(true)}
                         sx={{ 
-                          backgroundColor: '#ff9800',
-                          color: '#000',
+                          backgroundColor: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.26 : 0.18),
+                          color: theme.palette.warning.light,
+                          border: '1px solid',
+                          borderColor: alpha(theme.palette.warning.main, 0.6),
                           fontWeight: 'bold',
                           fontSize: '0.65rem',
                           height: 20,
@@ -1876,8 +1977,8 @@ export default function CollagePage() {
                 severity="warning"
                 sx={{
                   mb: 2,
-                  border: '1px solid rgba(255, 193, 7, 0.4)',
-                  background: 'rgba(255, 193, 7, 0.12)',
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+                  background: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.14 : 0.1),
                 }}
                 action={(
                   <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ minWidth: isMobile ? 'auto' : 240 }}>
@@ -1929,7 +2030,7 @@ export default function CollagePage() {
                 setSettingsOpen={setSettingsOpen}
                 settingsRef={settingsRef}
                 onViewChange={(v) => setCurrentView(v)}
-                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 2 })}
+                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 1 })}
                 onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
                 // Mobile controls bar actions
                 onBack={hasProjectsAccess ? handleBackToProjects : undefined}
@@ -1943,7 +2044,7 @@ export default function CollagePage() {
                   sx={{
                     position: 'absolute',
                     inset: 0,
-                    bgcolor: 'rgba(0,0,0,0.35)',
+                    bgcolor: alpha(theme.palette.common.black, 0.35),
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1953,8 +2054,8 @@ export default function CollagePage() {
                   }}
                 >
                   <Stack spacing={1} alignItems="center">
-                    <CircularProgress size={26} thickness={4} sx={{ color: '#fff' }} />
-                    <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 600 }}>
+                    <CircularProgress size={26} thickness={4} sx={{ color: 'common.white' }} />
+                    <Typography variant="subtitle2" sx={{ color: 'common.white', fontWeight: 600 }}>
                       Loading project…
                     </Typography>
                   </Stack>
@@ -1983,12 +2084,12 @@ export default function CollagePage() {
                     left: 0,
                     right: 0,
                     zIndex: 1600,
-                    bgcolor: 'background.paper',
+                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.94 : 0.98),
                     borderTop: 1,
                     borderColor: 'divider',
                     p: isMobile ? 1.5 : 2,
                     pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
-                    boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
+                    boxShadow: `0 -8px 30px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.14)}`,
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
                     justifyContent: 'center',
@@ -2007,18 +2108,8 @@ export default function CollagePage() {
                                 variant="contained"
                                 onClick={handleLibraryCancel}
                                 disabled={isCreatingCollage}
-                                sx={{
-                                  flex: 1,
-                                  minHeight: 48,
-                                  fontWeight: 700,
-                                  textTransform: 'none',
-                                  background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                  border: '1px solid #3a3a3a',
-                                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                  color: '#e0e0e0',
-                                  '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                }}
-                                startIcon={<Close sx={{ color: '#e0e0e0' }} />}
+                                sx={{ ...neutralActionButtonSx, flex: 1 }}
+                                startIcon={<Close />}
                               >
                                 Cancel
                               </Button>
@@ -2028,17 +2119,7 @@ export default function CollagePage() {
                               variant="contained"
                               onClick={() => libraryActionsRef.current?.primary?.()}
                               disabled={isCreatingCollage || (librarySelection?.count || 0) < (librarySelection?.minSelected || 1)}
-                              sx={{
-                                flex: 1,
-                                minHeight: 48,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                                border: '1px solid #8b5cc7',
-                                boxShadow: '0 6px 20px rgba(139, 92, 199, 0.4)',
-                                color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                              }}
+                              sx={primaryActionButtonSx}
                               startIcon={<ArrowForward />}
                             >
                               Continue
@@ -2054,22 +2135,11 @@ export default function CollagePage() {
                                   variant="contained"
                                   onClick={handleBackToProjects}
                                   disabled={isCreatingCollage}
-                                  startIcon={!isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : undefined}
+                                  startIcon={!isMobile ? <ArrowBack /> : undefined}
                                   aria-label="Back to memes"
-                                  sx={{
-                                    minHeight: 48,
-                                    minWidth: isMobile ? 48 : undefined,
-                                    px: isMobile ? 1.25 : 2,
-                                    fontWeight: 700,
-                                    textTransform: 'none',
-                                    background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                    border: '1px solid #3a3a3a',
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                    color: '#e0e0e0',
-                                    '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                  }}
+                                  sx={neutralActionButtonSx}
                                 >
-                                  {isMobile ? <ArrowBack sx={{ color: '#e0e0e0' }} /> : 'Back to Memes'}
+                                  {isMobile ? <ArrowBack /> : 'Back to Memes'}
                                 </Button>
                               </Collapse>
                             )}
@@ -2082,18 +2152,7 @@ export default function CollagePage() {
                                   disabled={isCreatingCollage}
                                   startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
                                   aria-label="Start over"
-                                  sx={{
-                                    minHeight: 48,
-                                    minWidth: isMobile ? 48 : undefined,
-                                    px: isMobile ? 1.25 : 2,
-                                    fontWeight: 700,
-                                    textTransform: 'none',
-                                    background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                    border: '1px solid #3a3a3a',
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                    color: '#e0e0e0',
-                                    '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                  }}
+                                  sx={neutralActionButtonSx}
                                 >
                                   {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
                                 </Button>
@@ -2106,48 +2165,27 @@ export default function CollagePage() {
                               disabled={isCreatingCollage || !allPanelsHaveImages}
                               size="large"
                               startIcon={<Save />}
-                              sx={{
-                                flex: 1,
-                                minHeight: 48,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                                border: '1px solid #8b5cc7',
-                                boxShadow: nudgeVisualActive ? '0 10px 28px rgba(139, 92, 199, 0.6)' : '0 6px 20px rgba(139, 92, 199, 0.4)',
-                                transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
-                                transition: 'transform 180ms ease, box-shadow 220ms ease',
-                                color: '#fff',
-                                '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                              }}
+                              sx={primaryActionButtonSx}
                               aria-label="Create and save meme"
                               ref={generateBtnRef}
                             >
                               {isCreatingCollage ? 'Generating Meme...' : 'Generate Meme'}
                             </Button>
 
-                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                              <Button
-                                variant="contained"
-                                onClick={handleToggleSettings}
-                                disabled={isCreatingCollage}
-                                startIcon={!isMobile ? <Settings sx={{ color: '#ffffff' }} /> : undefined}
-                                aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                                sx={{
-                                  minHeight: 48,
-                                  minWidth: isMobile ? 48 : undefined,
-                                  px: isMobile ? 1.25 : 2,
-                                  fontWeight: 700,
-                                  textTransform: 'none',
-                                  background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                  border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                                  boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                  color: '#e0e0e0',
-                                  '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                                }}
-                              >
-                                {isMobile ? <Settings sx={{ color: '#ffffff' }} /> : (settingsOpen ? 'Close' : 'Settings')}
-                              </Button>
-                            </Collapse>
+                            {!isMobile && (
+                              <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                                <Button
+                                  variant="contained"
+                                  onClick={handleToggleSettings}
+                                  disabled={isCreatingCollage}
+                                  startIcon={<Settings />}
+                                  aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                                  sx={settingsActionButtonSx}
+                                >
+                                  {settingsOpen ? 'Close' : 'Settings'}
+                                </Button>
+                              </Collapse>
+                            )}
                           </>
                         )}
                       </>
@@ -2162,18 +2200,7 @@ export default function CollagePage() {
                               disabled={isCreatingCollage}
                               startIcon={!isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : undefined}
                               aria-label="Start over"
-                              sx={{
-                                minHeight: 48,
-                                minWidth: isMobile ? 48 : undefined,
-                                px: isMobile ? 1.25 : 2,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                border: '1px solid #3a3a3a',
-                                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                color: '#e0e0e0',
-                                '&:hover': { background: 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                              }}
+                              sx={neutralActionButtonSx}
                             >
                               {isMobile ? <DeleteForever sx={{ color: (theme) => theme.palette.error.main }} /> : 'Start Over'}
                             </Button>
@@ -2185,48 +2212,27 @@ export default function CollagePage() {
                             disabled={isCreatingCollage || !allPanelsHaveImages}
                             size="large"
                             startIcon={<Save />}
-                            sx={{
-                              flex: 1,
-                              minHeight: 48,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              background: 'linear-gradient(45deg, #6b42a1 0%, #7b4cb8 50%, #8b5cc7 100%)',
-                              border: '1px solid #8b5cc7',
-                              boxShadow: nudgeVisualActive ? '0 10px 28px rgba(139, 92, 199, 0.6)' : '0 6px 20px rgba(139, 92, 199, 0.4)',
-                              transform: nudgeVisualActive ? 'scale(1.015)' : 'none',
-                              transition: 'transform 180ms ease, box-shadow 220ms ease',
-                              color: '#fff',
-                              '&:hover': { background: 'linear-gradient(45deg, #5e3992 0%, #6b42a1 50%, #7b4cb8 100%)' }
-                            }}
+                            sx={primaryActionButtonSx}
                             aria-label="Create and save meme"
                             ref={generateBtnRef}
                           >
                             {isCreatingCollage ? 'Generating Meme...' : 'Generate Meme'}
                           </Button>
 
-                          <Collapse in={!nudgeVisualActive} orientation="horizontal">
-                            <Button
-                              variant="contained"
-                              onClick={handleToggleSettings}
-                              disabled={isCreatingCollage}
-                              startIcon={!isMobile ? <Settings sx={{ color: '#ffffff' }} /> : undefined}
-                              aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
-                              sx={{
-                                minHeight: 48,
-                                minWidth: isMobile ? 48 : undefined,
-                                px: isMobile ? 1.25 : 2,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                background: settingsOpen ? 'linear-gradient(45deg, #2a2a2a 30%, #333333 90%)' : 'linear-gradient(45deg, #1f1f1f 30%, #2a2a2a 90%)',
-                                border: settingsOpen ? '1px solid #8b5cc7' : '1px solid #3a3a3a',
-                                boxShadow: settingsOpen ? '0 0 0 2px rgba(139, 92, 199, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35)' : '0 6px 16px rgba(0, 0, 0, 0.35)',
-                                color: '#e0e0e0',
-                                '&:hover': { background: settingsOpen ? 'linear-gradient(45deg, #343434 30%, #3b3b3b 90%)' : 'linear-gradient(45deg, #262626 30%, #333333 90%)' }
-                              }}
-                            >
-                              {isMobile ? <Settings sx={{ color: '#ffffff' }} /> : (settingsOpen ? 'Close' : 'Settings')}
-                            </Button>
-                          </Collapse>
+                          {!isMobile && (
+                            <Collapse in={!nudgeVisualActive} orientation="horizontal">
+                              <Button
+                                variant="contained"
+                                onClick={handleToggleSettings}
+                                disabled={isCreatingCollage}
+                                startIcon={<Settings />}
+                                aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
+                                sx={settingsActionButtonSx}
+                              >
+                                {settingsOpen ? 'Close' : 'Settings'}
+                              </Button>
+                            </Collapse>
+                          )}
                         </>
                       )
                     )}
@@ -2250,13 +2256,13 @@ export default function CollagePage() {
                     alignItems: 'center',
                     position: 'relative',
                     transform: 'translateX(-50%)',
-                    bgcolor: 'rgba(25, 25, 25, 0.98)',
-                    color: '#fff',
+                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.97 : 0.99),
+                    color: 'text.primary',
                     px: 2,
                     py: 1.25,
                     borderRadius: 2,
-                    border: '1px solid rgba(139, 92, 199, 0.5)',
-                    boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.55)}`,
+                    boxShadow: `0 12px 32px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.5 : 0.2)}`,
                     maxWidth: 320,
                     width: 'max-content',
                     textAlign: 'center',

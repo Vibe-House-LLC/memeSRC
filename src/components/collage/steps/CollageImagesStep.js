@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { Box, Button, useMediaQuery } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 
 // Import our new dynamic CollagePreview component
@@ -153,13 +153,37 @@ const CollageImagesStep = ({
   }, [selectedImages]);
 
   // Bulk upload handler and related functions removed since moved to BulkUploadSection
+  const canTriggerAddPanel = canAddPanel && !isCreatingCollage && !isHydratingProject;
+  const triggerAddPanelRequest = (position = 'end') => {
+    if (typeof onAddPanelRequest === 'function') {
+      onAddPanelRequest(position);
+    }
+  };
+  const addPanelButtonSx = {
+    textTransform: 'none',
+    fontWeight: 700,
+    borderRadius: 999,
+    px: isMobile ? 1.75 : 2.25,
+    borderColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.55 : 0.42),
+    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+    color: 'text.primary',
+    '&:hover': {
+      borderColor: theme.palette.primary.main,
+      bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.16),
+    },
+    '&.Mui-disabled': {
+      borderColor: alpha(theme.palette.action.disabled, 0.35),
+      color: 'text.disabled',
+      bgcolor: alpha(theme.palette.action.disabledBackground, theme.palette.mode === 'dark' ? 0.25 : 0.5),
+    },
+  };
 
   return (
     <Box sx={{ my: isMobile ? 0 : 0.25 }}>
       {/* Layout Preview */}
       <Box sx={{
-        p: isMobile ? 1.5 : 1.5,
-        mb: isMobile ? 1.5 : 1.5,
+        p: isMobile ? 1 : 1.5,
+        mb: isMobile ? 1 : 1.5,
         borderRadius: 2,
         textAlign: 'center',
         display: 'flex',
@@ -167,17 +191,31 @@ const CollageImagesStep = ({
         alignItems: 'center',
         position: 'relative',
       }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            size={isMobile ? 'small' : 'medium'}
+            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+            onClick={() => triggerAddPanelRequest('start')}
+            disabled={!canTriggerAddPanel}
+            sx={addPanelButtonSx}
+          >
+            Add panel
+          </Button>
+        </Box>
+
         {/* Always render the preview, let it handle null templates */}
         <Box sx={{ 
           width: '100%', 
-          mb: 1.5,
+          mb: 1,
           position: 'relative'
         }} id="collage-preview-container">
           <CollagePreview 
             canvasResetKey={canvasResetKey}
             selectedTemplate={selectedTemplate}
             selectedAspectRatio={selectedAspectRatio}
-            panelCount={panelCount || 2} /* Ensure we always have a fallback */
+            panelCount={panelCount || 1} /* Ensure we always have a fallback */
             selectedImages={selectedImages || []}
             addImage={addImage}
             addMultipleImages={addMultipleImages}
@@ -221,25 +259,12 @@ const CollageImagesStep = ({
         <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
           <Button
             variant="outlined"
-            color="inherit"
+            color="primary"
             size={isMobile ? 'small' : 'medium'}
             startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
-            onClick={() => {
-              if (typeof onAddPanelRequest === 'function') {
-                onAddPanelRequest();
-              }
-            }}
-            disabled={!canAddPanel || isCreatingCollage || isHydratingProject}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 700,
-              borderColor: 'rgba(255,255,255,0.35)',
-              color: '#fff',
-              '&:hover': {
-                borderColor: 'rgba(255,255,255,0.65)',
-                backgroundColor: 'rgba(255,255,255,0.06)',
-              },
-            }}
+            onClick={() => triggerAddPanelRequest('end')}
+            disabled={!canTriggerAddPanel}
+            sx={addPanelButtonSx}
           >
             Add panel
           </Button>

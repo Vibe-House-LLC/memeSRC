@@ -1,4 +1,5 @@
 /* eslint-disable import/extensions, import/no-unresolved */
+import onePanelLayouts from './OnePanelLayouts';
 import twoPanelLayouts from './TwoPanelLayouts';
 import threePanelLayouts from './ThreePanelLayouts';
 import fourPanelLayouts from './FourPanelLayouts';
@@ -36,6 +37,7 @@ export const layoutStyles = [
  * Combined layout definitions organized by panel count
  */
 export const layoutDefinitions = {
+  1: onePanelLayouts,
   2: twoPanelLayouts,
   3: threePanelLayouts,
   4: fourPanelLayouts,
@@ -47,6 +49,9 @@ export const layoutDefinitions = {
  * Maps layout IDs to their style category for organization
  */
 export const layoutStyleMapping = {
+  // 1-panel layouts
+  'single-panel': 'grid',
+
   // 2-panel layouts
   'split-horizontal': 'grid',
   'split-vertical': 'grid',
@@ -96,6 +101,7 @@ export const layoutStyleMapping = {
  * These will be prioritized in the UI
  */
 export const recommendedLayouts = {
+  1: ['single-panel'],
   2: ['split-horizontal', 'split-vertical', 'two-thirds-one-third-h'],
   3: ['3-rows', 'main-with-two-bottom', '3-columns'],
   4: ['grid-2x2', 'big-and-3-bottom', '4-rows'],
@@ -106,8 +112,9 @@ export const recommendedLayouts = {
  * Gets layout templates based on panel count and aspect ratio
  */
 export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') => {
-  // Ensure panel count is in the supported range (2-5)
-  const adjustedPanelCount = Math.max(2, Math.min(panelCount, 5));
+  // Ensure panel count is in the supported range (1-5)
+  const normalizedPanelCount = Number.isFinite(panelCount) ? panelCount : 1;
+  const adjustedPanelCount = Math.max(1, Math.min(normalizedPanelCount, 5));
   
   const category = getAspectRatioCategory(aspectRatioId);
   const layouts = layoutDefinitions[adjustedPanelCount][category] || [];
@@ -126,7 +133,7 @@ export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') =>
     hasTallPanels: layout.hasTallPanels || false,
     hasWidePanels: layout.hasWidePanels || true, // Default to wide panels
     hasEqualPanels: layout.hasEqualPanels || 
-      ['grid-2x2', 'split-horizontal', 'split-vertical', '3-rows', '3-columns', '4-rows', '4-columns', '5-rows', '5-columns'].includes(layout.id),
+      ['single-panel', 'grid-2x2', 'split-horizontal', 'split-vertical', '3-rows', '3-columns', '4-rows', '4-columns', '5-rows', '5-columns'].includes(layout.id),
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
       const layoutConfig = layout.getLayoutConfig();
       return renderLayoutGrid(layoutConfig, theme, imageCount || layout.panels);
@@ -174,8 +181,9 @@ export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') =>
  * Creates an auto layout based on image count and aspect ratio
  */
 export const createAutoLayout = (imageCount, aspectRatio, theme, aspectRatioPresets) => {
-  // Enforce minimum of 2 panels and maximum of 5
-  const adjustedCount = Math.min(Math.max(imageCount, 2), 5);
+  // Enforce minimum of 1 panel and maximum of 5
+  const normalizedImageCount = Number.isFinite(imageCount) ? imageCount : 1;
+  const adjustedCount = Math.min(Math.max(normalizedImageCount, 1), 5);
   
   // Find closest aspect ratio preset
   const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) || 
@@ -184,7 +192,7 @@ export const createAutoLayout = (imageCount, aspectRatio, theme, aspectRatioPres
   const category = getAspectRatioCategory(aspectRatioId);
   
   // Get the first (highest priority) layout for this panel count and aspect ratio category
-  if (adjustedCount >= 2 && layoutDefinitions[adjustedCount]?.[category]?.length > 0) {
+  if (adjustedCount >= 1 && layoutDefinitions[adjustedCount]?.[category]?.length > 0) {
     const bestLayout = layoutDefinitions[adjustedCount][category][0];
     const layoutConfig = bestLayout.getLayoutConfig();
     return renderLayoutGrid(layoutConfig, theme, imageCount);

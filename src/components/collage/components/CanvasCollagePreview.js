@@ -249,7 +249,7 @@ const createLayoutConfig = (template, panelCount) => {
   
   try {
     // Look up the original layout in the layout definitions
-    const panelCountKey = Math.max(2, Math.min(panelCount, 5));
+    const panelCountKey = Math.max(1, Math.min(panelCount, 5));
     const categories = layoutDefinitions[panelCountKey];
     
     // Search for the layout in all categories (wide, tall, square)
@@ -783,7 +783,7 @@ const CanvasCollagePreview = ({
   const isCustomLayoutCompatible = useCallback((layout, count) => {
     try {
       if (!layout || typeof layout !== 'object') return false;
-      const needed = Math.max(2, count || 2);
+      const needed = Math.max(1, count || 1);
       if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
       if (Array.isArray(layout.items)) return layout.items.length >= needed;
       const cols = countGridTracks(layout.gridTemplateColumns);
@@ -846,10 +846,10 @@ const CanvasCollagePreview = ({
     }
   }, [isHydratingProject, allowHydrationTransformCarry]);
 
-  // Shared helper: carry transform from one frame to another preserving
-  // absolute zoom and focal point while ensuring the image still covers
-  // the destination frame.
-  const computeCarriedTransformFromImage = useCallback((img, fromRect, toRect, fromTransform) => {
+  // Shared helper: carry transform between frames while preserving focal point.
+  // By default we preserve the user's scale parameter (relative zoom) to avoid
+  // compounding zoom across repeated layout changes.
+  const computeCarriedTransformFromImage = useCallback((img, fromRect, toRect, fromTransform, options = {}) => {
     try {
       if (!img || !fromRect || !toRect) return null;
       const imgW = img.naturalWidth || img.width;
@@ -857,21 +857,26 @@ const CanvasCollagePreview = ({
       const imgAspect = imgW / imgH;
       const fromAspect = fromRect.width / fromRect.height;
       const toAspect = toRect.width / toRect.height;
+      const preserveAbsoluteZoom = options?.preserveAbsoluteZoom === true;
 
       const fromInit = (imgAspect > fromAspect) ? (fromRect.height / imgH) : (fromRect.width / imgW);
       const toInit = (imgAspect > toAspect) ? (toRect.height / imgH) : (toRect.width / imgW);
+      const sourceScale = Math.max(1, Math.min(5, fromTransform?.scale || 1));
+      const fromFinal = fromInit * sourceScale;
+      const toFinal = preserveAbsoluteZoom
+        ? Math.max(fromFinal, toInit)
+        : (toInit * sourceScale);
+      const newScaleParam = Math.max(1, Math.min(5, toFinal / toInit));
 
-      const fromFinal = fromInit * (fromTransform?.scale || 1);
-      const toFinal = Math.max(fromFinal, toInit);
-      const newScaleParam = toFinal / toInit;
-
-      // Normalize offsets in source frame
+      // Normalize offsets in source frame using clamped in-bounds source offsets.
       const fromScaledW = imgW * fromFinal;
       const fromScaledH = imgH * fromFinal;
       const fromDx = Math.max(0, (fromScaledW - fromRect.width) / 2);
       const fromDy = Math.max(0, (fromScaledH - fromRect.height) / 2);
-      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionX || 0) / fromDx)) : 0;
-      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, (fromTransform?.positionY || 0) / fromDy)) : 0;
+      const sourcePosX = Math.max(-fromDx, Math.min(fromDx, fromTransform?.positionX || 0));
+      const sourcePosY = Math.max(-fromDy, Math.min(fromDy, fromTransform?.positionY || 0));
+      const normX = fromDx > 0 ? Math.max(-1, Math.min(1, sourcePosX / fromDx)) : 0;
+      const normY = fromDy > 0 ? Math.max(-1, Math.min(1, sourcePosY / fromDy)) : 0;
 
       // Map to destination and clamp
       const toScaledW = imgW * toFinal;
@@ -1152,7 +1157,9 @@ const CanvasCollagePreview = ({
       const fromTransform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
 
       const img = loadedImages[imageIndex];
-      const adjusted = computeCarriedTransformFromImage(img, prev, curr, fromTransform);
+      const adjusted = computeCarriedTransformFromImage(img, prev, curr, fromTransform, {
+        preserveAbsoluteZoom: false,
+      });
       if (adjusted && typeof updatePanelTransform === 'function' && !isTransformNearlyEqual(adjusted, fromTransform)) {
         updatePanelTransform(panelId, adjusted);
       }
@@ -2293,7 +2300,9 @@ const CanvasCollagePreview = ({
       const fromRect = panelRects.find(r => r.panelId === fromPanelId);
       const toRect = panelRects.find(r => r.panelId === toPanelId);
       const fromTransform = panelTransforms[fromPanelId] || { scale: 1, positionX: 0, positionY: 0 };
-      return computeCarriedTransformFromImage(img, fromRect, toRect, fromTransform) || { scale: 1, positionX: 0, positionY: 0 };
+      return computeCarriedTransformFromImage(img, fromRect, toRect, fromTransform, {
+        preserveAbsoluteZoom: true,
+      }) || { scale: 1, positionX: 0, positionY: 0 };
     };
 
     // Create new mapping with swapped images
@@ -2374,33 +2383,18 @@ const CanvasCollagePreview = ({
     if (event && typeof event.stopPropagation === 'function') {
       event.stopPropagation();
     }
-    const mappedImageIndex = panelId ? panelImageMapping?.[panelId] : undefined;
-    const hasAssignedImage =
-      typeof mappedImageIndex === 'number' &&
-      mappedImageIndex >= 0 &&
-      mappedImageIndex < (images?.length || 0) &&
-      Boolean(images?.[mappedImageIndex]);
-    if (!hasAssignedImage) {
-      if (panelId && typeof onPanelClick === 'function') {
-        const rect = panelRects.find((r) => r.panelId === panelId);
-        if (rect) {
-          onPanelClick(rect.index, panelId);
-        }
-      }
-      setActionMenuAnchorEl(null);
-      setActionMenuPosition(null);
-      setActionMenuPanelId(null);
-      return;
-    }
+    setActionMenuPanelId(panelId || null);
     if (event && event.currentTarget) {
       setActionMenuAnchorEl(event.currentTarget);
       setActionMenuPosition(null);
     } else if (event && event.clientX != null && event.clientY != null) {
       setActionMenuPosition({ left: event.clientX, top: event.clientY });
       setActionMenuAnchorEl(null);
+    } else {
+      setActionMenuAnchorEl(null);
+      setActionMenuPosition(null);
     }
-    setActionMenuPanelId(panelId);
-  }, [images, onPanelClick, panelImageMapping, panelRects, isFrameActionSuppressed]);
+  }, [isFrameActionSuppressed]);
 
   const handleActionMenuClose = useCallback(() => {
     setActionMenuAnchorEl(null);
@@ -4030,6 +4024,24 @@ const CanvasCollagePreview = ({
           const imageIndex = actionMenuPanelId ? panelImageMapping[actionMenuPanelId] : undefined;
           const hasImageForPanel = imageIndex !== undefined && loadedImages[imageIndex];
           const hasCaption = !!(actionMenuPanelId && panelTexts[actionMenuPanelId] && (panelTexts[actionMenuPanelId].content || '').trim());
+          if (!hasImageForPanel) {
+            return (
+              <>
+                <MenuItem onClick={handleMenuReplace}>
+                  <ListItemIcon>
+                    <ImageIcon fontSize="small" />
+                  </ListItemIcon>
+                  Add image
+                </MenuItem>
+                <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 1} sx={{ color: 'error.main' }}>
+                  <ListItemIcon sx={{ color: 'inherit' }}>
+                    <DeleteOutline fontSize="small" />
+                  </ListItemIcon>
+                  Remove Panel
+                </MenuItem>
+              </>
+            );
+          }
           return (
             <>
               <MenuItem onClick={handleMenuTransform} disabled={!hasImageForPanel}>
@@ -4058,7 +4070,7 @@ const CanvasCollagePreview = ({
                 </ListItemIcon>
                 Replace Image
               </MenuItem>
-              <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 2} sx={{ color: 'error.main' }}>
+              <MenuItem onClick={handleMenuRemovePanel} disabled={panelCount <= 1} sx={{ color: 'error.main' }}>
                 <ListItemIcon sx={{ color: 'inherit' }}>
                   <DeleteOutline fontSize="small" />
                 </ListItemIcon>

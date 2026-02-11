@@ -13,7 +13,7 @@ const createPanelIds = (panelCount: number): string[] =>
 
 const chooseTemplateId = (panelCount: number, aspectRatio: AspectRatio = 'portrait'): string | null => {
   try {
-    const templates = getLayoutsForPanelCount(Math.max(2, panelCount || 2), aspectRatio as string);
+    const templates = getLayoutsForPanelCount(Math.max(1, panelCount || 1), aspectRatio as string);
     return templates?.[0]?.id || null;
   } catch (_) {
     return null;
@@ -27,7 +27,7 @@ const isTemplateIdCompatible = (
 ): boolean => {
   if (!templateId) return false;
   try {
-    const templates = getLayoutsForPanelCount(Math.max(2, panelCount || 2), aspectRatio as string);
+    const templates = getLayoutsForPanelCount(Math.max(1, panelCount || 1), aspectRatio as string);
     return templates?.some((template) => template.id === templateId) || false;
   } catch (_) {
     return false;
@@ -60,7 +60,7 @@ export function normalizeSnapshot(
   const images = Array.isArray(snapshot?.images) ? [...snapshot!.images] : [];
   const desiredPanelCount = Math.min(
     MAX_COLLAGE_IMAGES,
-    Math.max(snapshot?.panelCount || images.length || 0, 2)
+    Math.max(snapshot?.panelCount || images.length || 0, 1)
   );
   const panelIds = createPanelIds(desiredPanelCount);
 
@@ -115,7 +115,7 @@ export function appendImageToSnapshot(
   }
 
   const nextImages = [...base.images, image];
-  const desiredPanelCount = Math.min(MAX_COLLAGE_IMAGES, Math.max(nextImages.length, 2));
+  const desiredPanelCount = Math.min(MAX_COLLAGE_IMAGES, Math.max(nextImages.length, 1));
   const panelIds = createPanelIds(desiredPanelCount);
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
 
@@ -171,7 +171,7 @@ export function replaceImageInSnapshot(
   const nextImages = [...base.images];
   nextImages[targetIndex] = image;
 
-  const panelIds = createPanelIds(base.panelCount || nextImages.length || 2);
+  const panelIds = createPanelIds(base.panelCount || nextImages.length || 1);
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
 
   const selectedTemplateId =
