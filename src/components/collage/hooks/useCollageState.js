@@ -693,8 +693,8 @@ const [borderThickness, setBorderThickness] = useState(() => {
             : {},
           aspectRatio,
           widthPercent,
-          xPercent: Number.isFinite(xPercentRaw) ? xPercentRaw : defaultXPercent,
-          yPercent: Number.isFinite(yPercentRaw) ? yPercentRaw : defaultYPercent,
+          xPercent: Number.isFinite(xPercentRaw) ? clamp(xPercentRaw, 0, 100) : defaultXPercent,
+          yPercent: Number.isFinite(yPercentRaw) ? clamp(yPercentRaw, 0, 100) : defaultYPercent,
         },
       ];
     });
@@ -719,11 +719,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
         }
         if (updates.xPercent !== undefined) {
           const xRaw = Number(updates.xPercent);
-          next.xPercent = Number.isFinite(xRaw) ? xRaw : sticker.xPercent;
+          next.xPercent = Number.isFinite(xRaw) ? clamp(xRaw, 0, 100) : sticker.xPercent;
         }
         if (updates.yPercent !== undefined) {
           const yRaw = Number(updates.yPercent);
-          next.yPercent = Number.isFinite(yRaw) ? yRaw : sticker.yPercent;
+          next.yPercent = Number.isFinite(yRaw) ? clamp(yRaw, 0, 100) : sticker.yPercent;
         }
         return next;
       });

@@ -671,6 +671,10 @@ const CanvasCollagePreview = ({
   const [loadedStickers, setLoadedStickers] = useState({});
   const [activeStickerId, setActiveStickerId] = useState(null);
   const [stickerInteraction, setStickerInteraction] = useState(null);
+  const [stickerDrafts, setStickerDrafts] = useState({});
+  const stickerDraftsRef = useRef({});
+  const pendingStickerPointerRef = useRef(null);
+  const stickerRafRef = useRef(null);
   // Trigger redraws once custom fonts are ready (especially after loading a saved project)
   const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
 
@@ -1141,56 +1145,135 @@ const CanvasCollagePreview = ({
   }, [stickers]);
 
   useEffect(() => {
+    stickerDraftsRef.current = stickerDrafts;
+  }, [stickerDrafts]);
+
+  useEffect(() => {
+    if (!Array.isArray(stickers) || stickers.length === 0) {
+      if (Object.keys(stickerDraftsRef.current).length > 0) {
+        setStickerDrafts({});
+      }
+      return;
+    }
+
+    const validIds = new Set(stickers.map((sticker) => sticker?.id).filter(Boolean));
+    setStickerDrafts((prev) => {
+      const entries = Object.entries(prev || {});
+      if (entries.length === 0) return prev;
+      let changed = false;
+      const next = {};
+      entries.forEach(([stickerId, draft]) => {
+        if (validIds.has(stickerId)) {
+          next[stickerId] = draft;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [stickers]);
+
+  useEffect(() => {
     if (!activeStickerId) return;
     const stillExists = Array.isArray(stickers) && stickers.some((sticker) => sticker?.id === activeStickerId);
     if (!stillExists) {
       setActiveStickerId(null);
       setStickerInteraction(null);
+      setStickerDrafts((prev) => {
+        if (!prev || !prev[activeStickerId]) return prev;
+        const next = { ...prev };
+        delete next[activeStickerId];
+        return next;
+      });
     }
   }, [activeStickerId, stickers]);
 
-  const getStickerRectPx = useCallback((sticker) => {
+  const clampStickerWidthPx = useCallback((widthPx, aspectRatio) => {
+    const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+    const maxWidthByCanvas = componentWidth * 0.95;
+    const maxWidthByHeight = componentHeight * 0.95 * safeAspectRatio;
+    const maxWidth = Math.max(12, Math.min(maxWidthByCanvas, maxWidthByHeight));
+    return clamp(widthPx, 12, maxWidth);
+  }, [componentHeight, componentWidth]);
+
+  const getStickerRectPx = useCallback((sticker, ratioFallbackImage = null) => {
     if (!sticker) return null;
     const stickerId = sticker.id;
-    const loaded = stickerId ? loadedStickers[stickerId] : null;
+    const draft = stickerId ? stickerDrafts[stickerId] : null;
+    const loaded = ratioFallbackImage || (stickerId ? loadedStickers[stickerId] : null);
     const ratioFromImage = loaded && loaded.naturalWidth && loaded.naturalHeight
       ? (loaded.naturalWidth / loaded.naturalHeight)
       : 1;
-    const ratioRaw = Number(sticker.aspectRatio);
+    const ratioRaw = Number(draft?.aspectRatio ?? sticker.aspectRatio);
     const aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : (ratioFromImage || 1);
-    const widthRaw = Number(sticker.widthPercent);
+    const widthRaw = Number(draft?.widthPercent ?? sticker.widthPercent);
     const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
-    const widthPx = Math.max(12, (widthPercent / 100) * componentWidth);
+    const widthPxUnbounded = (widthPercent / 100) * componentWidth;
+    const widthPx = clampStickerWidthPx(widthPxUnbounded, aspectRatio);
     const heightPx = Math.max(12, widthPx / aspectRatio);
-    const xRaw = Number(sticker.xPercent);
-    const yRaw = Number(sticker.yPercent);
-    const xPx = (Number.isFinite(xRaw) ? xRaw : 36) / 100 * componentWidth;
-    const yPx = (Number.isFinite(yRaw) ? yRaw : 12) / 100 * componentHeight;
+
+    const xRaw = Number(draft?.xPercent ?? sticker.xPercent);
+    const yRaw = Number(draft?.yPercent ?? sticker.yPercent);
+    const safeWidth = Math.max(componentWidth, 1);
+    const safeHeight = Math.max(componentHeight, 1);
+    const maxX = Math.max(0, componentWidth - widthPx);
+    const maxY = Math.max(0, componentHeight - heightPx);
+    const xPx = clamp((Number.isFinite(xRaw) ? xRaw : 36) / 100 * componentWidth, 0, maxX);
+    const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * componentHeight, 0, maxY);
+
     return {
       x: xPx,
       y: yPx,
       width: widthPx,
       height: heightPx,
       aspectRatio,
+      xPercent: (xPx / safeWidth) * 100,
+      yPercent: (yPx / safeHeight) * 100,
+      widthPercent: (widthPx / safeWidth) * 100,
     };
-  }, [componentHeight, componentWidth, loadedStickers]);
+  }, [clampStickerWidthPx, componentHeight, componentWidth, loadedStickers, stickerDrafts]);
 
   const clampStickerPositionPx = useCallback((xPx, yPx, widthPx, heightPx) => {
-    const minVisibleX = Math.min(32, widthPx);
-    const minVisibleY = Math.min(32, heightPx);
-    const minX = -widthPx + minVisibleX;
-    const maxX = componentWidth - minVisibleX;
-    const minY = -heightPx + minVisibleY;
-    const maxY = componentHeight - minVisibleY;
     const safeWidth = Math.max(componentWidth, 1);
     const safeHeight = Math.max(componentHeight, 1);
-    const clampedX = clamp(xPx, minX, maxX);
-    const clampedY = clamp(yPx, minY, maxY);
+    const maxX = Math.max(0, componentWidth - widthPx);
+    const maxY = Math.max(0, componentHeight - heightPx);
+    const clampedX = clamp(xPx, 0, maxX);
+    const clampedY = clamp(yPx, 0, maxY);
     return {
       xPercent: (clampedX / safeWidth) * 100,
       yPercent: (clampedY / safeHeight) * 100,
     };
   }, [componentHeight, componentWidth]);
+
+  const getStickerDraftFromPointer = useCallback((interaction, clientX, clientY) => {
+    if (!interaction) return null;
+    const dx = clientX - interaction.startClientX;
+    const dy = clientY - interaction.startClientY;
+
+    if (interaction.mode === 'resize') {
+      const widthDeltaPercent = (dx / Math.max(componentWidth, 1)) * 100;
+      const unboundedWidthPercent = clamp(interaction.startWidthPercent + widthDeltaPercent, 6, 95);
+      const unboundedWidthPx = (unboundedWidthPercent / 100) * componentWidth;
+      const widthPx = clampStickerWidthPx(unboundedWidthPx, interaction.aspectRatio);
+      const heightPx = Math.max(12, widthPx / (interaction.aspectRatio || 1));
+      const baseX = (interaction.startXPercent / 100) * componentWidth;
+      const baseY = (interaction.startYPercent / 100) * componentHeight;
+      const position = clampStickerPositionPx(baseX, baseY, widthPx, heightPx);
+      const safeWidth = Math.max(componentWidth, 1);
+      return {
+        widthPercent: (widthPx / safeWidth) * 100,
+        xPercent: position.xPercent,
+        yPercent: position.yPercent,
+      };
+    }
+
+    const nextXPx = (interaction.startXPercent / 100) * componentWidth + dx;
+    const nextYPx = (interaction.startYPercent / 100) * componentHeight + dy;
+    const baseWidthPx = clampStickerWidthPx((interaction.startWidthPercent / 100) * componentWidth, interaction.aspectRatio);
+    const baseHeightPx = Math.max(12, baseWidthPx / (interaction.aspectRatio || 1));
+    return clampStickerPositionPx(nextXPx, nextYPx, baseWidthPx, baseHeightPx);
+  }, [clampStickerPositionPx, clampStickerWidthPx, componentHeight, componentWidth]);
 
   const handleStickerPointerDown = useCallback((event, sticker, mode = 'move') => {
     if (!sticker?.id || typeof updateSticker !== 'function') return;
@@ -1216,60 +1299,92 @@ const CanvasCollagePreview = ({
     }
 
     setActiveStickerId(sticker.id);
-
-    const startXPercentRaw = Number(sticker.xPercent);
-    const startYPercentRaw = Number(sticker.yPercent);
-    const startWidthPercentRaw = Number(sticker.widthPercent);
-    const safeWidth = Math.max(componentWidth, 1);
-    const safeHeight = Math.max(componentHeight, 1);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
 
     setStickerInteraction({
       stickerId: sticker.id,
       mode,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      startXPercent: Number.isFinite(startXPercentRaw) ? startXPercentRaw : ((rect.x / safeWidth) * 100),
-      startYPercent: Number.isFinite(startYPercentRaw) ? startYPercentRaw : ((rect.y / safeHeight) * 100),
-      startWidthPercent: Number.isFinite(startWidthPercentRaw) ? startWidthPercentRaw : ((rect.width / safeWidth) * 100),
+      startXPercent: rect.xPercent,
+      startYPercent: rect.yPercent,
+      startWidthPercent: rect.widthPercent,
       aspectRatio: rect.aspectRatio,
     });
-  }, [componentHeight, componentWidth, getStickerRectPx, moveSticker, stickers, updateSticker]);
+  }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
 
   useEffect(() => {
     if (!stickerInteraction || typeof updateSticker !== 'function') return;
 
-    const handlePointerMove = (event) => {
-      const dx = event.clientX - stickerInteraction.startClientX;
-      const dy = event.clientY - stickerInteraction.startClientY;
-
-      if (stickerInteraction.mode === 'resize') {
-        const widthDeltaPercent = (dx / Math.max(componentWidth, 1)) * 100;
-        const nextWidthPercent = clamp(stickerInteraction.startWidthPercent + widthDeltaPercent, 6, 95);
-        const nextWidthPx = (nextWidthPercent / 100) * componentWidth;
-        const nextHeightPx = nextWidthPx / (stickerInteraction.aspectRatio || 1);
-        const baseX = (stickerInteraction.startXPercent / 100) * componentWidth;
-        const baseY = (stickerInteraction.startYPercent / 100) * componentHeight;
-        const clamped = clampStickerPositionPx(baseX, baseY, nextWidthPx, nextHeightPx);
-        updateSticker(stickerInteraction.stickerId, {
-          widthPercent: nextWidthPercent,
-          xPercent: clamped.xPercent,
-          yPercent: clamped.yPercent,
-        });
-        return;
-      }
-
-      const nextXPx = (stickerInteraction.startXPercent / 100) * componentWidth + dx;
-      const nextYPx = (stickerInteraction.startYPercent / 100) * componentHeight + dy;
-      const baseWidthPx = (stickerInteraction.startWidthPercent / 100) * componentWidth;
-      const baseHeightPx = baseWidthPx / (stickerInteraction.aspectRatio || 1);
-      const clamped = clampStickerPositionPx(nextXPx, nextYPx, baseWidthPx, baseHeightPx);
-      updateSticker(stickerInteraction.stickerId, {
-        xPercent: clamped.xPercent,
-        yPercent: clamped.yPercent,
+    const applyPointerSample = () => {
+      const pending = pendingStickerPointerRef.current;
+      if (!pending) return;
+      pendingStickerPointerRef.current = null;
+      const nextDraft = getStickerDraftFromPointer(stickerInteraction, pending.clientX, pending.clientY);
+      if (!nextDraft) return;
+      setStickerDrafts((prev) => {
+        const current = prev?.[stickerInteraction.stickerId];
+        const sameX = Math.abs((current?.xPercent ?? Number.NaN) - nextDraft.xPercent) < 0.001;
+        const sameY = Math.abs((current?.yPercent ?? Number.NaN) - nextDraft.yPercent) < 0.001;
+        const sameW = (nextDraft.widthPercent === undefined && current?.widthPercent === undefined)
+          || Math.abs((current?.widthPercent ?? Number.NaN) - (nextDraft.widthPercent ?? Number.NaN)) < 0.001;
+        if (sameX && sameY && sameW) return prev;
+        return {
+          ...(prev || {}),
+          [stickerInteraction.stickerId]: {
+            ...(current || {}),
+            ...nextDraft,
+          },
+        };
       });
     };
 
+    const requestPointerApply = () => {
+      if (stickerRafRef.current !== null) return;
+      stickerRafRef.current = window.requestAnimationFrame(() => {
+        stickerRafRef.current = null;
+        applyPointerSample();
+      });
+    };
+
+    const commitDraft = () => {
+      const draft = stickerDraftsRef.current?.[stickerInteraction.stickerId];
+      if (draft) {
+        const updates = {};
+        if (Number.isFinite(draft.xPercent)) updates.xPercent = draft.xPercent;
+        if (Number.isFinite(draft.yPercent)) updates.yPercent = draft.yPercent;
+        if (Number.isFinite(draft.widthPercent)) updates.widthPercent = draft.widthPercent;
+        if (Object.keys(updates).length > 0) {
+          updateSticker(stickerInteraction.stickerId, updates);
+        }
+      }
+      setStickerDrafts((prev) => {
+        if (!prev || !prev[stickerInteraction.stickerId]) return prev;
+        const next = { ...prev };
+        delete next[stickerInteraction.stickerId];
+        return next;
+      });
+    };
+
+    const handlePointerMove = (event) => {
+      pendingStickerPointerRef.current = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
+      requestPointerApply();
+    };
+
     const handlePointerEnd = () => {
+      if (stickerRafRef.current !== null) {
+        window.cancelAnimationFrame(stickerRafRef.current);
+        stickerRafRef.current = null;
+      }
+      applyPointerSample();
+      commitDraft();
       setStickerInteraction(null);
     };
 
@@ -1281,8 +1396,13 @@ const CanvasCollagePreview = ({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
+      if (stickerRafRef.current !== null) {
+        window.cancelAnimationFrame(stickerRafRef.current);
+        stickerRafRef.current = null;
+      }
+      pendingStickerPointerRef.current = null;
     };
-  }, [clampStickerPositionPx, componentHeight, componentWidth, stickerInteraction, updateSticker]);
+  }, [getStickerDraftFromPointer, stickerInteraction, updateSticker]);
 
   // Update component dimensions and panel rectangles
   useEffect(() => {
@@ -3785,20 +3905,9 @@ const CanvasCollagePreview = ({
             if (!sticker) return;
             const img = assets[index];
             if (!img) return;
-            const ratioRaw = Number(sticker.aspectRatio);
-            const ratioFromImage = img.naturalWidth && img.naturalHeight
-              ? (img.naturalWidth / img.naturalHeight)
-              : 1;
-            const aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : (ratioFromImage || 1);
-            const widthRaw = Number(sticker.widthPercent);
-            const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
-            const widthPx = Math.max(12, (widthPercent / 100) * componentWidth);
-            const heightPx = Math.max(12, widthPx / aspectRatio);
-            const xRaw = Number(sticker.xPercent);
-            const yRaw = Number(sticker.yPercent);
-            const xPx = (Number.isFinite(xRaw) ? xRaw : 36) / 100 * componentWidth;
-            const yPx = (Number.isFinite(yRaw) ? yRaw : 12) / 100 * componentHeight;
-            exportCtx.drawImage(img, xPx, yPx, widthPx, heightPx);
+            const rect = getStickerRectPx(sticker, img);
+            if (!rect) return;
+            exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
           });
         };
 
@@ -3811,7 +3920,7 @@ const CanvasCollagePreview = ({
       } else {
         resolve(null);
       }
-    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor]);
+    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor, getStickerRectPx]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
