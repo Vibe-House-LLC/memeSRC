@@ -17,6 +17,7 @@ import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
 import { getRateLimit, getWebsiteSetting } from '../graphql/queries';
 import TextEditorControls from '../components/TextEditorControls';
+import { LibraryBrowser } from '../components/library';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
 import { MagicPopupContext } from '../MagicPopupContext';
@@ -346,8 +347,11 @@ const EditorPage = ({ shows }) => {
   const [collageReplaceSelection, setCollageReplaceSelection] = useState(null);
   const [collageReplaceOptions, setCollageReplaceOptions] = useState([]);
   const [collageReplaceContext, setCollageReplaceContext] = useState(null);
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [stickerLoading, setStickerLoading] = useState(false);
   const [snackbarOpen, setSnackBarOpen] = useState(false);
   const theme = useTheme();
+  const isMobile = useMediaQuery((muiTheme) => muiTheme.breakpoints.down('sm'));
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   // const [drawingMode, setDrawingMode] = useState(false);
@@ -371,6 +375,7 @@ const EditorPage = ({ shows }) => {
 
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
 
+  const isAuthenticated = Boolean(user && user !== false);
   const isProUser = user?.userDetails?.subscriptionStatus === 'active';
 
   // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
@@ -915,7 +920,65 @@ const EditorPage = ({ shows }) => {
     reader.readAsDataURL(imageFile);
   };
 
-  const fileInputRef = useRef(null); // Define the ref
+  const addStickerLayerFromSource = useCallback(
+    async (imageSource) =>
+      new Promise((resolve, reject) => {
+        if (!editor?.canvas || typeof imageSource !== 'string' || imageSource.length === 0) {
+          reject(new Error('Editor is not ready for stickers.'));
+          return;
+        }
+
+        const stickerImage = new Image();
+        stickerImage.crossOrigin = 'anonymous';
+        stickerImage.onload = () => {
+          try {
+            const sticker = new fabric.Image(stickerImage);
+            const canvasWidth = editor.canvas.getWidth();
+            const canvasHeight = editor.canvas.getHeight();
+            const maxWidth = canvasWidth * 0.45;
+            const maxHeight = canvasHeight * 0.45;
+            const scale = Math.min(maxWidth / stickerImage.width, maxHeight / stickerImage.height, 1);
+
+            // Increase handle target size on touch devices for easier resize/rotate.
+            sticker.set({
+              angle: 0,
+              scaleX: scale,
+              scaleY: scale,
+              originX: 'center',
+              originY: 'center',
+              left: canvasWidth / 2,
+              top: canvasHeight / 2,
+              selectable: true,
+              hasControls: true,
+              hasBorders: true,
+              centeredScaling: true,
+              cornerStyle: 'circle',
+              transparentCorners: false,
+              cornerColor: '#4CAF50',
+              cornerStrokeColor: '#ffffff',
+              borderColor: '#4CAF50',
+              cornerSize: isMobile ? 22 : 12,
+              touchCornerSize: isMobile ? 34 : 18,
+              padding: isMobile ? 10 : 6,
+            });
+
+            editor.canvas.add(sticker);
+            editor.canvas.setActiveObject(sticker);
+            sticker.setCoords();
+            editor.canvas.renderAll();
+            setCanvasObjects([...editor.canvas._objects]);
+            addToHistory();
+            resolve(sticker);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        stickerImage.onerror = () => reject(new Error('Unable to load sticker image.'));
+        stickerImage.src = imageSource;
+      }),
+    [editor, isMobile]
+  );
+
   const lastTrackedAdvancedViewRef = useRef('');
 
   const handleDeleteLayer = (index) => {
@@ -3103,6 +3166,58 @@ const EditorPage = ({ shows }) => {
     [blobToDataUrl]
   );
 
+  const handleOpenStickerPicker = useCallback(() => {
+    if (!isAuthenticated) {
+      setSeverity('info');
+      setMessage('Log in to add stickers from your library.');
+      setOpen(true);
+      return;
+    }
+    setStickerPickerOpen(true);
+  }, [isAuthenticated, setMessage, setOpen, setSeverity]);
+
+  const handleStickerLibrarySelect = useCallback(
+    async (items) => {
+      const selected = items?.[0];
+      if (!selected) return;
+
+      setStickerLoading(true);
+      try {
+        let imageSource = selected.displayUrl || selected.originalUrl || '';
+        const libraryKey = selected?.metadata?.libraryKey;
+        if (libraryKey) {
+          try {
+            const blob = await getFromLibrary(libraryKey, { level: 'private' });
+            imageSource = await blobToDataUrl(blob);
+          } catch (err) {
+            console.warn('Unable to fetch sticker from library key, using URL fallback.', err);
+          }
+        }
+
+        if (typeof imageSource !== 'string' || imageSource.length === 0) {
+          throw new Error('No sticker image found');
+        }
+
+        await addStickerLayerFromSource(imageSource);
+        setStickerPickerOpen(false);
+      } catch (error) {
+        console.error('Error adding sticker layer:', error);
+        setSeverity('error');
+        setMessage('Unable to add sticker right now.');
+        setOpen(true);
+      } finally {
+        setStickerLoading(false);
+      }
+    },
+    [addStickerLayerFromSource, blobToDataUrl, setMessage, setOpen, setSeverity]
+  );
+
+  const handleCloseStickerPicker = useCallback(() => {
+    if (!stickerLoading) {
+      setStickerPickerOpen(false);
+    }
+  }, [stickerLoading]);
+
   const persistCollageSnapshot = useCallback(
     async (projectId, snapshot) => {
       const normalized = normalizeSnapshot(snapshot, 'portrait');
@@ -4049,8 +4164,6 @@ const EditorPage = ({ shows }) => {
     }
   }, [location.state]);
 
-  // Add this state near other useState declarations
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const showAds = shouldShowAds(user);
 
   return (
@@ -4341,7 +4454,13 @@ const EditorPage = ({ shows }) => {
                                       deleteLayer={handleDeleteLayer} // Implement this function to handle layer deletion
                                       moveLayerUp={moveLayerUp} // Implement this function to handle moving the layer up
                                       moveLayerDown={moveLayerDown} // Implement this function to handle moving the layer down
-                                      src={object.src}
+                                      src={
+                                        object?.src ||
+                                        object?._element?.currentSrc ||
+                                        object?._element?.src ||
+                                        (typeof object?.getSrc === 'function' ? object.getSrc() : '')
+                                      }
+                                      label="sticker"
                                     />
                                   </div>
                                   {/* Button to remove the image layer */}
@@ -4384,23 +4503,34 @@ const EditorPage = ({ shows }) => {
                           Add text layer
                         </Button>
                       </Grid>
-                      {/* <Grid item xs={12} order={canvasObjects?.length + 1} key="add-image-layer-button">
-                        <input
-                          type="file"
-                          onChange={(e) => addImageLayer(e.target.files[0])}
-                          style={{ display: 'none' }}
-                          ref={fileInputRef}
-                        />
+                      <Grid item xs={12} order={canvasObjects?.length + 1} key="add-sticker-layer-button">
                         <Button
                           variant="contained"
-                          onClick={() => fileInputRef.current.click()}
+                          onClick={handleOpenStickerPicker}
+                          disabled={stickerLoading}
                           fullWidth
-                          sx={{ zIndex: '50', marginBottom: '20px' }}
+                          sx={{
+                            zIndex: '50',
+                            marginTop: '10px',
+                            marginBottom: '12px',
+                            color: '#e5e7eb',
+                            background: 'linear-gradient(45deg, #0d2538 30%, #1b3f5c 90%)',
+                            border: '1px solid rgba(255, 255, 255, 0.16)',
+                            '&:hover': {
+                              background: 'linear-gradient(45deg, #123049 30%, #245273 90%)',
+                              borderColor: 'rgba(255, 255, 255, 0.24)',
+                            },
+                          }}
                           startIcon={<AddPhotoAlternate />}
                         >
-                          Add image layer
+                          Add sticker
                         </Button>
-                      </Grid> */}
+                        {!isAuthenticated && (
+                          <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', opacity: 0.75 }}>
+                            Log in required
+                          </Typography>
+                        )}
+                      </Grid>
                     </>
                   )}
 
@@ -5242,6 +5372,40 @@ const EditorPage = ({ shows }) => {
               />
             </StyledLayerControlCard>
           </Popover>
+
+          <Dialog
+            fullScreen={isMobile}
+            open={stickerPickerOpen}
+            onClose={handleCloseStickerPicker}
+            aria-labelledby="sticker-picker-title"
+            fullWidth
+            maxWidth="md"
+          >
+            <DialogTitle id="sticker-picker-title" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Choose a sticker from your library
+              <IconButton onClick={handleCloseStickerPicker} disabled={stickerLoading} aria-label="close sticker picker">
+                <Close />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ px: { xs: 1, sm: 2 }, py: 1.5 }}>
+              <LibraryBrowser
+                multiple={false}
+                uploadEnabled={false}
+                deleteEnabled={false}
+                onSelect={handleStickerLibrarySelect}
+                showActionBar={false}
+                selectionEnabled={false}
+                previewOnClick={false}
+                instantSelectOnClick
+              />
+            </DialogContent>
+            <DialogActions sx={{ px: 2, pb: 2 }}>
+              {stickerLoading && <CircularProgress size={20} sx={{ mr: 'auto' }} />}
+              <Button onClick={handleCloseStickerPicker} disabled={stickerLoading}>
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
 
           <Dialog
             open={openDialog}
