@@ -8,6 +8,8 @@ import { layoutDefinitions } from '../config/layouts';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
 // Determine if a persisted custom layout is compatible with the requested panel count
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
@@ -529,6 +531,36 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       ctx.restore();
     }
   });
+
+  // Draw global sticker overlays (top-most, across the full collage canvas)
+  const stickerRefs = Array.isArray(snap.stickers) ? snap.stickers : [];
+  if (stickerRefs.length > 0) {
+    const loadedStickers = await Promise.all(stickerRefs.map(loadImageFromRef));
+    stickerRefs.forEach((stickerRef, index) => {
+      const img = loadedStickers[index];
+      if (!img) return;
+
+      const ratioRaw = Number(stickerRef?.aspectRatio);
+      const imageRatio = img.naturalWidth && img.naturalHeight
+        ? (img.naturalWidth / img.naturalHeight)
+        : 1;
+      const aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : imageRatio || 1;
+      const widthRaw = Number(stickerRef?.widthPercent);
+      const xRaw = Number(stickerRef?.xPercent);
+      const yRaw = Number(stickerRef?.yPercent);
+      const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
+      const widthPx = clamp((widthPercent / 100) * width, 12, width * 0.98);
+      const heightPx = clamp(widthPx / aspectRatio, 12, height * 0.98);
+      const xPx = (Number.isFinite(xRaw) ? xRaw : 36) / 100 * width;
+      const yPx = (Number.isFinite(yRaw) ? yRaw : 12) / 100 * height;
+
+      try {
+        ctx.drawImage(img, xPx, yPx, widthPx, heightPx);
+      } catch (_) {
+        // Ignore sticker draw failures so thumbnail generation still succeeds.
+      }
+    });
+  }
 
   return canvas.toDataURL('image/jpeg', 0.92);
 }

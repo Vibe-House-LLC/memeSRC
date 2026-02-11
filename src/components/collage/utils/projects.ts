@@ -111,6 +111,7 @@ export function upsertProject(
 // images: store libraryKey when present, else store the exact URL (data: OK for <=5 images)
 export function buildSnapshotFromState({
   selectedImages,
+  selectedStickers,
   panelImageMapping,
   panelTransforms,
   panelTexts,
@@ -133,6 +134,19 @@ export function buildSnapshotFromState({
         metadata?: { libraryKey?: string; sourceUrl?: string };
         subtitle?: string;
         subtitleShowing?: boolean;
+      }
+  >;
+  selectedStickers?: Array<
+    | string
+    | {
+        id?: string;
+        originalUrl?: string;
+        thumbnailUrl?: string;
+        aspectRatio?: number;
+        widthPercent?: number;
+        xPercent?: number;
+        yPercent?: number;
+        metadata?: { libraryKey?: string; sourceUrl?: string };
       }
   >;
   panelImageMapping: Record<string, number> | undefined;
@@ -179,9 +193,77 @@ export function buildSnapshotFromState({
     return ref;
   });
 
+  const stickers = (selectedStickers || []).map((sticker, index) => {
+    const ref: {
+      id?: string;
+      libraryKey?: string;
+      url?: string;
+      thumbnailUrl?: string;
+      aspectRatio?: number;
+      widthPercent?: number;
+      xPercent?: number;
+      yPercent?: number;
+      metadata?: { [key: string]: unknown };
+    } = {};
+    const isBlobUrl = (value: unknown): value is string => typeof value === 'string' && value.startsWith('blob:');
+
+    if (typeof sticker === 'string') {
+      ref.id = `sticker-${index + 1}`;
+      ref.url = sticker;
+      return ref;
+    }
+
+    const maybeMeta = sticker?.metadata;
+    if (typeof sticker?.id === 'string' && sticker.id.trim()) {
+      ref.id = sticker.id.trim();
+    } else {
+      ref.id = `sticker-${index + 1}`;
+    }
+
+    if (maybeMeta && typeof maybeMeta === 'object' && Object.keys(maybeMeta).length > 0) {
+      ref.metadata = { ...maybeMeta };
+    }
+
+    if (maybeMeta && typeof maybeMeta.libraryKey === 'string') {
+      ref.libraryKey = maybeMeta.libraryKey;
+    }
+
+    const originalUrl = sticker?.originalUrl;
+    const thumbnailUrl = sticker?.thumbnailUrl;
+    const sourceUrlFromMetadata =
+      maybeMeta && typeof maybeMeta.sourceUrl === 'string' && maybeMeta.sourceUrl.trim()
+        ? maybeMeta.sourceUrl
+        : '';
+    const persistableOriginal = !isBlobUrl(originalUrl) ? originalUrl : '';
+    const persistableThumb = !isBlobUrl(thumbnailUrl) ? thumbnailUrl : '';
+
+    if (!ref.libraryKey) {
+      ref.url = persistableOriginal || persistableThumb || sourceUrlFromMetadata || originalUrl || thumbnailUrl || '';
+    } else if (persistableOriginal) {
+      // Keep a fallback even when libraryKey exists for resilience.
+      ref.url = persistableOriginal;
+    }
+
+    if (persistableThumb) {
+      ref.thumbnailUrl = persistableThumb;
+    }
+
+    const aspectRatio = Number(sticker?.aspectRatio);
+    if (Number.isFinite(aspectRatio) && aspectRatio > 0) ref.aspectRatio = aspectRatio;
+    const widthPercent = Number(sticker?.widthPercent);
+    if (Number.isFinite(widthPercent)) ref.widthPercent = widthPercent;
+    const xPercent = Number(sticker?.xPercent);
+    if (Number.isFinite(xPercent)) ref.xPercent = xPercent;
+    const yPercent = Number(sticker?.yPercent);
+    if (Number.isFinite(yPercent)) ref.yPercent = yPercent;
+
+    return ref;
+  });
+
   return {
     version: 1,
     images,
+    stickers,
     panelImageMapping: panelImageMapping || {},
     panelTransforms: panelTransforms || {},
     panelTexts: panelTexts || {},

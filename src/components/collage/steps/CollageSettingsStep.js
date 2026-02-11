@@ -15,7 +15,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
@@ -30,9 +31,16 @@ import {
   Tag,
   BorderAll,
   Palette,
-  Colorize
+  Colorize,
+  EmojiEmotions,
+  ArrowUpward,
+  ArrowDownward,
+  DeleteOutline,
+  AddPhotoAlternate,
+  Close
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
+import { LibraryBrowser } from "../../library";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -285,6 +293,7 @@ const MOBILE_SETTING_OPTIONS = [
   { id: 'aspect-ratio', label: 'Size', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
+  { id: 'stickers', label: 'Stickers', panelId: 'collage-settings-panel-stickers' },
   { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
 ];
 
@@ -380,6 +389,11 @@ const CollageLayoutSettings = ({
   // New props for safe panel reduction
   panelImageMapping,
   removeImage,
+  stickers = [],
+  canManageStickers = false,
+  onAddStickerFromLibrary,
+  onMoveSticker,
+  onRemoveSticker,
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -393,6 +407,9 @@ const CollageLayoutSettings = ({
   // Confirm dialog state for panel reduction when last panel has an image
   const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
   const [activeMobileSetting, setActiveMobileSetting] = useState('aspect-ratio');
+  const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
+  const [stickerLoading, setStickerLoading] = useState(false);
+  const [stickerError, setStickerError] = useState('');
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -549,6 +566,33 @@ const CollageLayoutSettings = ({
       });
     } else {
       proceedToDecrease();
+    }
+  };
+
+  const openStickerLibrary = () => {
+    if (!canManageStickers) return;
+    setStickerError('');
+    setStickerLibraryOpen(true);
+  };
+
+  const closeStickerLibrary = () => {
+    if (stickerLoading) return;
+    setStickerLibraryOpen(false);
+  };
+
+  const handleStickerLibrarySelect = async (items) => {
+    const selected = Array.isArray(items) ? items[0] : null;
+    if (!selected || typeof onAddStickerFromLibrary !== 'function') return;
+    setStickerLoading(true);
+    setStickerError('');
+    try {
+      await onAddStickerFromLibrary(selected);
+      setStickerLibraryOpen(false);
+    } catch (error) {
+      console.error('Failed to add sticker from library', error);
+      setStickerError('Unable to add that sticker right now.');
+    } finally {
+      setStickerLoading(false);
     }
   };
   
@@ -817,6 +861,7 @@ const CollageLayoutSettings = ({
 
   const compatibleTemplates = getCompatibleTemplates();
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
+  const stickerLayers = Array.isArray(stickers) ? [...stickers].reverse() : [];
   
   // Clean up all the duplicate state variables and use a single savedCustomColor state
   const [savedCustomColor, setSavedCustomColor] = useState(() => {
@@ -1567,6 +1612,203 @@ const CollageLayoutSettings = ({
           </Box>
         </Box>
       </Box>
+
+      <Box
+        id="collage-settings-panel-stickers"
+        role={isMobile ? 'tabpanel' : undefined}
+        aria-labelledby={isMobile ? 'collage-settings-tab-stickers' : undefined}
+        hidden={!isSectionVisible('stickers')}
+        sx={{
+          display: isSectionVisible('stickers') ? 'block' : 'none',
+          mb: isMobile ? 0.75 : 0.5,
+        }}
+      >
+        {!isMobile && (
+          <StepSectionHeading sx={{ mb: 0.75 }}>
+            <EmojiEmotions sx={{ mr: 1, color: 'text.secondary', fontSize: '1.3rem' }} />
+            <Typography variant="h5" fontWeight={600} sx={{ color: 'text.primary' }}>
+              Stickers
+            </Typography>
+          </StepSectionHeading>
+        )}
+
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1.25,
+            mb: 1.1,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, minWidth: 180 }}>
+            Global sticker layers over the full collage.
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<AddPhotoAlternate />}
+            onClick={openStickerLibrary}
+            disabled={!canManageStickers}
+            sx={{
+              borderRadius: 999,
+              textTransform: 'none',
+              fontWeight: 700,
+              minHeight: 40,
+              px: 2.25,
+            }}
+          >
+            Add sticker
+          </Button>
+        </Box>
+
+        {!canManageStickers && (
+          <Alert severity="info" sx={{ mb: 1.25 }}>
+            Log in with library access to add sticker layers.
+          </Alert>
+        )}
+
+        {canManageStickers && stickerLayers.length === 0 && (
+          <Box
+            sx={{
+              px: 1.5,
+              py: 1.4,
+              borderRadius: 1.5,
+              border: `1px dashed ${alpha(theme.palette.divider, 0.9)}`,
+              color: 'text.secondary',
+              fontSize: '0.9rem',
+            }}
+          >
+            No stickers yet. Add one from your library.
+          </Box>
+        )}
+
+        {canManageStickers && stickerLayers.length > 0 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {stickerLayers.map((sticker, displayIndex) => {
+              if (!sticker?.id) return null;
+              const canMoveUp = displayIndex > 0;
+              const canMoveDown = displayIndex < stickerLayers.length - 1;
+              const layerLabel = `Sticker ${stickerLayers.length - displayIndex}`;
+              const thumbSrc = sticker.thumbnailUrl || sticker.originalUrl || '';
+              return (
+                <Box
+                  key={`sticker-layer-row-${sticker.id}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 1,
+                    borderRadius: 1.5,
+                    border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82)}`,
+                    backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.9),
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      bgcolor: alpha(theme.palette.common.black, 0.08),
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {thumbSrc ? (
+                      <Box
+                        component="img"
+                        src={thumbSrc}
+                        alt={layerLabel}
+                        sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <EmojiEmotions sx={{ color: 'text.disabled', fontSize: 20 }} />
+                    )}
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {layerLabel}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {displayIndex === 0 ? 'Top layer' : (displayIndex === stickerLayers.length - 1 ? 'Bottom layer' : 'Middle layer')}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveUp && typeof onMoveSticker === 'function' && onMoveSticker(sticker.id, 1)}
+                      disabled={!canMoveUp}
+                      aria-label={`Move ${layerLabel} up`}
+                    >
+                      <ArrowUpward fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveDown && typeof onMoveSticker === 'function' && onMoveSticker(sticker.id, -1)}
+                      disabled={!canMoveDown}
+                      aria-label={`Move ${layerLabel} down`}
+                    >
+                      <ArrowDownward fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => typeof onRemoveSticker === 'function' && onRemoveSticker(sticker.id)}
+                      aria-label={`Delete ${layerLabel}`}
+                    >
+                      <DeleteOutline fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </Box>
+
+      <Dialog
+        open={stickerLibraryOpen}
+        onClose={closeStickerLibrary}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Choose a sticker from your library
+          <IconButton onClick={closeStickerLibrary} disabled={stickerLoading} aria-label="close sticker library">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: isMobile ? 1.25 : 2 }}>
+          <LibraryBrowser
+            multiple={false}
+            uploadEnabled
+            deleteEnabled={false}
+            onSelect={(arr) => { void handleStickerLibrarySelect(arr); }}
+            showActionBar={false}
+            selectionEnabled
+            previewOnClick
+            showSelectToggle
+            initialSelectMode
+          />
+          {stickerError && (
+            <Alert severity="error" sx={{ mt: 1.25 }}>
+              {stickerError}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: isMobile ? 1.5 : 2, py: 1.2 }}>
+          {stickerLoading && <CircularProgress size={20} sx={{ mr: 'auto' }} />}
+          <Button onClick={closeStickerLibrary} disabled={stickerLoading}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

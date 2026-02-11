@@ -67,7 +67,10 @@ const CollagePreview = ({
   panelTransforms,
   updatePanelTransform,
   panelTexts,
+  stickers = [],
   updatePanelText,
+  updateSticker,
+  moveSticker,
   lastUsedTextSettings,
   isCreatingCollage = false,
   onCaptionEditorVisibleChange,
@@ -914,7 +917,10 @@ const CollagePreview = ({
         panelTransforms={panelTransforms}
         updatePanelTransform={updatePanelTransform}
         panelTexts={panelTexts}
+        stickers={stickers}
         updatePanelText={updatePanelText}
+        updateSticker={updateSticker}
+        moveSticker={moveSticker}
         lastUsedTextSettings={lastUsedTextSettings}
         onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
         isGeneratingCollage={isCreatingCollage}
@@ -1243,7 +1249,21 @@ CollagePreview.propTypes = {
   panelTransforms: PropTypes.object,
   updatePanelTransform: PropTypes.func,
   panelTexts: PropTypes.object,
+  stickers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string,
+      originalUrl: PropTypes.string,
+      thumbnailUrl: PropTypes.string,
+      metadata: PropTypes.object,
+      aspectRatio: PropTypes.number,
+      widthPercent: PropTypes.number,
+      xPercent: PropTypes.number,
+      yPercent: PropTypes.number,
+    })
+  ),
   updatePanelText: PropTypes.func,
+  updateSticker: PropTypes.func,
+  moveSticker: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   isCreatingCollage: PropTypes.bool,
   onCaptionEditorVisibleChange: PropTypes.func,

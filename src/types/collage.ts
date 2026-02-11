@@ -20,6 +20,18 @@ export interface CollageImageRef {
   metadata?: CollageImageMetadata;
 }
 
+export interface CollageStickerRef {
+  id?: string;
+  libraryKey?: string;
+  url?: string;
+  thumbnailUrl?: string;
+  aspectRatio?: number;
+  widthPercent?: number;
+  xPercent?: number;
+  yPercent?: number;
+  metadata?: CollageImageMetadata;
+}
+
 export interface CollageSnapshot {
   version: number;
   images: CollageImageRef[];
@@ -28,6 +40,7 @@ export interface CollageSnapshot {
   panelTransforms: Record<string, unknown>;
   // Text config objects keyed by panel id
   panelTexts: Record<string, unknown>;
+  stickers?: CollageStickerRef[];
   selectedTemplateId: string | null;
   selectedAspectRatio: AspectRatio;
   panelCount: number;

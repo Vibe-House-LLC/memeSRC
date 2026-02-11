@@ -42,8 +42,11 @@ const CollageImagesStep = ({
   panelTransforms,
   updatePanelTransform,
   panelTexts,
+  stickers = [],
   lastUsedTextSettings,
   updatePanelText,
+  updateSticker,
+  moveSticker,
   setFinalImage = () => { console.warn("setFinalImage default prop called"); },
   handleOpenExportDialog = () => { console.warn("handleOpenExportDialog default prop called"); },
   onCollageGenerated = null,
@@ -83,7 +86,8 @@ const CollageImagesStep = ({
     borderColor,
     panelImageMapping,
     panelTransforms,
-    panelTexts
+    panelTexts,
+    stickersCount: stickers.length,
   });
 
   // Handler for file selection from Add Image button - use same logic as BulkUploadSection
@@ -231,7 +235,10 @@ const CollageImagesStep = ({
             panelTransforms={panelTransforms || {}}
             updatePanelTransform={updatePanelTransform}
             panelTexts={panelTexts}
+            stickers={stickers}
             updatePanelText={updatePanelText}
+            updateSticker={updateSticker}
+            moveSticker={moveSticker}
             lastUsedTextSettings={lastUsedTextSettings}
             setFinalImage={setFinalImage}
             handleOpenExportDialog={handleOpenExportDialog}
@@ -310,8 +317,22 @@ CollageImagesStep.propTypes = {
   panelTransforms: PropTypes.object,
   updatePanelTransform: PropTypes.func,
   panelTexts: PropTypes.object,
+  stickers: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string,
+      originalUrl: PropTypes.string,
+      thumbnailUrl: PropTypes.string,
+      metadata: PropTypes.object,
+      aspectRatio: PropTypes.number,
+      widthPercent: PropTypes.number,
+      xPercent: PropTypes.number,
+      yPercent: PropTypes.number,
+    })
+  ),
   lastUsedTextSettings: PropTypes.object,
   updatePanelText: PropTypes.func,
+  updateSticker: PropTypes.func,
+  moveSticker: PropTypes.func,
   setFinalImage: PropTypes.func,
   handleOpenExportDialog: PropTypes.func,
   onCollageGenerated: PropTypes.func,

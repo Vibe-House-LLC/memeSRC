@@ -53,6 +53,30 @@ const cleanPanelImageMapping = (
   return cleaned;
 };
 
+const cleanStickerLayers = (stickers: CollageSnapshot['stickers']): NonNullable<CollageSnapshot['stickers']> => {
+  if (!Array.isArray(stickers)) return [];
+
+  return stickers
+    .map((sticker, index) => {
+      if (!sticker || typeof sticker !== 'object') return null;
+      const ratioRaw = Number(sticker.aspectRatio);
+      const widthRaw = Number(sticker.widthPercent);
+      const xRaw = Number(sticker.xPercent);
+      const yRaw = Number(sticker.yPercent);
+      const next = {
+        ...sticker,
+        id: (typeof sticker.id === 'string' && sticker.id.trim()) ? sticker.id : `sticker-${index + 1}`,
+        aspectRatio: Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : 1,
+        widthPercent: Number.isFinite(widthRaw) ? widthRaw : 28,
+        xPercent: Number.isFinite(xRaw) ? xRaw : 36,
+        yPercent: Number.isFinite(yRaw) ? yRaw : 12,
+      };
+      if (!next.libraryKey && !next.url) return null;
+      return next;
+    })
+    .filter(Boolean) as NonNullable<CollageSnapshot['stickers']>;
+};
+
 export function normalizeSnapshot(
   snapshot: CollageSnapshot | null | undefined,
   aspectRatio: AspectRatio = 'portrait'
@@ -79,6 +103,7 @@ export function normalizeSnapshot(
     panelImageMapping: cleanPanelImageMapping(snapshot?.panelImageMapping, images.length, panelIds),
     panelTransforms: snapshot?.panelTransforms || {},
     panelTexts: snapshot?.panelTexts || {},
+    stickers: cleanStickerLayers(snapshot?.stickers),
     selectedTemplateId: selectedTemplateId || null,
     selectedAspectRatio,
     panelCount: desiredPanelCount,
