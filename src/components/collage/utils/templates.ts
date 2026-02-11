@@ -244,7 +244,15 @@ async function ensureTemplateSubscriptions(): Promise<void> {
   const start = async () => {
     try {
       const identityId = await getIdentityId();
-      const baseVariables = identityId ? { ownerIdentityId: identityId } : {};
+      if (!identityId) {
+        if (isDev()) console.warn('[templates] Skipping template subscriptions: identityId is unavailable');
+        return;
+      }
+      const baseVariables = {
+        filter: {
+          ownerIdentityId: { eq: identityId },
+        },
+      };
 
       const subscribe = (
         query: string,
@@ -266,6 +274,7 @@ async function ensureTemplateSubscriptions(): Promise<void> {
           next: (event: any) => {
             const payload = event?.value?.data?.[key] as TemplateModel | null | undefined;
             if (!payload || !payload.id) return;
+            if (payload.ownerIdentityId && payload.ownerIdentityId !== identityId) return;
             if (key === 'onDeleteTemplate') {
               removeFromCache(payload.id);
               return;
@@ -612,12 +621,16 @@ export function subscribeToProject(
     if (cancelled) return;
     try {
       const identityId = await getIdentityId();
-      const variables: Record<string, unknown> = {
-        filter: { id: { eq: projectId } },
-      };
-      if (identityId) {
-        variables.ownerIdentityId = identityId;
+      if (!identityId) {
+        if (isDev()) console.warn(`[templates] Skipping project ${projectId} subscription: identityId is unavailable`);
+        return;
       }
+      const variables: Record<string, unknown> = {
+        filter: {
+          id: { eq: projectId },
+          ownerIdentityId: { eq: identityId },
+        },
+      };
       const observable: any = API.graphql(graphqlOperation(onUpdateTemplate, variables));
       if (!observable || typeof observable.subscribe !== 'function') {
         if (isDev()) console.warn('[templates] Project subscription observable missing subscribe');
@@ -628,6 +641,7 @@ export function subscribeToProject(
           if (cancelled) return;
           const raw = payload?.value?.data?.onUpdateTemplate;
           if (!raw || raw.id !== projectId) return;
+          if (raw.ownerIdentityId && raw.ownerIdentityId !== identityId) return;
           const normalized = normalizeTemplate(raw);
           cacheProject(normalized);
           listener(cloneProject(normalized));
