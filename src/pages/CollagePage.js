@@ -14,6 +14,7 @@ import { CollageLayout } from "../components/collage/components/CollageLayoutCom
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
+import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
 import { get as getFromLibrary } from "../utils/library/storage";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
@@ -139,15 +140,6 @@ const getCollagePreferenceKey = (user) => {
 const getCollagePreference = (user) => {
   const key = getCollagePreferenceKey(user);
   return localStorage.getItem(key) || 'new';
-};
-
-const parsePanelIndexFromId = (panelId) => {
-  if (typeof panelId !== 'string') return null;
-  const match = panelId.match(/^panel-(\d+)$/);
-  if (!match) return null;
-  const parsed = parseInt(match[1], 10);
-  if (Number.isNaN(parsed) || parsed <= 0) return null;
-  return parsed - 1;
 };
 
 export default function CollagePage() {

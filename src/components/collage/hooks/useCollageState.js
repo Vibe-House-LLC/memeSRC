@@ -1,21 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCallback and useRef
 import { unstable_batchedUpdates } from 'react-dom';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
+import { parsePanelIndexFromId } from '../utils/panelId';
 
 // Debug flag - opt-in via localStorage while in development
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
-
-const PANEL_ID_PATTERN = /^panel-(\d+)$/;
-const parsePanelIndex = (panelId) => {
-  if (typeof panelId !== 'string') return null;
-  const match = panelId.match(PANEL_ID_PATTERN);
-  if (!match) return null;
-  const parsed = parseInt(match[1], 10);
-  if (Number.isNaN(parsed) || parsed <= 0) return null;
-  return parsed - 1;
-};
 
 const revokeImageUrls = (images) => {
   if (!Array.isArray(images)) return;
@@ -426,7 +417,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     const shiftPanelStateKeys = (stateMap) => {
       const nextState = {};
       Object.entries(stateMap || {}).forEach(([panelId, value]) => {
-        const panelIndex = parsePanelIndex(panelId);
+        const panelIndex = parsePanelIndexFromId(panelId);
         if (panelIndex === null) {
           nextState[panelId] = value;
           return;
@@ -441,7 +432,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     const shiftPanelMapping = (mapping) => {
       const nextMapping = {};
       Object.entries(mapping || {}).forEach(([panelId, mappedIndex]) => {
-        const panelIndex = parsePanelIndex(panelId);
+        const panelIndex = parsePanelIndexFromId(panelId);
         if (panelIndex === null) {
           nextMapping[panelId] = mappedIndex;
           return;
