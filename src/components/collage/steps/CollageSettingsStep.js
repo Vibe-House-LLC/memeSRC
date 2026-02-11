@@ -263,7 +263,7 @@ const MobileSettingsTypeButton = styled(Button, {
   letterSpacing: 0.1,
   minHeight: 36,
   minWidth: 0,
-  padding: theme.spacing(0.5, 1.1),
+  padding: theme.spacing(0.5, 1.6),
   color: selected ? theme.palette.primary.main : theme.palette.text.secondary,
   border: `1px solid ${selected ? theme.palette.primary.main : theme.palette.divider}`,
   backgroundColor: selected
@@ -282,10 +282,10 @@ const MobileSettingsTypeButton = styled(Button, {
 }));
 
 const MOBILE_SETTING_OPTIONS = [
-  { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
   { id: 'aspect-ratio', label: 'Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
+  { id: 'panel-count', label: 'Panels', panelId: 'collage-settings-panel-panel-count' },
 ];
 
 // Helper function to convert aspect ratio value to a friendly format
@@ -392,7 +392,7 @@ const CollageLayoutSettings = ({
   const [colorRightScroll, setColorRightScroll] = useState(false);
   // Confirm dialog state for panel reduction when last panel has an image
   const [confirmState, setConfirmState] = useState({ open: false, imageIndex: null, onConfirm: null });
-  const [activeMobileSetting, setActiveMobileSetting] = useState(MOBILE_SETTING_OPTIONS[0].id);
+  const [activeMobileSetting, setActiveMobileSetting] = useState(null);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -836,7 +836,7 @@ const CollageLayoutSettings = ({
   }, [borderColor, isCustomColor]);
   
   return (
-    <Box sx={{ pt: 0 }}>
+    <Box sx={{ pt: isMobile ? 0.5 : 0, pb: isMobile ? 0.25 : 0 }}>
       {/* Confirm removal when reducing panel count hides an image */}
       <Dialog
         open={!!confirmState.open}
@@ -886,10 +886,11 @@ const CollageLayoutSettings = ({
       </Dialog>
 
       {isMobile && (
-        <Box sx={{ mb: 1 }}>
+        <Box sx={{ mb: 1.25 }}>
           <MobileSettingsTypeScroller role="tablist" aria-label="Collage settings categories">
             {MOBILE_SETTING_OPTIONS.map(({ id, label, panelId }, index) => {
               const isSelected = activeMobileSetting === id;
+              const defaultFocusable = activeMobileSetting === null && index === 0;
               return (
                 <MobileSettingsTypeButton
                   key={id}
@@ -899,8 +900,8 @@ const CollageLayoutSettings = ({
                   selected={isSelected}
                   aria-selected={isSelected}
                   aria-controls={panelId}
-                  tabIndex={isSelected ? 0 : -1}
-                  onClick={() => setActiveMobileSetting(id)}
+                  tabIndex={isSelected || defaultFocusable ? 0 : -1}
+                  onClick={() => setActiveMobileSetting((prev) => (prev === id ? null : id))}
                   onKeyDown={(event) => handleMobileSettingKeyDown(event, index)}
                 >
                   {label}
@@ -919,7 +920,7 @@ const CollageLayoutSettings = ({
         hidden={!isSectionVisible('panel-count')}
         sx={{
           display: isSectionVisible('panel-count') ? 'block' : 'none',
-          mb: isMobile ? 0 : 1,
+          mb: isMobile ? 0.75 : 1,
         }}
       >
         {!isMobile && (
@@ -991,7 +992,7 @@ const CollageLayoutSettings = ({
         hidden={!isSectionVisible('aspect-ratio')}
         sx={{
           display: isSectionVisible('aspect-ratio') ? 'block' : 'none',
-          mb: isMobile ? 1 : 2,
+          mb: isMobile ? 0.75 : 2,
         }}
       >
         {!isMobile && (
@@ -1136,7 +1137,7 @@ const CollageLayoutSettings = ({
         hidden={!isSectionVisible('layout')}
         sx={{
           display: isSectionVisible('layout') ? 'block' : 'none',
-          mb: isMobile ? 1 : 2,
+          mb: isMobile ? 0.75 : 2,
         }}
       >
         {!isMobile && (
@@ -1317,7 +1318,7 @@ const CollageLayoutSettings = ({
         hidden={!isSectionVisible('borders')}
         sx={{
           display: isSectionVisible('borders') ? 'block' : 'none',
-          mb: isMobile ? 0.25 : 0.5,
+          mb: isMobile ? 0.75 : 0.5,
           position: 'relative',
         }}
       >
