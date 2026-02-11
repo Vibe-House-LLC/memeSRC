@@ -409,6 +409,10 @@ const CollageLayoutSettings = ({
 
   const isSectionVisible = (sectionId) => !isMobile || activeMobileSetting === sectionId;
 
+  const toggleMobileSetting = (settingId) => {
+    setActiveMobileSetting((prev) => (prev === settingId ? null : settingId));
+  };
+
   const handleMobileSettingKeyDown = (event, currentIndex) => {
     if (!isMobile) return;
 
@@ -901,7 +905,7 @@ const CollageLayoutSettings = ({
                   aria-selected={isSelected}
                   aria-controls={panelId}
                   tabIndex={isSelected || defaultFocusable ? 0 : -1}
-                  onClick={() => setActiveMobileSetting(id)}
+                  onClick={() => toggleMobileSetting(id)}
                   onKeyDown={(event) => handleMobileSettingKeyDown(event, index)}
                 >
                   {label}
