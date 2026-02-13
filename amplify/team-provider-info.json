@@ -55,7 +55,7 @@
         },
         "memesrcAnalyticsMsck": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsMsck-694f6349596338674e62-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsMsck-4938484470696978386d-build.zip"
         },
         "memesrcAnalyticsReporting": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
@@ -63,11 +63,11 @@
         },
         "memesrcAnalyticsInitDBs": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsInitDBs-6e42426967333878324e-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsInitDBs-2f432b6474526f6d5942-build.zip"
         },
         "memesrcAnalyticsAddDailyPartition": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-756b737046537732756e-build.zip"
+          "s3Key": "amplify-builds/memesrcAnalyticsAddDailyPartition-4b6c575a756b63526c6f-build.zip"
         },
         "memesrcTVDB": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
@@ -110,7 +110,7 @@
         "memesrcStripeCallback": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcStripeCallback-577859752f50314f6166-build.zip"
+          "s3Key": "amplify-builds/memesrcStripeCallback-5671537835646a41636e-build.zip"
         },
         "memesrcOpenAI": {
           "secretsPathAmplifyAppId": "d32pnvtwxwtte5",
@@ -153,7 +153,7 @@
         },
         "memesrcRecoverUsername": {
           "deploymentBucketName": "amplify-memesrc-dev-191629-deployment",
-          "s3Key": "amplify-builds/memesrcRecoverUsername-4a6b68566468354c5772-build.zip"
+          "s3Key": "amplify-builds/memesrcRecoverUsername-6b4c776f6571766f6f6a-build.zip"
         },
         "memesrcVoteSearchSeries": {
           "opensearchUser": "davis",
