@@ -112,6 +112,7 @@
     "image-size": ">=1.2.1",
     "axios": "1.13.5",
     "cross-spawn": ">=7.0.5",
-    "postcss": ">=8.4.31"
+    "postcss": ">=8.4.31",
+    "js-yaml": ">=4.1.1"
   }
 }
