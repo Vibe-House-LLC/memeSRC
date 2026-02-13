@@ -460,7 +460,13 @@ export function ReleaseDetailsCard({
             borderTop: `1px solid ${alpha('#94a3b8', 0.22)}`,
           }}
         >
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 1.25 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gap: { xs: 1, sm: 1.25 },
+              gridTemplateColumns: showViewAllUpdatesButton ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr',
+            }}
+          >
             <Button
               component={MUILink as unknown as React.ElementType}
               href={releaseUrl}
@@ -481,6 +487,7 @@ export function ReleaseDetailsCard({
                 fontSize: { xs: '0.88rem', sm: '0.92rem' },
                 boxShadow: 'none',
                 transition: 'background-color 0.2s ease',
+                whiteSpace: 'nowrap',
                 '&:hover': {
                   backgroundColor: releasePalette.main,
                   opacity: 0.96,
@@ -505,6 +512,7 @@ export function ReleaseDetailsCard({
                   borderColor: alpha('#94a3b8', 0.45),
                   backgroundColor: alpha('#0b1222', 0.28),
                   fontSize: { xs: '0.88rem', sm: '0.92rem' },
+                  whiteSpace: 'nowrap',
                   '&:hover': {
                     borderColor: alpha('#cbd5e1', 0.6),
                     backgroundColor: alpha('#0b1222', 0.4),
@@ -514,7 +522,7 @@ export function ReleaseDetailsCard({
                 View All Updates
               </Button>
             )}
-          </Stack>
+          </Box>
         </Box>
       </Stack>
     </FeedCardSurface>
