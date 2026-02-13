@@ -262,6 +262,7 @@ export default function VotingPage() {
 
   // Add cache variables
   const seriesCache = useRef({});
+  const fetchSeriesDataRef = useRef(null);
 
 
   const [loadedImages, setLoadedImages] = useState({});
@@ -564,6 +565,10 @@ export default function VotingPage() {
     }
   }, [recalculateRanks]);
 
+  useEffect(() => {
+    fetchSeriesDataRef.current = fetchSeriesData;
+  }, [fetchSeriesData]);
+
   // Update fetchVoteData function
   const fetchVoteData = useCallback(
     async (currentRankMethod) => {
@@ -631,12 +636,12 @@ export default function VotingPage() {
         setFullSortedSeriesIds(newSortedSeriesIds);
         setSortedSeriesIds(newSortedSeriesIds);
 
-        fetchSeriesData(newSortedSeriesIds, 0, false);
+        fetchSeriesDataRef.current?.(newSortedSeriesIds, 0, false);
       } catch (error) {
         console.error('Error in fetchVoteData:', error);
       }
     },
-    [user, fetchSeriesData]
+    [user]
   );
 
 
