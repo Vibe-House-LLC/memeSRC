@@ -252,7 +252,7 @@ const MobileSettingsTypeButton = styled(Button, {
 }));
 
 const MOBILE_SETTING_OPTIONS = [
-  { id: 'aspect-ratio', label: 'Size', panelId: 'collage-settings-panel-aspect-ratio' },
+  { id: 'aspect-ratio', label: 'Size/Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
   { id: 'stickers', label: 'Stickers', panelId: 'collage-settings-panel-stickers' },

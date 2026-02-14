@@ -282,6 +282,7 @@ export default function CollagePage() {
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [panelAutoOpenRequest, setPanelAutoOpenRequest] = useState(null);
+  const [panelTextAutoOpenRequest, setPanelTextAutoOpenRequest] = useState(null);
   const [removePanelDialog, setRemovePanelDialog] = useState({ open: false, panelId: null, hasImage: false });
   
   // Adopt a pre-created project id passed via navigation state (e.g., from editor)
@@ -384,8 +385,15 @@ export default function CollagePage() {
 
   const selectedImagesRef = useRef(selectedImages);
   const previousImageCountRef = useRef(selectedImages.length);
+  const previousPanelCountRef = useRef(Math.max(1, panelCount || 1));
   const singleImageAutoCustomRef = useRef(false);
   const singleImageAutoSourceRef = useRef(null);
+  const singleImageAutoEligibleRef = useRef(true);
+  const singleImageRestoreAspectRatioRef = useRef(
+    selectedAspectRatio === 'custom'
+      ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
+      : selectedAspectRatio
+  );
   const pendingImageRatioRequestRef = useRef(0);
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -495,28 +503,66 @@ export default function CollagePage() {
     const currentImageCount = selectedImages.length;
     const previousImageCount = previousImageCountRef.current;
     previousImageCountRef.current = currentImageCount;
+    const currentPanelCount = Math.max(1, panelCount || 1);
+    const previousPanelCount = previousPanelCountRef.current;
+    previousPanelCountRef.current = currentPanelCount;
 
     if (isHydratingProject) return;
 
     if (currentImageCount === 0) {
       singleImageAutoCustomRef.current = false;
       singleImageAutoSourceRef.current = null;
+      singleImageAutoEligibleRef.current = true;
+      singleImageRestoreAspectRatioRef.current = selectedAspectRatio === 'custom'
+        ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
+        : selectedAspectRatio;
       pendingImageRatioRequestRef.current = 0;
       return;
     }
 
-    if (currentImageCount === 1) {
+    const transitionedToMultipleImages = currentImageCount > 1 && previousImageCount <= 1;
+    const transitionedToMultiplePanels = currentPanelCount > 1 && previousPanelCount <= 1;
+    if (singleImageAutoCustomRef.current && (transitionedToMultipleImages || transitionedToMultiplePanels)) {
+      singleImageAutoCustomRef.current = false;
+      singleImageAutoSourceRef.current = null;
+      pendingImageRatioRequestRef.current = 0;
+      const restoreAspectRatioId = singleImageRestoreAspectRatioRef.current || 'portrait';
+      if (selectedAspectRatio !== restoreAspectRatioId) {
+        setSelectedAspectRatio(restoreAspectRatioId);
+      }
+      const defaultTemplates = getLayoutsForPanelCount(
+        currentPanelCount,
+        restoreAspectRatioId,
+        restoreAspectRatioId === 'custom' ? customAspectRatio : null
+      );
+      if (defaultTemplates.length > 0) {
+        setSelectedTemplate(defaultTemplates[0]);
+      }
+      return;
+    }
+
+    if (currentImageCount === 1 && currentPanelCount <= 1) {
       const firstImage = selectedImages[0];
       const sourceUrl = typeof firstImage === 'string'
         ? firstImage
         : (firstImage?.displayUrl || firstImage?.originalUrl || '');
-      const shouldUpdateFromSingleImage = (
+      const enteringSingleImageMode = (
         previousImageCount !== 1 ||
-        (
-          singleImageAutoCustomRef.current &&
-          sourceUrl &&
-          sourceUrl !== singleImageAutoSourceRef.current
-        )
+        previousPanelCount > 1
+      );
+      if (enteringSingleImageMode && !singleImageAutoCustomRef.current) {
+        singleImageRestoreAspectRatioRef.current = selectedAspectRatio === 'custom'
+          ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
+          : selectedAspectRatio;
+      }
+      const sourceChangedWhileAuto = Boolean(
+        singleImageAutoCustomRef.current &&
+        sourceUrl &&
+        sourceUrl !== singleImageAutoSourceRef.current
+      );
+      const shouldUpdateFromSingleImage = (
+        sourceChangedWhileAuto ||
+        (enteringSingleImageMode && singleImageAutoEligibleRef.current)
       );
       if (!shouldUpdateFromSingleImage) return;
 
@@ -543,22 +589,15 @@ export default function CollagePage() {
       });
       return;
     }
-
-    if (currentImageCount > 1 && previousImageCount <= 1 && singleImageAutoCustomRef.current) {
-      singleImageAutoCustomRef.current = false;
-      singleImageAutoSourceRef.current = null;
-      pendingImageRatioRequestRef.current = 0;
-      if (selectedAspectRatio !== 'custom') return;
-      const standardAspectRatioId = getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets);
-      setSelectedAspectRatio(standardAspectRatioId);
-    }
   }, [
     customAspectRatio,
     isHydratingProject,
+    panelCount,
     selectedAspectRatio,
     selectedImages,
     setCustomAspectRatio,
     setSelectedAspectRatio,
+    setSelectedTemplate,
   ]);
 
   useEffect(() => {
@@ -694,6 +733,7 @@ export default function CollagePage() {
         clearImages();
       } catch (_) { /* ignore */ }
       setPanelAutoOpenRequest(null);
+      setPanelTextAutoOpenRequest(null);
       setRemovePanelDialog({ open: false, panelId: null, hasImage: false });
       setCustomLayout(null);
       setLiveCustomLayout(null);
@@ -1634,6 +1674,7 @@ export default function CollagePage() {
       setShowResultDialog(false);
       clearImages();
       setPanelAutoOpenRequest(null);
+      setPanelTextAutoOpenRequest(null);
       setRemovePanelDialog({ open: false, panelId: null, hasImage: false });
       setCustomLayout(null);
       setLiveCustomLayout(null);
@@ -1677,12 +1718,67 @@ export default function CollagePage() {
     });
   }, []);
 
+  const queuePanelTextAutoOpen = useCallback((panelId, panelIndex) => {
+    if (!panelId) return;
+    const normalizedIndex = Number.isInteger(panelIndex)
+      ? panelIndex
+      : parsePanelIndexFromId(panelId);
+    const nextRequest = {
+      requestId: `text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      panelId,
+    };
+    if (Number.isInteger(normalizedIndex)) {
+      nextRequest.panelIndex = normalizedIndex;
+    }
+    setPanelTextAutoOpenRequest(nextRequest);
+  }, []);
+
   const handlePanelAutoOpenHandled = useCallback((requestId) => {
     if (!requestId) return;
     setPanelAutoOpenRequest((prev) => (
       prev?.requestId === requestId ? null : prev
     ));
   }, []);
+
+  const handlePanelTextAutoOpenHandled = useCallback((requestId) => {
+    if (!requestId) return;
+    setPanelTextAutoOpenRequest((prev) => (
+      prev?.requestId === requestId ? null : prev
+    ));
+  }, []);
+
+  const getPanelIdsInOrder = useCallback(() => {
+    const layoutPanels = selectedTemplate?.layout?.panels;
+    if (Array.isArray(layoutPanels) && layoutPanels.length > 0) {
+      return layoutPanels.map((panel, index) => panel?.id || `panel-${index + 1}`);
+    }
+    return Array.from({ length: Math.max(1, panelCount || 1) }, (_, index) => `panel-${index + 1}`);
+  }, [selectedTemplate, panelCount]);
+
+  const handleAddTextRequested = useCallback(() => {
+    const orderedPanelIds = getPanelIdsInOrder();
+    if (!orderedPanelIds.length) return;
+
+    const targetPanelId = orderedPanelIds.find((panelId) => {
+      const mappedImageIndex = panelImageMapping?.[panelId];
+      if (typeof mappedImageIndex !== 'number' || mappedImageIndex < 0) return false;
+      const candidateImage = selectedImages?.[mappedImageIndex];
+      if (!candidateImage) return false;
+      return !isStartFromScratchPlaceholder(candidateImage);
+    });
+
+    if (!targetPanelId) {
+      setSnackbar({
+        open: true,
+        message: 'Add an image to a panel first, then add text.',
+        severity: 'info',
+      });
+      return;
+    }
+
+    const targetPanelIndex = parsePanelIndexFromId(targetPanelId);
+    queuePanelTextAutoOpen(targetPanelId, targetPanelIndex);
+  }, [getPanelIdsInOrder, panelImageMapping, selectedImages, queuePanelTextAutoOpen]);
 
   const handleAddPanelRequested = useCallback((position = 'end') => {
     if (isHydratingProject || isCreatingCollage) return;
@@ -2017,12 +2113,19 @@ export default function CollagePage() {
   const handleAspectRatioSelection = useCallback((nextAspectRatioId) => {
     singleImageAutoCustomRef.current = false;
     singleImageAutoSourceRef.current = null;
+    singleImageAutoEligibleRef.current = false;
+    pendingImageRatioRequestRef.current = 0;
+    if (nextAspectRatioId && nextAspectRatioId !== 'custom') {
+      singleImageRestoreAspectRatioRef.current = nextAspectRatioId;
+    }
     setSelectedAspectRatio(nextAspectRatioId);
   }, [setSelectedAspectRatio]);
 
   const handleCustomAspectRatioChange = useCallback((nextAspectRatioValue) => {
     singleImageAutoCustomRef.current = false;
     singleImageAutoSourceRef.current = null;
+    singleImageAutoEligibleRef.current = false;
+    pendingImageRatioRequestRef.current = 0;
     setCustomAspectRatio(nextAspectRatioValue);
   }, [setCustomAspectRatio]);
 
@@ -2119,7 +2222,12 @@ export default function CollagePage() {
     canAddPanel: panelCount < MAX_IMAGES,
     panelAutoOpenRequest,
     onPanelAutoOpenHandled: handlePanelAutoOpenHandled,
+    panelTextAutoOpenRequest,
+    onPanelTextAutoOpenHandled: handlePanelTextAutoOpenHandled,
     onRemovePanelRequest: handleRemovePanelRequest,
+    onAddTextRequest: handleAddTextRequested,
+    onAddStickerFromLibrary: handleAddStickerFromLibrary,
+    canManageStickers,
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
     onPreviewRendered: (sig) => { lastRenderedSigRef.current = sig; setRenderBump(b => b + 1); },

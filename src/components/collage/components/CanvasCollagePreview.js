@@ -660,6 +660,8 @@ const CanvasCollagePreview = ({
   updatePanelText,
   lastUsedTextSettings = {},
   onCaptionEditorVisibleChange,
+  panelTextAutoOpenRequest,
+  onPanelTextAutoOpenHandled,
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
   // Render tracking for upstream autosave/thumbnail logic
   renderSig,
@@ -685,6 +687,7 @@ const CanvasCollagePreview = ({
   const [stickerDrafts, setStickerDrafts] = useState({});
   const hasInitializedStickerIdsRef = useRef(false);
   const previousStickerIdsRef = useRef([]);
+  const handledTextAutoOpenRequestRef = useRef(null);
   const stickerDraftsRef = useRef({});
   const pendingStickerPointerRef = useRef(null);
   const stickerRafRef = useRef(null);
@@ -2376,6 +2379,27 @@ const CanvasCollagePreview = ({
     }
   }, [textEditingPanel, panelRects, isReorderMode, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
 
+  useEffect(() => {
+    if (!panelTextAutoOpenRequest) return;
+    const requestId = panelTextAutoOpenRequest.requestId;
+    if (!requestId || handledTextAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelId = panelTextAutoOpenRequest.panelId || null;
+    if (!requestedPanelId && Number.isInteger(panelTextAutoOpenRequest.panelIndex)) {
+      requestedPanelId = `panel-${panelTextAutoOpenRequest.panelIndex + 1}`;
+    }
+    if (!requestedPanelId) return;
+
+    handledTextAutoOpenRequestRef.current = requestId;
+    if (textEditingPanel !== requestedPanelId) {
+      handleTextEdit(requestedPanelId);
+    }
+
+    if (typeof onPanelTextAutoOpenHandled === 'function') {
+      onPanelTextAutoOpenHandled(requestId);
+    }
+  }, [panelTextAutoOpenRequest, handleTextEdit, onPanelTextAutoOpenHandled, textEditingPanel]);
+
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
   }, []);
@@ -3754,7 +3778,14 @@ const CanvasCollagePreview = ({
     if (actionMenuPanelId && typeof onPanelClick === 'function') {
       const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
       if (rect) {
-        onPanelClick(rect.index, actionMenuPanelId);
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        const anchorPosition = canvasRect
+          ? {
+              left: Math.round(canvasRect.left + rect.x + (rect.width / 2)),
+              top: Math.round(canvasRect.top + rect.y + (rect.height / 2)),
+            }
+          : null;
+        onPanelClick(rect.index, actionMenuPanelId, { anchorPosition });
       }
     }
     handleActionMenuClose();
@@ -4889,6 +4920,12 @@ CanvasCollagePreview.propTypes = {
   updatePanelText: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   onCaptionEditorVisibleChange: PropTypes.func,
+  panelTextAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTextAutoOpenHandled: PropTypes.func,
   isGeneratingCollage: PropTypes.bool,
   renderSig: PropTypes.string,
   onRendered: PropTypes.func,
