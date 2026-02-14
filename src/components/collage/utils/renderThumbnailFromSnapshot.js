@@ -14,10 +14,31 @@ const TOP_CAPTION_DEFAULTS = {
   fontSize: 42,
   fontWeight: 700,
   fontStyle: 'normal',
-  fontFamily: 'Impact',
+  fontFamily: 'IMPACT',
   color: '#111111',
   strokeWidth: 0,
+  textAlign: 'center',
+  captionSpacingY: 0,
   backgroundColor: '#ffffff',
+};
+
+const normalizeTextAlign = (value) => {
+  if (value === 'left' || value === 'center' || value === 'right') return value;
+  return 'center';
+};
+
+const getLineStartX = (textAlign, anchorX, lineWidth) => {
+  const align = normalizeTextAlign(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - lineWidth;
+  return anchorX - (lineWidth / 2);
+};
+
+const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
+  const align = normalizeTextAlign(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - blockWidth;
+  return anchorX - (blockWidth / 2);
 };
 
 // Determine if a persisted custom layout is compatible with the requested panel count
@@ -349,26 +370,32 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   if (hasTopCaptionText) {
     const measureCanvas = document.createElement('canvas');
     const measureCtx = measureCanvas.getContext('2d');
-    const baseFontSize = Number(topCaptionConfig?.fontSize) > 0
-      ? Number(topCaptionConfig.fontSize)
-      : TOP_CAPTION_DEFAULTS.fontSize;
-    const fontSize = baseFontSize * textScaleFactor;
-    const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
-    const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
-    const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
-    measureCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-    const horizontalPadding = Math.max(18, Math.round(width * 0.045));
-    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42));
-    const maxTextWidth = Math.max(48, width - (horizontalPadding * 2) - (borderPixels * 2));
-    const wrappedLines = wrapSimpleText(measureCtx, topCaptionText, maxTextWidth);
-    const lineHeight = fontSize * 1.2;
-    const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
-    const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
-    const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
-    const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
-    topCaptionHeight = shouldExpandForSingleCustom
-      ? Math.max(56, requestedCaptionHeight)
-      : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+    if (measureCtx) {
+      const captionSpacingY = Number.isFinite(Number(topCaptionConfig?.captionSpacingY))
+        ? Math.max(0, Number(topCaptionConfig.captionSpacingY))
+        : TOP_CAPTION_DEFAULTS.captionSpacingY;
+      const scaledCaptionSpacingY = captionSpacingY * textScaleFactor;
+      const baseFontSize = Number(topCaptionConfig?.fontSize) > 0
+        ? Number(topCaptionConfig.fontSize)
+        : TOP_CAPTION_DEFAULTS.fontSize;
+      const fontSize = baseFontSize * textScaleFactor;
+      const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+      const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+      const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+      measureCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+      const horizontalPadding = Math.max(18, Math.round(width * 0.045));
+      const verticalPadding = Math.max(12, Math.round(fontSize * 0.42)) + scaledCaptionSpacingY;
+      const maxTextWidth = Math.max(48, width - (horizontalPadding * 2) - (borderPixels * 2));
+      const wrappedLines = wrapSimpleText(measureCtx, topCaptionText, maxTextWidth);
+      const lineHeight = fontSize * 1.2;
+      const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
+      const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
+      const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
+      const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+      topCaptionHeight = shouldExpandForSingleCustom
+        ? Math.max(56, requestedCaptionHeight)
+        : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+    }
   }
   const imageAreaHeight = hasTopCaptionText
     ? (shouldExpandForSingleCustom ? baseImageHeight : Math.max(1, baseImageHeight - topCaptionHeight))
@@ -497,9 +524,19 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
     const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
     const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const textAlign = normalizeTextAlign(topCaptionConfig?.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
     const textColor = topCaptionConfig?.color || TOP_CAPTION_DEFAULTS.color;
     const strokeWidth = topCaptionConfig?.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
-    const backgroundColor = topCaptionConfig?.backgroundColor || TOP_CAPTION_DEFAULTS.backgroundColor;
+    const normalizedTopCaptionBackground = typeof topCaptionConfig?.backgroundColor === 'string'
+      ? topCaptionConfig.backgroundColor.trim().toLowerCase()
+      : '';
+    const hasExplicitTopCaptionBackground = (
+      topCaptionConfig?.backgroundColorExplicit === true ||
+      (normalizedTopCaptionBackground.length > 0 && normalizedTopCaptionBackground !== '#ffffff')
+    );
+    const backgroundColor = hasExplicitTopCaptionBackground
+      ? topCaptionConfig.backgroundColor
+      : (borderColor || TOP_CAPTION_DEFAULTS.backgroundColor);
 
     ctx.save();
     ctx.fillStyle = backgroundColor;
@@ -515,9 +552,16 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     const lineHeight = fontSize * 1.2;
     const totalTextHeight = lines.length * lineHeight;
     const startY = captionRect.y + ((captionRect.height - totalTextHeight) / 2) + (lineHeight / 2);
+    const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
+    const textAnchorX = textAlign === 'left'
+      ? captionRect.x + textPadding
+      : textAlign === 'right'
+        ? captionRect.x + captionRect.width - textPadding
+        : captionRect.x + captionRect.width / 2;
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
 
     ctx.fillStyle = textColor;
-    ctx.textAlign = 'center';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     if (strokeWidth > 0) {
       ctx.strokeStyle = 'rgba(0,0,0,0.72)';
@@ -527,8 +571,10 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     }
     lines.forEach((line, idx) => {
       const y = startY + idx * lineHeight;
-      if (strokeWidth > 0) ctx.strokeText(line, captionRect.x + captionRect.width / 2, y);
-      ctx.fillText(line, captionRect.x + captionRect.width / 2, y);
+      const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
+      const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
+      if (strokeWidth > 0) ctx.strokeText(line, drawX, y);
+      ctx.fillText(line, drawX, y);
     });
     ctx.restore();
   }
@@ -611,14 +657,15 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const fontStyle = panelText.fontStyle || 'normal';
       const fontFamily = panelText.fontFamily || 'Arial';
       const textColor = panelText.color || '#ffffff';
-      const strokeWidth = panelText.strokeWidth || 2;
+      const strokeWidth = panelText.strokeWidth ?? 2;
       const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
       const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
       const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
+      const textAlign = normalizeTextAlign(panelText.textAlign || 'center');
 
       ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
       ctx.fillStyle = textColor;
-      ctx.textAlign = 'center';
+      ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = strokeWidth;
@@ -631,9 +678,12 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
 
       const textPadding = 10;
       const maxTextWidth = w - textPadding * 2;
-      const textX = x + (w / 2) + (textPositionX / 100) * (w / 2 - textPadding);
+      const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
       const lineHeight = fontSize * 1.2;
       const lines = wrapText(ctx, String(cleanText), maxTextWidth);
+      const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
+      const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+      const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
       const totalTextHeight = lines.length * lineHeight;
 
       let textAnchorY;
@@ -653,7 +703,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
 
       if (textRotation !== 0) {
         ctx.save();
-        const textCenterX = textX;
+        const textCenterX = textBlockCenterX;
         const textCenterY = textAnchorY - totalTextHeight / 2;
         ctx.translate(textCenterX, textCenterY);
         ctx.rotate((textRotation * Math.PI) / 180);
@@ -662,8 +712,10 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
 
       lines.forEach((line, idx) => {
         const lineY = startY + idx * lineHeight;
-        if (strokeWidth > 0) ctx.strokeText(line, textX, lineY);
-        ctx.fillText(line, textX, lineY);
+        const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
+        const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
+        if (strokeWidth > 0) ctx.strokeText(line, drawX, lineY);
+        ctx.fillText(line, drawX, lineY);
       });
 
       if (textRotation !== 0) {

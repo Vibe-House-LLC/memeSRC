@@ -81,7 +81,8 @@ export const useCollageState = () => {
     fontWeight: 400,
     fontFamily: 'Arial',
     color: '#ffffff',
-    strokeWidth: 2
+    strokeWidth: 2,
+    textAlign: 'center',
   });
   
   // Auto-save to library is disabled; keep state for legacy props but do not use
@@ -947,6 +948,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
           fontFamily: preferredFont,
           color: lastUsedTextSettings.color,
           strokeWidth: lastUsedTextSettings.strokeWidth,
+          textAlign: lastUsedTextSettings.textAlign || 'center',
           autoAssigned: true, // Mark as auto-assigned from subtitle
           subtitleShowing: imageData.subtitleShowing || false
         };

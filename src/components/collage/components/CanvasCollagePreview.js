@@ -102,9 +102,11 @@ const TOP_CAPTION_DEFAULTS = {
   fontSize: 42,
   fontWeight: 700,
   fontStyle: 'normal',
-  fontFamily: 'Impact',
+  fontFamily: 'IMPACT',
   color: '#111111',
   strokeWidth: 0,
+  textAlign: 'center',
+  captionSpacingY: 0,
   backgroundColor: '#ffffff',
 };
 
@@ -114,6 +116,25 @@ const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === 'normal') return '400';
   if (fontWeight === 'bold') return '700';
   return String(fontWeight);
+};
+
+const normalizeTextAlignValue = (value) => {
+  if (value === 'left' || value === 'center' || value === 'right') return value;
+  return 'center';
+};
+
+const getLineStartX = (textAlign, anchorX, lineWidth) => {
+  const align = normalizeTextAlignValue(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - lineWidth;
+  return anchorX - (lineWidth / 2);
+};
+
+const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
+  const align = normalizeTextAlignValue(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - blockWidth;
+  return anchorX - (blockWidth / 2);
 };
 
 const resolveInlineSegmentStyle = (baseStyle, inlineStyle = {}) => ({
@@ -913,6 +934,16 @@ const CanvasCollagePreview = ({
 
     const measureCanvas = document.createElement('canvas');
     const measureCtx = measureCanvas.getContext('2d');
+    if (!measureCtx) {
+      return {
+        enabled: false,
+        captionHeight: 0,
+        imageAreaHeight: baseImageHeight,
+        totalHeight: baseImageHeight,
+        imageOffsetY: 0,
+        rect: null,
+      };
+    }
     const baseFontSize = Number(topCaptionConfig.fontSize) > 0
       ? Number(topCaptionConfig.fontSize)
       : (Number(lastUsedTextSettings?.fontSize) > 0
@@ -922,6 +953,10 @@ const CanvasCollagePreview = ({
     const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
     const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
     const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const captionSpacingY = Number.isFinite(Number(topCaptionConfig.captionSpacingY))
+      ? Math.max(0, Number(topCaptionConfig.captionSpacingY))
+      : TOP_CAPTION_DEFAULTS.captionSpacingY;
+    const scaledCaptionSpacingY = captionSpacingY * (canvasWidth / BASE_CANVAS_WIDTH);
     const displayText = hasActualText ? cleanText : TOP_CAPTION_PLACEHOLDER;
     const activeRanges = hasActualText ? ranges : [];
     const baseInlineStyle = {
@@ -931,7 +966,7 @@ const CanvasCollagePreview = ({
     };
 
     const horizontalPadding = Math.max(18, Math.round(canvasWidth * 0.045));
-    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42));
+    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42)) + scaledCaptionSpacingY;
     const maxTextWidth = Math.max(48, canvasWidth - (horizontalPadding * 2) - (borderPixels * 2));
 
     const wrappedLines = buildWrappedLines(
@@ -1002,8 +1037,18 @@ const CanvasCollagePreview = ({
     const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
     const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
     const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const textAlign = normalizeTextAlignValue(topCaptionConfig.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
     const baseTextColor = topCaptionConfig.color || TOP_CAPTION_DEFAULTS.color;
-    const backgroundColor = topCaptionConfig.backgroundColor || TOP_CAPTION_DEFAULTS.backgroundColor;
+    const normalizedTopCaptionBackground = typeof topCaptionConfig.backgroundColor === 'string'
+      ? topCaptionConfig.backgroundColor.trim().toLowerCase()
+      : '';
+    const hasExplicitTopCaptionBackground = (
+      topCaptionConfig.backgroundColorExplicit === true ||
+      (normalizedTopCaptionBackground.length > 0 && normalizedTopCaptionBackground !== '#ffffff')
+    );
+    const backgroundColor = hasExplicitTopCaptionBackground
+      ? topCaptionConfig.backgroundColor
+      : (borderColor || TOP_CAPTION_DEFAULTS.backgroundColor);
     const requestedStrokeWidth = topCaptionConfig.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
     const baseInlineStyle = {
       fontWeight,
@@ -1060,12 +1105,19 @@ const CanvasCollagePreview = ({
     );
     const totalTextHeight = wrappedLines.length * lineHeight;
     const startY = rect.y + ((rect.height - totalTextHeight) / 2) + (lineHeight / 2);
+    const maxLineWidth = wrappedLines.reduce((max, line) => Math.max(max, line.width), 0);
+    const textAnchorX = textAlign === 'left'
+      ? rect.x + hPad
+      : textAlign === 'right'
+        ? rect.x + rect.width - hPad
+        : rect.x + (rect.width / 2);
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
 
     wrappedLines.forEach((line, lineIndex) => {
       const lineY = startY + lineIndex * lineHeight;
-      const lineX = rect.x + (rect.width / 2) - (line.width / 2);
+      const lineX = getLineStartX(textAlign, textAnchorX, line.width);
       const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
-      let cursorX = lineX;
+      let cursorX = Number.isFinite(lineX) ? lineX : textBlockLeft;
 
       segments.forEach((segment) => {
         const segmentText = displayText.slice(segment.start, segment.end);
@@ -1096,7 +1148,7 @@ const CanvasCollagePreview = ({
     });
 
     ctx.restore();
-  }, [topCaptionLayout, panelTexts, lastUsedTextSettings?.fontSize, textScaleFactor]);
+  }, [topCaptionLayout, panelTexts, lastUsedTextSettings?.fontSize, textScaleFactor, borderColor]);
 
   const isPointInTopCaptionArea = useCallback((x, y) => {
     if (!topCaptionLayout?.enabled || !topCaptionLayout?.rect) return false;
@@ -2109,6 +2161,7 @@ const CanvasCollagePreview = ({
         const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
         const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
         const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
+        const textAlign = normalizeTextAlignValue(panelText.textAlign || lastUsedTextSettings.textAlign || 'center');
 
         // Apply different opacity for placeholder vs actual text
         let textColor;
@@ -2184,7 +2237,7 @@ const CanvasCollagePreview = ({
         // Calculate text position based on position settings
         // textPositionX: -100 (left) to 100 (right), 0 = center
         // textPositionY: -100 (bottom anchored) to 100 (top anchored), 0 = default bottom position
-        const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
+        const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
 
         const lineHeight = fontSize * 1.2;
         const wrappedLines = buildWrappedLines(
@@ -2196,6 +2249,9 @@ const CanvasCollagePreview = ({
           fontSize,
           fontFamily,
         );
+        const maxLineWidth = wrappedLines.reduce((max, line) => Math.max(max, line.width), 0);
+        const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+        const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
 
         // Calculate text block positioning with proper anchoring
         const totalTextHeight = wrappedLines.length * lineHeight;
@@ -2229,7 +2285,7 @@ const CanvasCollagePreview = ({
         if (textRotation !== 0) {
           ctx.save();
           // Translate to the center of the text block
-          const textCenterX = textX;
+          const textCenterX = textBlockCenterX;
           const textCenterY = textAnchorY - totalTextHeight / 2;
           ctx.translate(textCenterX, textCenterY);
           ctx.rotate((textRotation * Math.PI) / 180);
@@ -2238,7 +2294,7 @@ const CanvasCollagePreview = ({
 
         wrappedLines.forEach((line, lineIndex) => {
           const lineY = startY + lineIndex * lineHeight;
-          const lineX = textX - (line.width / 2);
+          const lineX = getLineStartX(textAlign, textAnchorX, line.width);
           const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
           let cursorX = lineX;
 
@@ -2318,6 +2374,7 @@ const CanvasCollagePreview = ({
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
     const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     const textRotation = panelText?.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
+    const textAlign = normalizeTextAlignValue(panelText?.textAlign || lastUsedTextSettings.textAlign || 'center');
     
     const rawCaption = panelText?.rawContent ?? panelText?.content ?? '';
     const { cleanText, ranges } = parseFormattedText(rawCaption);
@@ -2331,6 +2388,7 @@ const CanvasCollagePreview = ({
     // Create temporary canvas for accurate text measurement
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return null;
     
     // Set font properties exactly like in drawCanvas
     const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 400;
@@ -2360,7 +2418,8 @@ const CanvasCollagePreview = ({
     const actualTextHeight = actualLines * lineHeight;
     
     // Calculate text position based on position settings (same as drawCanvas)
-    const textX = panel.x + (panel.width / 2) + (textPositionX / 100) * (panel.width / 2 - textPadding);
+    const textAnchorX = panel.x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, actualTextWidth);
     
     // Use the same improved vertical positioning logic as in drawCanvas
     let textAnchorY;
@@ -2386,12 +2445,12 @@ const CanvasCollagePreview = ({
     // Calculate activation area bounds around the actual text block position
     let activationAreaHeight = actualTextHeight + (activationPadding * 2);
     let activationAreaWidth = actualTextWidth + (activationPadding * 2);
-    let activationAreaX = textX - (activationAreaWidth / 2);
+    let activationAreaX = textBlockLeft - activationPadding;
     let activationAreaY = textBlockY - activationPadding;
     
     // If rotation is applied, calculate rotated bounds
     if (textRotation !== 0) {
-      const textCenterX = textX;
+      const textCenterX = textBlockLeft + (actualTextWidth / 2);
       const textCenterY = textAnchorY - actualTextHeight / 2;
       const radians = (textRotation * Math.PI) / 180;
       const cos = Math.cos(radians);
@@ -4388,6 +4447,7 @@ const CanvasCollagePreview = ({
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
+            const textAlign = normalizeTextAlignValue(panelText.textAlign || lastUsedTextSettings.textAlign || 'center');
 
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = baseTextColor;
@@ -4414,7 +4474,7 @@ const CanvasCollagePreview = ({
 
             const textPadding = 10;
             const maxTextWidth = width - (textPadding * 2);
-            const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
+            const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
 
             const lineHeight = fontSize * 1.2;
 
@@ -4427,6 +4487,9 @@ const CanvasCollagePreview = ({
               fontSize,
               fontFamily,
             );
+            const maxLineWidth = lines.reduce((max, line) => Math.max(max, line.width), 0);
+            const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+            const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
 
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
@@ -4453,7 +4516,7 @@ const CanvasCollagePreview = ({
             if (textRotation !== 0) {
               exportCtx.save();
               // Translate to the center of the text block
-              const textCenterX = textX;
+              const textCenterX = textBlockCenterX;
               const textCenterY = textAnchorY - totalTextHeight / 2;
               exportCtx.translate(textCenterX, textCenterY);
               exportCtx.rotate((textRotation * Math.PI) / 180);
@@ -4462,7 +4525,7 @@ const CanvasCollagePreview = ({
 
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
-              const lineX = textX - (line.width / 2);
+              const lineX = getLineStartX(textAlign, textAnchorX, line.width);
               const segments = getSegmentsForLine(ranges, line.start, line.end, baseInlineStyle);
               let cursorX = lineX;
 
@@ -4940,6 +5003,8 @@ const CanvasCollagePreview = ({
           componentWidth={componentWidth}
           placeholder={TOP_CAPTION_PLACEHOLDER}
           allowPositioning={false}
+          showTopCaptionOptions
+          topCaptionDefaultBackgroundColor={borderColor || TOP_CAPTION_DEFAULTS.backgroundColor}
           clearRemovesEntry
         />
       )}

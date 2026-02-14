@@ -1849,17 +1849,36 @@ export default function CollagePage() {
     if (textType === 'top-caption') {
       const existingTopCaption = panelTexts?.[TOP_CAPTION_PANEL_ID] || {};
       const existingRaw = existingTopCaption.rawContent ?? existingTopCaption.content ?? '';
+      const normalizedBackgroundColor = (
+        typeof existingTopCaption.backgroundColor === 'string'
+          ? existingTopCaption.backgroundColor.trim().toLowerCase()
+          : ''
+      );
+      const hasExplicitBackgroundColor = (
+        existingTopCaption.backgroundColorExplicit === true ||
+        (
+          normalizedBackgroundColor.length > 0 &&
+          normalizedBackgroundColor !== '#ffffff'
+        )
+      );
       updatePanelText(TOP_CAPTION_PANEL_ID, {
         ...existingTopCaption,
         content: existingTopCaption.content ?? existingRaw,
         rawContent: existingRaw,
-        fontFamily: existingTopCaption.fontFamily || 'Impact',
+        fontFamily: existingTopCaption.fontFamily || 'IMPACT',
         fontWeight: existingTopCaption.fontWeight ?? 700,
         fontStyle: existingTopCaption.fontStyle || 'normal',
         fontSize: existingTopCaption.fontSize || 42,
         color: existingTopCaption.color || '#111111',
         strokeWidth: existingTopCaption.strokeWidth ?? 0,
-        backgroundColor: existingTopCaption.backgroundColor || '#ffffff',
+        textAlign: existingTopCaption.textAlign || 'center',
+        captionSpacingY: existingTopCaption.captionSpacingY ?? 0,
+        ...(hasExplicitBackgroundColor
+          ? {
+            backgroundColor: existingTopCaption.backgroundColor,
+            backgroundColorExplicit: true,
+          }
+          : {}),
       });
       queuePanelTextAutoOpen(TOP_CAPTION_PANEL_ID);
       return;

@@ -2,6 +2,10 @@ const fonts: string[] = [
   "Arial",
   "Courier New",
   "Georgia",
+  "Impact",
+  "Times New Roman",
+  "Trebuchet MS",
+  "Tahoma",
   "Verdana",
   "Akbar",
   "Baveuse",
@@ -10,11 +14,9 @@ const fonts: string[] = [
   "South Park",
   "SPIDEY",
   "HORROR",
-  "IMPACT",
   "Star Jedi",
   "twilight",
   "zuume",
 ];
 
 export default fonts;
-
