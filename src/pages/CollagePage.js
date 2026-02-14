@@ -92,6 +92,7 @@ const AUTOSAVE_RETRY_BASE_DELAY_MS = 1500;
 const AUTOSAVE_RETRY_MAX_DELAY_MS = 8000;
 const PANEL_DIM_REFRESH_TIMEOUT_MS = 1800;
 const MAX_IMAGES = 5;
+const DEFAULT_CUSTOM_ASPECT_RATIO = 1;
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
@@ -116,6 +117,58 @@ const getBorderThicknessValue = (borderThickness, options) => {
   
   // Return the percentage value if found, otherwise default to 2 (medium)
   return option ? option.value : 2;
+};
+
+const normalizeAspectRatioValue = (value, fallback = DEFAULT_CUSTOM_ASPECT_RATIO) => {
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) return fallback;
+  return Math.max(0.1, Math.min(10, parsedValue));
+};
+
+const isStartFromScratchPlaceholder = (imageRef) => {
+  if (!imageRef) return false;
+  if (typeof imageRef === 'string') {
+    return imageRef === '__START_FROM_SCRATCH__';
+  }
+  const candidate = imageRef.displayUrl || imageRef.originalUrl;
+  return candidate === '__START_FROM_SCRATCH__';
+};
+
+const getImageAspectRatio = (sourceUrl) => new Promise((resolve) => {
+  if (typeof sourceUrl !== 'string' || !sourceUrl || sourceUrl === '__START_FROM_SCRATCH__') {
+    resolve(DEFAULT_CUSTOM_ASPECT_RATIO);
+    return;
+  }
+  const image = new Image();
+  image.onload = () => {
+    const width = Number(image.naturalWidth || 0);
+    const height = Number(image.naturalHeight || 0);
+    if (width > 0 && height > 0) {
+      resolve(normalizeAspectRatioValue(width / height, DEFAULT_CUSTOM_ASPECT_RATIO));
+      return;
+    }
+    resolve(DEFAULT_CUSTOM_ASPECT_RATIO);
+  };
+  image.onerror = () => resolve(DEFAULT_CUSTOM_ASPECT_RATIO);
+  image.src = sourceUrl;
+});
+
+const getClosestStandardAspectRatioId = (aspectRatioValue, presets = []) => {
+  const safeRatio = normalizeAspectRatioValue(aspectRatioValue, DEFAULT_CUSTOM_ASPECT_RATIO);
+  const standardPresets = presets.filter((preset) => (
+    preset?.id &&
+    preset.id !== 'custom' &&
+    Number.isFinite(preset.value) &&
+    preset.value > 0
+  ));
+  if (standardPresets.length === 0) return 'square';
+  const closestPreset = standardPresets.reduce((bestPreset, candidatePreset) => {
+    if (!bestPreset) return candidatePreset;
+    const bestDistance = Math.abs(bestPreset.value - safeRatio);
+    const candidateDistance = Math.abs(candidatePreset.value - safeRatio);
+    return candidateDistance < bestDistance ? candidatePreset : bestPreset;
+  }, standardPresets[0]);
+  return closestPreset?.id || 'square';
 };
 
 // Utility function to hash username for localStorage (needed for auto-forwarding)
@@ -296,6 +349,8 @@ export default function CollagePage() {
     setSelectedTemplate,
     selectedAspectRatio,
     setSelectedAspectRatio,
+    customAspectRatio,
+    setCustomAspectRatio,
     panelCount,
     setPanelCount,
     finalImage,
@@ -326,6 +381,15 @@ export default function CollagePage() {
     updatePanelText,
     libraryRefreshTrigger,
   } = useCollageState(isAdmin);
+
+  const selectedImagesRef = useRef(selectedImages);
+  const previousImageCountRef = useRef(selectedImages.length);
+  const singleImageAutoCustomRef = useRef(false);
+  const singleImageAutoSourceRef = useRef(null);
+  const pendingImageRatioRequestRef = useRef(0);
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
 
   const clearAppendNavigationState = useCallback(() => {
     navigate(location.pathname, { replace: true, state: {} });
@@ -425,6 +489,76 @@ export default function CollagePage() {
     setPanelCount,
     startReplaceFlow,
     updatePanelImageMapping,
+  ]);
+
+  useEffect(() => {
+    const currentImageCount = selectedImages.length;
+    const previousImageCount = previousImageCountRef.current;
+    previousImageCountRef.current = currentImageCount;
+
+    if (isHydratingProject) return;
+
+    if (currentImageCount === 0) {
+      singleImageAutoCustomRef.current = false;
+      singleImageAutoSourceRef.current = null;
+      pendingImageRatioRequestRef.current = 0;
+      return;
+    }
+
+    if (currentImageCount === 1) {
+      const firstImage = selectedImages[0];
+      const sourceUrl = typeof firstImage === 'string'
+        ? firstImage
+        : (firstImage?.displayUrl || firstImage?.originalUrl || '');
+      const shouldUpdateFromSingleImage = (
+        previousImageCount !== 1 ||
+        (
+          singleImageAutoCustomRef.current &&
+          sourceUrl &&
+          sourceUrl !== singleImageAutoSourceRef.current
+        )
+      );
+      if (!shouldUpdateFromSingleImage) return;
+
+      if (!firstImage || isStartFromScratchPlaceholder(firstImage)) {
+        setCustomAspectRatio(DEFAULT_CUSTOM_ASPECT_RATIO);
+        setSelectedAspectRatio('custom');
+        singleImageAutoCustomRef.current = true;
+        singleImageAutoSourceRef.current = '__START_FROM_SCRATCH__';
+        return;
+      }
+
+      const requestId = Date.now() + Math.random();
+      pendingImageRatioRequestRef.current = requestId;
+
+      void getImageAspectRatio(sourceUrl).then((ratio) => {
+        if (!isMountedRef.current) return;
+        if (pendingImageRatioRequestRef.current !== requestId) return;
+        if ((selectedImagesRef.current?.length || 0) !== 1) return;
+        const normalizedRatio = normalizeAspectRatioValue(ratio, DEFAULT_CUSTOM_ASPECT_RATIO);
+        setCustomAspectRatio(normalizedRatio);
+        setSelectedAspectRatio('custom');
+        singleImageAutoCustomRef.current = true;
+        singleImageAutoSourceRef.current = sourceUrl;
+      });
+      return;
+    }
+
+    if (currentImageCount > 1 && previousImageCount <= 1 && singleImageAutoCustomRef.current) {
+      singleImageAutoCustomRef.current = false;
+      singleImageAutoSourceRef.current = null;
+      pendingImageRatioRequestRef.current = 0;
+      if (selectedAspectRatio !== 'custom') return;
+      const standardAspectRatioId = getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets);
+      setSelectedAspectRatio(standardAspectRatioId);
+    }
+  }, [
+    customAspectRatio,
+    isHydratingProject,
+    selectedAspectRatio,
+    selectedImages,
+    setCustomAspectRatio,
+    setSelectedAspectRatio,
   ]);
 
   useEffect(() => {
@@ -592,6 +726,7 @@ export default function CollagePage() {
     panelTexts,
     selectedTemplate,
     selectedAspectRatio,
+    customAspectRatio,
     panelCount,
     borderThickness,
     borderColor,
@@ -635,7 +770,7 @@ export default function CollagePage() {
         return undefined;
       }
     })(),
-  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
+  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, customAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);
@@ -845,13 +980,24 @@ export default function CollagePage() {
     loadingProjectRef.current = true;
     const snap = await resolveTemplateSnapshot(record);
     if (!snap) return;
+    singleImageAutoCustomRef.current = false;
+    singleImageAutoSourceRef.current = null;
+    pendingImageRatioRequestRef.current = 0;
 
     const nextAspectRatio = snap.selectedAspectRatio || 'square';
+    const nextCustomAspectRatio = normalizeAspectRatioValue(
+      snap.customAspectRatio,
+      DEFAULT_CUSTOM_ASPECT_RATIO
+    );
     const nextPanelCount = snap.panelCount || 1;
 
     let templateForSnapshot = null;
     try {
-      const templates = getLayoutsForPanelCount(nextPanelCount, nextAspectRatio);
+      const templates = getLayoutsForPanelCount(
+        nextPanelCount,
+        nextAspectRatio,
+        nextAspectRatio === 'custom' ? nextCustomAspectRatio : null
+      );
       templateForSnapshot = templates.find((t) => t.id === snap.selectedTemplateId) || templates[0] || null;
     } catch (_) { /* ignore */ }
 
@@ -1011,6 +1157,7 @@ export default function CollagePage() {
     setHydrationMode(true);
 
     const applyAll = () => {
+      setCustomAspectRatio(nextCustomAspectRatio);
       setSelectedAspectRatio(nextAspectRatio);
       setPanelCount(nextPanelCount);
       setSelectedTemplate(templateForSnapshot || null);
@@ -1040,7 +1187,7 @@ export default function CollagePage() {
     justLoadedRef.current = true; // Flag to sync signature after first render
     setIsDirty(false); // Project just loaded, no unsaved changes
     setSaveStatus({ state: 'saved', time: Date.now(), error: null });
-  }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColor, setBorderThickness, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
+  }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColor, setBorderThickness, setCustomAspectRatio, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
 
   // Ensure we always release the loading flag, even on errors, and only
   // after state has settled so custom layouts are not cleared prematurely.
@@ -1425,7 +1572,7 @@ export default function CollagePage() {
     setCustomLayout(null);
     setLiveCustomLayout(null);
     setLivePanelDimensions(null);
-  }, [selectedTemplate?.id, selectedAspectRatio, panelCount]);
+  }, [selectedTemplate?.id, selectedAspectRatio, customAspectRatio, panelCount]);
 
   // New/open/delete handlers removed along with inline projects view
 
@@ -1513,9 +1660,13 @@ export default function CollagePage() {
   }, []);
 
   const syncTemplateForPanelCount = useCallback((nextCount) => {
-    const templates = getLayoutsForPanelCount(nextCount, selectedAspectRatio);
+    const templates = getLayoutsForPanelCount(
+      nextCount,
+      selectedAspectRatio,
+      selectedAspectRatio === 'custom' ? customAspectRatio : null
+    );
     setSelectedTemplate(templates.length > 0 ? templates[0] : null);
-  }, [selectedAspectRatio, setSelectedTemplate]);
+  }, [customAspectRatio, selectedAspectRatio, setSelectedTemplate]);
 
   const queuePanelAutoOpen = useCallback((panelIndex) => {
     if (!Number.isInteger(panelIndex) || panelIndex < 0) return;
@@ -1863,6 +2014,18 @@ export default function CollagePage() {
     return stickerId;
   }, [addSticker, canManageStickers, getStickerAspectRatio, resolveStickerSource]);
 
+  const handleAspectRatioSelection = useCallback((nextAspectRatioId) => {
+    singleImageAutoCustomRef.current = false;
+    singleImageAutoSourceRef.current = null;
+    setSelectedAspectRatio(nextAspectRatioId);
+  }, [setSelectedAspectRatio]);
+
+  const handleCustomAspectRatioChange = useCallback((nextAspectRatioValue) => {
+    singleImageAutoCustomRef.current = false;
+    singleImageAutoSourceRef.current = null;
+    setCustomAspectRatio(nextAspectRatioValue);
+  }, [setCustomAspectRatio]);
+
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
@@ -1870,7 +2033,9 @@ export default function CollagePage() {
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
-    setSelectedAspectRatio,
+    setSelectedAspectRatio: handleAspectRatioSelection,
+    customAspectRatio,
+    setCustomAspectRatio: handleCustomAspectRatioChange,
     panelCount,
     setPanelCount,
     // Needed for safe panel count reduction that may hide an image
@@ -1922,6 +2087,7 @@ export default function CollagePage() {
     panelCount,
     selectedTemplate,
     selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
+    customAspectRatio,
     borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,
@@ -1973,7 +2139,11 @@ export default function CollagePage() {
     onEditingSessionChange: handleEditingSessionChange,
     // Provide persisted custom grid to preview on load
     customLayout,
-    customLayoutKey: useMemo(() => `${selectedTemplate?.id || 'none'}|${panelCount}|${selectedAspectRatio}`, [selectedTemplate?.id, panelCount, selectedAspectRatio]),
+    customLayoutKey: useMemo(() => (
+      `${selectedTemplate?.id || 'none'}|${panelCount}|${selectedAspectRatio}|${
+        selectedAspectRatio === 'custom' ? normalizeAspectRatioValue(customAspectRatio, 1).toFixed(4) : 'preset'
+      }`
+    ), [selectedTemplate?.id, panelCount, selectedAspectRatio, customAspectRatio]),
     isHydratingProject,
     allowHydrationTransformCarry,
     canvasResetKey: previewResetKey,
@@ -1990,9 +2160,10 @@ export default function CollagePage() {
         borderThicknessValue,
         borderColor,
         aspectRatio: selectedAspectRatio,
+        customAspectRatio,
       });
     }
-  }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, panelTransforms]);
+  }, [panelImageMapping, selectedImages, borderThickness, borderThicknessValue, borderColor, selectedAspectRatio, customAspectRatio, panelTransforms]);
 
   const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
   const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);

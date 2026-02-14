@@ -37,7 +37,11 @@ const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
  * @param {string} selectedAspectRatio - The ID of the selected aspect ratio
  * @returns {number} The aspect ratio value
  */
-const getAspectRatioValue = (selectedAspectRatio) => {
+const getAspectRatioValue = (selectedAspectRatio, customAspectRatio) => {
+  if (selectedAspectRatio === 'custom') {
+    const parsedCustomRatio = Number(customAspectRatio);
+    return Number.isFinite(parsedCustomRatio) && parsedCustomRatio > 0 ? parsedCustomRatio : 1;
+  }
   const aspectRatioPreset = aspectRatioPresets.find(preset => preset.id === selectedAspectRatio);
   return aspectRatioPreset ? aspectRatioPreset.value : 1; // Default to 1 (square) if not found
 };
@@ -50,6 +54,7 @@ const CollagePreview = ({
   canvasResetKey = 0,
   selectedTemplate,
   selectedAspectRatio,
+  customAspectRatio = 1,
   panelCount,
   selectedImages,
   addMultipleImages,
@@ -156,7 +161,7 @@ const CollagePreview = ({
 
 
   // Get the aspect ratio value
-  const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
+  const aspectRatioValue = getAspectRatioValue(selectedAspectRatio, customAspectRatio);
 
   const clearActivePanelSelection = () => {
     if (captionDecisionResolveRef.current) {
@@ -1169,6 +1174,7 @@ const CollagePreview = ({
 CollagePreview.propTypes = {
   selectedTemplate: PropTypes.object,
   selectedAspectRatio: PropTypes.string,
+  customAspectRatio: PropTypes.number,
   panelCount: PropTypes.number,
   selectedImages: PropTypes.array,
   addMultipleImages: PropTypes.func.isRequired,

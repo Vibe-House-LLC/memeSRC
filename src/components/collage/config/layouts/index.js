@@ -111,12 +111,12 @@ export const recommendedLayouts = {
 /**
  * Gets layout templates based on panel count and aspect ratio
  */
-export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') => {
+export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square', customAspectRatioValue = null) => {
   // Ensure panel count is in the supported range (1-5)
   const normalizedPanelCount = Number.isFinite(panelCount) ? panelCount : 1;
   const adjustedPanelCount = Math.max(1, Math.min(normalizedPanelCount, 5));
   
-  const category = getAspectRatioCategory(aspectRatioId);
+  const category = getAspectRatioCategory(aspectRatioId, customAspectRatioValue);
   const layouts = layoutDefinitions[adjustedPanelCount][category] || [];
   
   // Convert layouts to the full template format
@@ -186,10 +186,18 @@ export const createAutoLayout = (imageCount, aspectRatio, theme, aspectRatioPres
   const adjustedCount = Math.min(Math.max(normalizedImageCount, 1), 5);
   
   // Find closest aspect ratio preset
-  const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) || 
-                            aspectRatioPresets.find(preset => preset.id === 'square');
+  const targetRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+  const validPresets = (aspectRatioPresets || []).filter((preset) => (
+    preset?.id !== 'custom' && Number.isFinite(preset?.value) && preset.value > 0
+  ));
+  const closestAspectRatio = validPresets.reduce((closestPreset, preset) => {
+    if (!closestPreset) return preset;
+    const currentDistance = Math.abs(preset.value - targetRatio);
+    const bestDistance = Math.abs(closestPreset.value - targetRatio);
+    return currentDistance < bestDistance ? preset : closestPreset;
+  }, validPresets[0] || null) || aspectRatioPresets.find(preset => preset.id === 'square');
   const aspectRatioId = closestAspectRatio?.id || 'square';
-  const category = getAspectRatioCategory(aspectRatioId);
+  const category = getAspectRatioCategory(aspectRatioId, aspectRatioId === 'custom' ? targetRatio : null);
   
   // Get the first (highest priority) layout for this panel count and aspect ratio category
   if (adjustedCount >= 1 && layoutDefinitions[adjustedCount]?.[category]?.length > 0) {

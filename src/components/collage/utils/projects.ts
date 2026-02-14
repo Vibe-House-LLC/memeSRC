@@ -117,6 +117,7 @@ export function buildSnapshotFromState({
   panelTexts,
   selectedTemplate,
   selectedAspectRatio,
+  customAspectRatio,
   panelCount,
   borderThickness,
   borderColor,
@@ -154,6 +155,7 @@ export function buildSnapshotFromState({
   panelTexts: Record<string, unknown> | undefined;
   selectedTemplate: { id?: string } | null | undefined;
   selectedAspectRatio: string | undefined;
+  customAspectRatio?: number;
   panelCount: number | undefined;
   borderThickness?: number | string;
   borderColor?: string;
@@ -162,6 +164,11 @@ export function buildSnapshotFromState({
   canvasHeight?: number;
   panelDimensions?: Record<string, { width: number; height: number } | null> | null;
 }): CollageSnapshot {
+  const parsedCustomAspectRatio = Number(customAspectRatio);
+  const normalizedCustomAspectRatio = Number.isFinite(parsedCustomAspectRatio) && parsedCustomAspectRatio > 0
+    ? Math.max(0.1, Math.min(10, parsedCustomAspectRatio))
+    : undefined;
+
   const images = (selectedImages || []).map((img) => {
     const ref: { libraryKey?: string; url?: string; subtitle?: string; subtitleShowing?: boolean } = {};
     const isBlobUrl = (value: unknown): value is string => typeof value === 'string' && value.startsWith('blob:');
@@ -282,6 +289,7 @@ export function buildSnapshotFromState({
     panelTexts: panelTexts || {},
     selectedTemplateId: selectedTemplate?.id || null,
     selectedAspectRatio: (selectedAspectRatio ?? 'square') as AspectRatio,
+    customAspectRatio: normalizedCustomAspectRatio,
     panelCount: panelCount || 1,
     borderThickness,
     borderColor,

@@ -10,6 +10,7 @@ import {
   Alert,
   Chip,
   IconButton,
+  TextField,
   useMediaQuery,
   Tooltip,
   Dialog,
@@ -257,6 +258,26 @@ const MOBILE_SETTING_OPTIONS = [
   { id: 'stickers', label: 'Stickers', panelId: 'collage-settings-panel-stickers' },
 ];
 
+const normalizeCustomAspectRatio = (value, fallback = 1) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return fallback;
+  return Math.max(0.1, Math.min(10, numericValue));
+};
+
+const ratioToEditorInputs = (ratio) => {
+  const safeRatio = normalizeCustomAspectRatio(ratio, 1);
+  if (safeRatio >= 1) {
+    return {
+      width: Number((safeRatio * 100).toFixed(2)),
+      height: 100,
+    };
+  }
+  return {
+    width: 100,
+    height: Number((100 / safeRatio).toFixed(2)),
+  };
+};
+
 // Helper function to convert aspect ratio value to a friendly format
 const getFriendlyAspectRatio = (value) => {
   if (value === 1) return '1:1';
@@ -336,6 +357,8 @@ const CollageLayoutSettings = ({
   setSelectedTemplate, 
   selectedAspectRatio, 
   setSelectedAspectRatio,
+  customAspectRatio = 1,
+  setCustomAspectRatio,
   panelCount,
   handleNext,
   aspectRatioPresets,
@@ -365,6 +388,8 @@ const CollageLayoutSettings = ({
   const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
   const [stickerError, setStickerError] = useState('');
+  const [customRatioWidthInput, setCustomRatioWidthInput] = useState('100');
+  const [customRatioHeightInput, setCustomRatioHeightInput] = useState('100');
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -426,15 +451,28 @@ const CollageLayoutSettings = ({
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
+    if (selectedAspectRatio === 'custom') {
+      return normalizeCustomAspectRatio(customAspectRatio, 1);
+    }
     const preset = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
     return preset ? preset.value : 1;
   };
+
+  useEffect(() => {
+    const { width, height } = ratioToEditorInputs(customAspectRatio);
+    setCustomRatioWidthInput(String(width));
+    setCustomRatioHeightInput(String(height));
+  }, [customAspectRatio]);
   
   // Get compatible templates based on panel count
   const getCompatibleTemplates = () => {
     // Use our new getLayoutsForPanelCount function if it exists, otherwise fall back
     if (typeof getLayoutsForPanelCount === 'function') {
-      return getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+      return getLayoutsForPanelCount(
+        panelCount,
+        selectedAspectRatio,
+        selectedAspectRatio === 'custom' ? customAspectRatio : null
+      );
     }
     
     // Legacy fallback (should not be needed once updated)
@@ -449,7 +487,11 @@ const CollageLayoutSettings = ({
     
     // Get templates optimized for the new aspect ratio
     const newCompatibleTemplates = (typeof getLayoutsForPanelCount === 'function') 
-      ? getLayoutsForPanelCount(panelCount, aspectRatioId)
+      ? getLayoutsForPanelCount(
+        panelCount,
+        aspectRatioId,
+        aspectRatioId === 'custom' ? customAspectRatio : null
+      )
       : compatibleTemplates;
       
     // If we have templates, select the most suitable one
@@ -458,6 +500,24 @@ const CollageLayoutSettings = ({
       // The most suitable template for this aspect ratio will be first in the list
       setSelectedTemplate(newCompatibleTemplates[0]);
     }
+  };
+
+  const applyCustomRatioInputs = () => {
+    const widthValue = Number(customRatioWidthInput);
+    const heightValue = Number(customRatioHeightInput);
+    if (!Number.isFinite(widthValue) || !Number.isFinite(heightValue) || widthValue <= 0 || heightValue <= 0) {
+      const { width, height } = ratioToEditorInputs(customAspectRatio);
+      setCustomRatioWidthInput(String(width));
+      setCustomRatioHeightInput(String(height));
+      return;
+    }
+    const ratio = normalizeCustomAspectRatio(widthValue / heightValue, customAspectRatio);
+    if (typeof setCustomAspectRatio === 'function') {
+      setCustomAspectRatio(ratio);
+    }
+    const normalizedInputs = ratioToEditorInputs(ratio);
+    setCustomRatioWidthInput(String(normalizedInputs.width));
+    setCustomRatioHeightInput(String(normalizedInputs.height));
   };
   
   // Handle template selection
@@ -648,7 +708,7 @@ const CollageLayoutSettings = ({
     setTimeout(() => {
       handleAspectScroll();
     }, 100);
-  }, [selectedAspectRatio, panelCount]);
+  }, [selectedAspectRatio, customAspectRatio, panelCount]);
   
   // Update layout scroll indicators when templates or panel count changes
   useEffect(() => {
@@ -697,14 +757,13 @@ const CollageLayoutSettings = ({
     refreshActiveSectionScroll();
     const timer = setTimeout(refreshActiveSectionScroll, 120);
     return () => clearTimeout(timer);
-  }, [activeMobileSetting, isMobile, panelCount, selectedAspectRatio, borderThickness, borderColor]);
+  }, [activeMobileSetting, isMobile, panelCount, selectedAspectRatio, customAspectRatio, borderThickness, borderColor]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
-    const { value, name } = preset;
-    
-    // Calculate dimensions based on the aspect ratio value
-    const friendlyRatio = getFriendlyAspectRatio(value);
+    const value = preset.id === 'custom'
+      ? normalizeCustomAspectRatio(customAspectRatio, 1)
+      : preset.value;
   
     // Determine box dimensions to exactly match the aspect ratio
     const isPortrait = value < 1;
@@ -892,7 +951,7 @@ const CollageLayoutSettings = ({
                 {renderAspectRatioPreview(preset)}
                 
                 <Chip
-                  label={getFriendlyAspectRatio(preset.value)}
+                  label={preset.id === 'custom' ? 'Custom' : getFriendlyAspectRatio(preset.value)}
                   size="small"
                   variant="filled"
                   sx={{
@@ -939,6 +998,60 @@ const CollageLayoutSettings = ({
             isVisible={aspectRightScroll}
           />
         </Box>
+
+        {selectedAspectRatio === 'custom' && (
+          <Box
+            sx={{
+              mt: 1.25,
+              p: 1.25,
+              borderRadius: 1.5,
+              border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.35 : 0.9),
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+              Custom Ratio
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                label="Width"
+                type="number"
+                size="small"
+                value={customRatioWidthInput}
+                inputProps={{ min: 0.1, step: 0.1 }}
+                onChange={(event) => setCustomRatioWidthInput(event.target.value)}
+                onBlur={applyCustomRatioInputs}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyCustomRatioInputs();
+                  }
+                }}
+              />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 0.5 }}>:</Typography>
+              <TextField
+                label="Height"
+                type="number"
+                size="small"
+                value={customRatioHeightInput}
+                inputProps={{ min: 0.1, step: 0.1 }}
+                onChange={(event) => setCustomRatioHeightInput(event.target.value)}
+                onBlur={applyCustomRatioInputs}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyCustomRatioInputs();
+                  }
+                }}
+              />
+              <Chip
+                size="small"
+                label={getFriendlyAspectRatio(getAspectRatioValue())}
+                sx={{ ml: 0.5 }}
+              />
+            </Box>
+          </Box>
+        )}
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}

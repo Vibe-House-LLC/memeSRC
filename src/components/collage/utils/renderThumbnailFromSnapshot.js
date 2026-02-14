@@ -273,9 +273,12 @@ function loadImage(src) {
 
 export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   if (!snap) return null;
-  const aspectRatio = snap.selectedAspectRatio || 'square';
+  const selectedAspectRatio = snap.selectedAspectRatio || 'square';
   const arMap = { square: 1, portrait: 0.8, 'ratio-2-3': 2/3, story: 0.5625, classic: 1.33, 'ratio-3-2': 1.5, landscape: 1.78 };
-  const ar = arMap[aspectRatio] || 1;
+  const customAspectRatio = Number(snap.customAspectRatio);
+  const ar = selectedAspectRatio === 'custom' && Number.isFinite(customAspectRatio) && customAspectRatio > 0
+    ? Math.max(0.1, Math.min(10, customAspectRatio))
+    : (arMap[selectedAspectRatio] || 1);
   const panelCount = Math.max(1, Math.min(snap.panelCount || 1, 5));
   const borderPct = normalizeBorderThickness(snap.borderThickness);
   const borderColor = snap.borderColor || '#000000';

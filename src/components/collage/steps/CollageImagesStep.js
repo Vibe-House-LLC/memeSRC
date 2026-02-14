@@ -26,6 +26,7 @@ const CollageImagesStep = ({
   panelCount = 2,
   selectedTemplate,
   selectedAspectRatio = 'portrait',
+  customAspectRatio = 1,
   borderThickness = 'medium',
   borderColor,
   borderThicknessOptions = [
@@ -221,6 +222,7 @@ const CollageImagesStep = ({
             canvasResetKey={canvasResetKey}
             selectedTemplate={selectedTemplate}
             selectedAspectRatio={selectedAspectRatio}
+            customAspectRatio={customAspectRatio}
             panelCount={panelCount || 1} /* Ensure we always have a fallback */
             selectedImages={selectedImages || []}
             addImage={addImage}
@@ -313,6 +315,7 @@ CollageImagesStep.propTypes = {
   panelCount: PropTypes.number,
   selectedTemplate: PropTypes.object,
   selectedAspectRatio: PropTypes.string,
+  customAspectRatio: PropTypes.number,
   borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   borderColor: PropTypes.string,
   borderThicknessOptions: PropTypes.array,

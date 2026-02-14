@@ -412,18 +412,21 @@ export const CollageLayout = ({
 CollageLayout.propTypes = {
   settingsStepProps: PropTypes.shape({
     selectedAspectRatio: PropTypes.string,
+    customAspectRatio: PropTypes.number,
     selectedTemplate: PropTypes.object,
     panelCount: PropTypes.number.isRequired,
     borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     setBorderThickness: PropTypes.func,
     setPanelCount: PropTypes.func.isRequired,
     setSelectedAspectRatio: PropTypes.func.isRequired,
+    setCustomAspectRatio: PropTypes.func,
     setSelectedTemplate: PropTypes.func.isRequired,
   }).isRequired,
   imagesStepProps: PropTypes.shape({
     selectedImages: PropTypes.array.isRequired,
     selectedTemplate: PropTypes.object,
     selectedAspectRatio: PropTypes.string,
+    customAspectRatio: PropTypes.number,
     panelCount: PropTypes.number.isRequired,
     panelImageMapping: PropTypes.object.isRequired,
     addMultipleImages: PropTypes.func.isRequired,

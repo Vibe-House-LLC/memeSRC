@@ -66,11 +66,20 @@ export const renderLayoutGrid = (layoutConfig, theme, imageCount) => (
 /**
  * Helper function to determine aspect ratio category
  */
-export const getAspectRatioCategory = (aspectRatioId) => {
+export const getAspectRatioCategory = (aspectRatioId, customAspectRatioValue = null) => {
   // Group aspect ratios into three categories
   const wideAspects = ['landscape', 'classic', 'ratio-3-2'];
   const tallAspects = ['portrait', 'story', 'ratio-2-3'];
-  
+
+  if (aspectRatioId === 'custom') {
+    const customRatio = Number(customAspectRatioValue);
+    if (Number.isFinite(customRatio) && customRatio > 0) {
+      if (customRatio > 1) return 'wide';
+      if (customRatio < 1) return 'tall';
+    }
+    return 'square';
+  }
+
   if (wideAspects.includes(aspectRatioId)) return 'wide';
   if (tallAspects.includes(aspectRatioId)) return 'tall';
   return 'square';
