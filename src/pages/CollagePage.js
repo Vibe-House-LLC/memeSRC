@@ -11,7 +11,7 @@ import { useCollage } from "../contexts/CollageContext";
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
-import { MOBILE_SETTING_OPTIONS } from "../components/collage/steps/CollageSettingsStep";
+import CollageSettingsStep, { MOBILE_SETTING_OPTIONS } from "../components/collage/steps/CollageSettingsStep";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
@@ -278,7 +278,6 @@ export default function CollagePage() {
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
-  const mobileSettingsPanelRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileActiveSetting, setMobileActiveSetting] = useState(null);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
@@ -1896,47 +1895,9 @@ export default function CollagePage() {
     });
   };
 
-  const scrollMobileSettingsIntoView = useCallback(() => {
-    if (!isMobile || typeof window === 'undefined') return;
-    const settingsPanel = mobileSettingsPanelRef.current;
-    if (!settingsPanel) return;
-
-    const barHeight = (bottomBarRef.current?.offsetHeight || bottomBarHeight || 0);
-    const rect = settingsPanel.getBoundingClientRect();
-    const visibleTop = 8;
-    const visibleBottom = window.innerHeight - barHeight - 12;
-    const visibleUpperBound = visibleBottom - 72;
-    const isComfortablyVisible = rect.top >= visibleTop && rect.top <= visibleUpperBound;
-    if (isComfortablyVisible) return;
-
-    const targetTop = Math.max(0, window.scrollY + rect.top - 12);
-    window.scrollTo({ top: targetTop, behavior: 'smooth' });
-  }, [bottomBarHeight, isMobile]);
-
   const handleMobileSettingSelect = useCallback((settingId) => {
-    setMobileActiveSetting((previousSetting) => {
-      const nextSetting = previousSetting === settingId ? null : settingId;
-      if (nextSetting && typeof window !== 'undefined') {
-        window.requestAnimationFrame(() => {
-          window.setTimeout(() => {
-            scrollMobileSettingsIntoView();
-          }, 70);
-        });
-      }
-      return nextSetting;
-    });
-  }, [scrollMobileSettingsIntoView]);
-
-  const handleMobileSettingPanelChange = useCallback((nextSetting) => {
-    setMobileActiveSetting(nextSetting ?? null);
-    if (nextSetting && typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => {
-        window.setTimeout(() => {
-          scrollMobileSettingsIntoView();
-        }, 70);
-      });
-    }
-  }, [scrollMobileSettingsIntoView]);
+    setMobileActiveSetting((previousSetting) => (previousSetting === settingId ? null : settingId));
+  }, []);
 
 
 
@@ -2563,10 +2524,6 @@ export default function CollagePage() {
                 settingsOpen={settingsOpen}
                 setSettingsOpen={setSettingsOpen}
                 settingsRef={settingsRef}
-                mobileSettingsPanelRef={mobileSettingsPanelRef}
-                mobileActiveSetting={mobileActiveSetting}
-                onMobileActiveSettingChange={handleMobileSettingPanelChange}
-                mobileSettingsBottomOffset={bottomBarHeight}
                 onViewChange={(v) => setCurrentView(v)}
                 onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 1 })}
                 onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
@@ -2640,6 +2597,32 @@ export default function CollagePage() {
                 ref={bottomBarRef}
                 >
                   <Stack spacing={isMobile ? 1 : 0} sx={{ width: '100%', maxWidth: 960 }}>
+                    {isMobile && hasImages && currentView === 'editor' && (
+                      <Collapse in={Boolean(mobileActiveSetting)} unmountOnExit timeout={180}>
+                        <Box
+                          id="collage-mobile-settings-panel"
+                          sx={{
+                            borderRadius: 2,
+                            border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.92 : 0.8)}`,
+                            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.58 : 0.9),
+                            px: 1.1,
+                            pt: 0.4,
+                            pb: 0.55,
+                            maxHeight: 'min(38vh, 340px)',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                          }}
+                        >
+                          <CollageSettingsStep
+                            {...settingsStepProps}
+                            showMobileTabs={false}
+                            mobileActiveSetting={mobileActiveSetting}
+                            onMobileActiveSettingChange={setMobileActiveSetting}
+                          />
+                        </Box>
+                      </Collapse>
+                    )}
+
                     {isMobile && hasImages && currentView === 'editor' && (
                       <Box
                         sx={{

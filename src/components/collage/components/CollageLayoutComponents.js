@@ -89,10 +89,6 @@ export const CollageLayout = ({
   setFinalImage,
   isMobile,
   settingsRef,
-  mobileSettingsPanelRef,
-  mobileActiveSetting,
-  onMobileActiveSettingChange,
-  mobileSettingsBottomOffset = 0,
   onViewChange,
   onLibrarySelectionChange,
   onLibraryActionsReady,
@@ -329,7 +325,7 @@ export const CollageLayout = ({
             />
           </Box>
         ) : isMobile ? (
-          // Mobile: Preview-first flow with settings controls rendered below the collage
+          // Mobile: Preview-first flow; settings controls are rendered in the fixed bottom bar
           <Stack spacing={1.25} sx={{ p: 1.5, px: 1 }}>
             {/* Images Section */}
             <Box sx={{ 
@@ -345,48 +341,6 @@ export const CollageLayout = ({
                 setFinalImage={setFinalImage}
                 handleOpenExportDialog={handleOpenExportDialog}
               />
-            </Box>
-            <Box
-              ref={mobileSettingsPanelRef || settingsRef}
-              id="collage-mobile-settings-panel"
-              sx={{
-                scrollMarginTop: 12,
-                scrollMarginBottom: `calc(env(safe-area-inset-bottom, 0px) + ${Math.max(140, Math.round((mobileSettingsBottomOffset || 0) + 24))}px)`,
-              }}
-            >
-              {mobileActiveSetting ? (
-                <Box
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.92 : 0.8)}`,
-                    backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.58 : 0.88),
-                    px: 1.1,
-                    pt: 0.45,
-                    pb: 0.6,
-                  }}
-                >
-                  <CollageSettingsStep
-                    {...settingsStepProps}
-                    showMobileTabs={false}
-                    mobileActiveSetting={mobileActiveSetting}
-                    onMobileActiveSettingChange={onMobileActiveSettingChange}
-                  />
-                </Box>
-              ) : (
-                <Box
-                  sx={{
-                    borderRadius: 2,
-                    border: `1px dashed ${alpha(theme.palette.divider, 0.95)}`,
-                    px: 1.4,
-                    py: 1.05,
-                    color: 'text.secondary',
-                  }}
-                >
-                  <Typography variant="body2">
-                    Choose a setting above the action buttons to edit size, layout, borders, or stickers.
-                  </Typography>
-                </Box>
-              )}
             </Box>
             {renderEditTipCard()}
             {renderCollapsedEditTip()}
@@ -487,10 +441,6 @@ CollageLayout.propTypes = {
   isMobile: PropTypes.bool.isRequired,
   onBackToEdit: PropTypes.func,
   settingsRef: PropTypes.object,
-  mobileSettingsPanelRef: PropTypes.object,
-  mobileActiveSetting: PropTypes.oneOfType([PropTypes.string, PropTypes.oneOf([null])]),
-  onMobileActiveSettingChange: PropTypes.func,
-  mobileSettingsBottomOffset: PropTypes.number,
   onViewChange: PropTypes.func,
   onLibrarySelectionChange: PropTypes.func,
   onLibraryActionsReady: PropTypes.func,
