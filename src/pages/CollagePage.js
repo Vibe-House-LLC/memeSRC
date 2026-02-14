@@ -1,8 +1,8 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme, alpha } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Chip, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge } from "@mui/material";
-import { Dashboard, Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge } from "@mui/material";
+import { Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
 import { UserContext } from "../UserContext";
@@ -11,6 +11,7 @@ import { useCollage } from "../contexts/CollageContext";
 import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../components/collage/config/CollageConfig";
 import UpgradeMessage from "../components/collage/components/UpgradeMessage";
 import { CollageLayout } from "../components/collage/components/CollageLayoutComponents";
+import { MOBILE_SETTING_OPTIONS } from "../components/collage/steps/CollageSettingsStep";
 import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
@@ -277,7 +278,9 @@ export default function CollagePage() {
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
+  const mobileSettingsPanelRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileActiveSetting, setMobileActiveSetting] = useState(null);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -667,6 +670,13 @@ export default function CollagePage() {
     }
   }, [hasLibraryAccess, hasImages]);
 
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!hasImages || currentView !== 'editor') {
+      setMobileActiveSetting(null);
+    }
+  }, [currentView, hasImages, isMobile]);
+
   // Track bottom bar size/center for positioning the nudge message above it
   useEffect(() => {
     const el = bottomBarRef.current;
@@ -890,21 +900,37 @@ export default function CollagePage() {
   }, [activeProjectId, currentSig]);
 
   const saveIndicator = useMemo(() => {
+    const isSpinnerActive = saveStatus.state === 'saving' || saveStatus.state === 'queued' || saveStatus.state === 'error';
+    if (!isSpinnerActive) return null;
+
+    let spinnerColor = alpha(theme.palette.info.main, 0.92);
     if (saveStatus.state === 'error') {
-      return <Chip label="Retrying…" color="error" size="small" variant="outlined" />;
+      spinnerColor = alpha(theme.palette.error.main, 0.92);
     }
-    if (saveStatus.state === 'saving' || saveStatus.state === 'queued') {
-      return <Chip label="Saving…" color="warning" size="small" />;
-    }
-    // Check saved state before isDirty to avoid showing "Unsaved changes" right after save completes
-    if (saveStatus.state === 'saved' && !isDirty) {
-      return <Chip label="All changes saved" color="success" size="small" variant="outlined" />;
-    }
-    if (isDirty) {
-      return <Chip label="Unsaved changes" color="warning" size="small" variant="outlined" />;
-    }
-    return null;
-  }, [isDirty, saveStatus.state]);
+
+    return (
+      <Box
+        sx={{
+          width: 18,
+          height: 18,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <CircularProgress
+          size={14}
+          thickness={5}
+          variant="indeterminate"
+          sx={{
+            color: spinnerColor,
+            transition: 'color 160ms ease',
+          }}
+        />
+      </Box>
+    );
+  }, [saveStatus.state, theme]);
 
   // Handle images passed from collage
   useEffect(() => {
@@ -1870,6 +1896,48 @@ export default function CollagePage() {
     });
   };
 
+  const scrollMobileSettingsIntoView = useCallback(() => {
+    if (!isMobile || typeof window === 'undefined') return;
+    const settingsPanel = mobileSettingsPanelRef.current;
+    if (!settingsPanel) return;
+
+    const barHeight = (bottomBarRef.current?.offsetHeight || bottomBarHeight || 0);
+    const rect = settingsPanel.getBoundingClientRect();
+    const visibleTop = 8;
+    const visibleBottom = window.innerHeight - barHeight - 12;
+    const visibleUpperBound = visibleBottom - 72;
+    const isComfortablyVisible = rect.top >= visibleTop && rect.top <= visibleUpperBound;
+    if (isComfortablyVisible) return;
+
+    const targetTop = Math.max(0, window.scrollY + rect.top - 12);
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+  }, [bottomBarHeight, isMobile]);
+
+  const handleMobileSettingSelect = useCallback((settingId) => {
+    setMobileActiveSetting((previousSetting) => {
+      const nextSetting = previousSetting === settingId ? null : settingId;
+      if (nextSetting && typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          window.setTimeout(() => {
+            scrollMobileSettingsIntoView();
+          }, 70);
+        });
+      }
+      return nextSetting;
+    });
+  }, [scrollMobileSettingsIntoView]);
+
+  const handleMobileSettingPanelChange = useCallback((nextSetting) => {
+    setMobileActiveSetting(nextSetting ?? null);
+    if (nextSetting && typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          scrollMobileSettingsIntoView();
+        }, 70);
+      });
+    }
+  }, [scrollMobileSettingsIntoView]);
+
 
 
   // Handler for floating button - triggers collage generation
@@ -2371,7 +2439,11 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{
           flexGrow: 1,
-          pb: !showResultDialog && hasImages ? 8 : (isMobile ? 2 : 4),
+          pb: !showResultDialog && hasImages
+            ? (isMobile
+              ? `calc(env(safe-area-inset-bottom, 0px) + ${Math.max((bottomBarHeight || 0) + 28, 182)}px)`
+              : 8)
+            : (isMobile ? 2 : 4),
           width: '100%',
           overflowX: 'hidden',
           overflowY: 'visible', // Allow vertical overflow for caption editor
@@ -2392,46 +2464,45 @@ export default function CollagePage() {
             {/* Editor UI */}
             <>
             {/* Page Header */}
-            <Box sx={{ mb: isMobile ? 0.5 : 1.5 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                <Typography variant="h3" sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center',
-                  fontWeight: '700', 
-                  mb: isMobile ? 0.25 : 0.75,
-                  pl: isMobile ? 0.5 : 0,
-                  ml: isMobile ? 0 : -0.5,
-                  color: 'text.primary',
-                  fontSize: isMobile ? '2.2rem' : '2.5rem',
-                }}>
-                  <Dashboard sx={{ mr: 2, color: 'inherit', fontSize: 40 }} /> 
-                  <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                    Collage
-                    {!showEarlyAccess && (
-                      <Chip 
-                        label="BETA" 
-                        size="small" 
-                        onClick={() => setShowEarlyAccess(true)}
-                        sx={{ 
-                          backgroundColor: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.26 : 0.18),
-                          color: theme.palette.warning.light,
-                          border: '1px solid',
-                          borderColor: alpha(theme.palette.warning.main, 0.6),
-                          fontWeight: 'bold',
-                          fontSize: '0.65rem',
-                          height: 20,
-                          ml: 1,
-                          cursor: 'pointer'
-                        }} 
-                      />
-                    )}
-                  </Box>
-                </Typography>
-                {saveIndicator && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', minHeight: 32 }}>
-                    {saveIndicator}
-                  </Box>
+            <Box sx={{ mb: isMobile ? 0.8 : 1, px: isMobile ? 0.5 : 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 }}>
+                {hasProjectsAccess && currentView === 'editor' ? (
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={handleBackToProjects}
+                    disabled={isCreatingCollage}
+                    startIcon={<ArrowBack sx={{ fontSize: 16 }} />}
+                    sx={{
+                      minWidth: 0,
+                      px: 0.25,
+                      py: 0.2,
+                      color: 'text.secondary',
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      fontSize: isMobile ? '0.85rem' : '0.88rem',
+                      lineHeight: 1.1,
+                      '& .MuiButton-startIcon': { mr: 0.55, ml: 0 },
+                      '&:hover': { backgroundColor: 'transparent', color: 'text.primary' },
+                    }}
+                  >
+                    Back to My Memes
+                  </Button>
+                ) : (
+                  <Box sx={{ width: 1, minHeight: 1 }} />
                 )}
+
+                <Box
+                  sx={{
+                    width: 24,
+                    minWidth: 24,
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                  }}
+                >
+                  {saveIndicator}
+                </Box>
               </Box>
             </Box>
 
@@ -2492,6 +2563,10 @@ export default function CollagePage() {
                 settingsOpen={settingsOpen}
                 setSettingsOpen={setSettingsOpen}
                 settingsRef={settingsRef}
+                mobileSettingsPanelRef={mobileSettingsPanelRef}
+                mobileActiveSetting={mobileActiveSetting}
+                onMobileActiveSettingChange={handleMobileSettingPanelChange}
+                mobileSettingsBottomOffset={bottomBarHeight}
                 onViewChange={(v) => setCurrentView(v)}
                 onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 1 })}
                 onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
@@ -2560,12 +2635,71 @@ export default function CollagePage() {
                     backdropFilter: 'blur(20px)',
                     display: 'flex',
                     justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: 1.5,
+                    alignItems: 'stretch',
                   }}
                 ref={bottomBarRef}
                 >
-                  <Stack direction="row" spacing={1} sx={{ width: '100%', maxWidth: 960, alignItems: 'center' }} ref={bottomBarContentRef}>
+                  <Stack spacing={isMobile ? 1 : 0} sx={{ width: '100%', maxWidth: 960 }}>
+                    {isMobile && hasImages && currentView === 'editor' && (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.7,
+                          overflowX: 'auto',
+                          overflowY: 'hidden',
+                          scrollbarWidth: 'none',
+                          '&::-webkit-scrollbar': { display: 'none' },
+                          WebkitOverflowScrolling: 'touch',
+                          pb: 0.1,
+                        }}
+                        role="tablist"
+                        aria-label="Collage settings categories"
+                      >
+                        {MOBILE_SETTING_OPTIONS.map(({ id, label }) => {
+                          const isSelected = mobileActiveSetting === id;
+                          return (
+                            <Button
+                              key={`mobile-bottom-setting-${id}`}
+                              type="button"
+                              role="tab"
+                              aria-selected={isSelected}
+                              aria-controls="collage-mobile-settings-panel"
+                              onClick={() => handleMobileSettingSelect(id)}
+                              disableRipple
+                              disableTouchRipple
+                              sx={{
+                                flexShrink: 0,
+                                borderRadius: 999,
+                                textTransform: 'none',
+                                fontWeight: isSelected ? 700 : 600,
+                                letterSpacing: 0.1,
+                                minHeight: 34,
+                                minWidth: 0,
+                                px: 1.6,
+                                py: 0.55,
+                                color: isSelected ? '#111213' : alpha('#f5f5f5', 0.72),
+                                border: '1px solid',
+                                borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.24),
+                                backgroundColor: isSelected
+                                  ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.96 : 0.98)
+                                  : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.16),
+                                '&:hover': {
+                                  backgroundColor: isSelected
+                                    ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.96 : 0.98)
+                                    : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.14 : 0.2),
+                                  borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.28),
+                                },
+                              }}
+                            >
+                              {label}
+                            </Button>
+                          );
+                        })}
+                      </Box>
+                    )}
+
+                    <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'center' }} ref={bottomBarContentRef}>
                     {hasLibraryAccess ? (
                       <>
                         {currentView === 'library' && (
@@ -2703,6 +2837,7 @@ export default function CollagePage() {
                         </>
                       )
                     )}
+                    </Stack>
                   </Stack>
                 </Box>
             )}

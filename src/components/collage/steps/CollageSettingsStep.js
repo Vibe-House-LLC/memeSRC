@@ -251,7 +251,7 @@ const MobileSettingsTypeButton = styled(Button, {
   },
 }));
 
-const MOBILE_SETTING_OPTIONS = [
+export const MOBILE_SETTING_OPTIONS = [
   { id: 'aspect-ratio', label: 'Size/Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
@@ -374,6 +374,9 @@ const CollageLayoutSettings = ({
   onAddStickerFromLibrary,
   onMoveSticker,
   onRemoveSticker,
+  showMobileTabs = true,
+  mobileActiveSetting,
+  onMobileActiveSettingChange,
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -384,7 +387,7 @@ const CollageLayoutSettings = ({
   const [borderRightScroll, setBorderRightScroll] = useState(false);
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
-  const [activeMobileSetting, setActiveMobileSetting] = useState('aspect-ratio');
+  const [uncontrolledActiveMobileSetting, setUncontrolledActiveMobileSetting] = useState('aspect-ratio');
   const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
   const [stickerError, setStickerError] = useState('');
@@ -403,6 +406,16 @@ const CollageLayoutSettings = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const isMobileSettingControlled = mobileActiveSetting !== undefined;
+  const activeMobileSetting = isMobileSettingControlled ? mobileActiveSetting : uncontrolledActiveMobileSetting;
+  const setActiveMobileSetting = (nextSettingId) => {
+    if (!isMobileSettingControlled) {
+      setUncontrolledActiveMobileSetting(nextSettingId);
+    }
+    if (typeof onMobileActiveSettingChange === 'function') {
+      onMobileActiveSettingChange(nextSettingId);
+    }
+  };
 
   const isSectionVisible = (sectionId) => !isMobile || activeMobileSetting === sectionId;
 
@@ -841,7 +854,7 @@ const CollageLayoutSettings = ({
   
   return (
     <Box sx={{ pt: isMobile ? 0.5 : 0, pb: isMobile ? 0.25 : 0 }}>
-      {isMobile && (
+      {isMobile && showMobileTabs && (
         <Box sx={{ mb: 1.25 }}>
           <MobileSettingsTypeScroller role="tablist" aria-label="Collage settings categories">
             {MOBILE_SETTING_OPTIONS.map(({ id, label, panelId }, index) => {
