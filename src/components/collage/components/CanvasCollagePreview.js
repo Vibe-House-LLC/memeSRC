@@ -96,6 +96,17 @@ const getContrastingMonoStroke = (textColor) => {
 };
 
 const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const TOP_CAPTION_PLACEHOLDER = 'Add Top Caption';
+const TOP_CAPTION_DEFAULTS = {
+  fontSize: 42,
+  fontWeight: 700,
+  fontStyle: 'normal',
+  fontFamily: 'Impact',
+  color: '#111111',
+  strokeWidth: 0,
+  backgroundColor: '#ffffff',
+};
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -637,6 +648,7 @@ const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCo
 const CanvasCollagePreview = ({
   selectedTemplate,
   panelCount,
+  isSingleImageAutoCustomAspect = false,
   images = [],
   onPanelClick,
   onRemovePanel,
@@ -793,6 +805,14 @@ const CanvasCollagePreview = ({
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
+  const [topCaptionLayout, setTopCaptionLayout] = useState({
+    enabled: false,
+    captionHeight: 0,
+    imageAreaHeight: null,
+    totalHeight: null,
+    imageOffsetY: 0,
+    rect: null,
+  });
 
   // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
   // When a persisted custom layout exists, only adopt it if it supports the current panel count.
@@ -862,6 +882,232 @@ const CanvasCollagePreview = ({
   
   // Calculate text scale factor based on current canvas size vs base size
   const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
+  const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
+  const resolveTopCaptionLayout = useCallback((canvasWidth, baseImageHeight) => {
+    const topCaptionConfig = panelTexts?.[TOP_CAPTION_PANEL_ID];
+    if (!topCaptionConfig || typeof topCaptionConfig !== 'object') {
+      return {
+        enabled: false,
+        captionHeight: 0,
+        imageAreaHeight: baseImageHeight,
+        totalHeight: baseImageHeight,
+        imageOffsetY: 0,
+        rect: null,
+      };
+    }
+
+    const rawCaption = topCaptionConfig.rawContent ?? topCaptionConfig.content ?? '';
+    const { cleanText, ranges } = parseFormattedText(String(rawCaption));
+    const hasActualText = Boolean(cleanText && cleanText.trim());
+    const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
+    if (!hasActualText && !shouldShowPlaceholder) {
+      return {
+        enabled: false,
+        captionHeight: 0,
+        imageAreaHeight: baseImageHeight,
+        totalHeight: baseImageHeight,
+        imageOffsetY: 0,
+        rect: null,
+      };
+    }
+
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    const baseFontSize = Number(topCaptionConfig.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : (Number(lastUsedTextSettings?.fontSize) > 0
+        ? Number(lastUsedTextSettings.fontSize)
+        : TOP_CAPTION_DEFAULTS.fontSize);
+    const fontSize = baseFontSize * (canvasWidth / BASE_CANVAS_WIDTH);
+    const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const displayText = hasActualText ? cleanText : TOP_CAPTION_PLACEHOLDER;
+    const activeRanges = hasActualText ? ranges : [];
+    const baseInlineStyle = {
+      fontWeight,
+      fontStyle,
+      underline: false,
+    };
+
+    const horizontalPadding = Math.max(18, Math.round(canvasWidth * 0.045));
+    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42));
+    const maxTextWidth = Math.max(48, canvasWidth - (horizontalPadding * 2) - (borderPixels * 2));
+
+    const wrappedLines = buildWrappedLines(
+      measureCtx,
+      displayText,
+      activeRanges,
+      maxTextWidth,
+      baseInlineStyle,
+      fontSize,
+      fontFamily,
+    );
+    const lineHeight = fontSize * 1.2;
+    const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
+    const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
+
+    const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
+    const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+    const expandCanvas = Boolean(isSingleImageAutoCustomAspect);
+    const captionHeight = expandCanvas
+      ? Math.max(56, requestedCaptionHeight)
+      : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+
+    const imageAreaHeight = expandCanvas
+      ? baseImageHeight
+      : Math.max(1, baseImageHeight - captionHeight);
+    const totalHeight = expandCanvas
+      ? baseImageHeight + captionHeight
+      : baseImageHeight;
+
+    const rect = {
+      x: borderPixels,
+      y: Math.max(0, borderPixels),
+      width: Math.max(1, canvasWidth - (borderPixels * 2)),
+      height: Math.max(1, captionHeight - borderPixels),
+    };
+
+    return {
+      enabled: true,
+      captionHeight,
+      imageAreaHeight,
+      totalHeight,
+      imageOffsetY: captionHeight,
+      rect,
+    };
+  }, [panelTexts, isGeneratingCollage, lastUsedTextSettings?.fontSize, borderPixels, isSingleImageAutoCustomAspect]);
+
+  const drawTopCaptionLayer = useCallback((ctx, { includePlaceholder = true } = {}) => {
+    if (!ctx || !topCaptionLayout?.enabled || !topCaptionLayout?.rect) return;
+    const topCaptionConfig = panelTexts?.[TOP_CAPTION_PANEL_ID];
+    if (!topCaptionConfig || typeof topCaptionConfig !== 'object') return;
+
+    const rawCaption = topCaptionConfig.rawContent ?? topCaptionConfig.content ?? '';
+    const { cleanText, ranges } = parseFormattedText(String(rawCaption));
+    const hasActualText = Boolean(cleanText && cleanText.trim());
+    const shouldShowPlaceholder = !hasActualText && includePlaceholder;
+    if (!hasActualText && !shouldShowPlaceholder) return;
+
+    const rect = topCaptionLayout.rect;
+    const displayText = hasActualText ? cleanText : TOP_CAPTION_PLACEHOLDER;
+    const activeRanges = hasActualText ? ranges : [];
+
+    const baseFontSize = Number(topCaptionConfig.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : (Number(lastUsedTextSettings?.fontSize) > 0
+        ? Number(lastUsedTextSettings.fontSize)
+        : TOP_CAPTION_DEFAULTS.fontSize);
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const baseTextColor = topCaptionConfig.color || TOP_CAPTION_DEFAULTS.color;
+    const backgroundColor = topCaptionConfig.backgroundColor || TOP_CAPTION_DEFAULTS.backgroundColor;
+    const requestedStrokeWidth = topCaptionConfig.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
+    const baseInlineStyle = {
+      fontWeight,
+      fontStyle,
+      underline: false,
+    };
+
+    const hPad = Math.max(16, rect.width * 0.04);
+    const maxTextWidth = Math.max(24, rect.width - (hPad * 2));
+
+    ctx.save();
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+    ctx.beginPath();
+    ctx.rect(rect.x, rect.y, rect.width, rect.height);
+    ctx.clip();
+
+    let textColor = baseTextColor;
+    let strokeColor = getContrastingMonoStroke(baseTextColor);
+    if (!hasActualText) {
+      const rgba = parseColorToRGBA(baseTextColor) || { r: 17, g: 17, b: 17, a: 1 };
+      textColor = rgbaString(rgba.r, rgba.g, rgba.b, 0.45);
+      const mono = parseColorToRGBA(strokeColor) || { r: 0, g: 0, b: 0, a: 1 };
+      strokeColor = rgbaString(mono.r, mono.g, mono.b, 0.28);
+    }
+
+    ctx.fillStyle = textColor;
+    ctx.strokeStyle = strokeColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = hasActualText ? 'rgba(0, 0, 0, 0.16)' : 'transparent';
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.shadowBlur = hasActualText ? 8 : 0;
+
+    if (requestedStrokeWidth === 0) {
+      ctx.lineWidth = 0;
+    } else if (requestedStrokeWidth > 0) {
+      ctx.lineWidth = requestedStrokeWidth;
+    } else {
+      ctx.lineWidth = 0;
+    }
+
+    const lineHeight = fontSize * 1.2;
+    const wrappedLines = buildWrappedLines(
+      ctx,
+      displayText,
+      activeRanges,
+      maxTextWidth,
+      baseInlineStyle,
+      fontSize,
+      fontFamily,
+    );
+    const totalTextHeight = wrappedLines.length * lineHeight;
+    const startY = rect.y + ((rect.height - totalTextHeight) / 2) + (lineHeight / 2);
+
+    wrappedLines.forEach((line, lineIndex) => {
+      const lineY = startY + lineIndex * lineHeight;
+      const lineX = rect.x + (rect.width / 2) - (line.width / 2);
+      const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
+      let cursorX = lineX;
+
+      segments.forEach((segment) => {
+        const segmentText = displayText.slice(segment.start, segment.end);
+        const resolvedStyle = segment.style;
+        ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
+        const segmentWidth = ctx.measureText(segmentText).width;
+
+        if (ctx.lineWidth > 0) {
+          ctx.strokeText(segmentText, cursorX, lineY);
+        }
+        ctx.fillText(segmentText, cursorX, lineY);
+
+        if (resolvedStyle.underline) {
+          ctx.save();
+          ctx.shadowColor = 'transparent';
+          ctx.strokeStyle = textColor;
+          ctx.lineWidth = Math.max(1, fontSize * 0.08);
+          const underlineY = lineY + fontSize * 0.35;
+          ctx.beginPath();
+          ctx.moveTo(cursorX, underlineY);
+          ctx.lineTo(cursorX + segmentWidth, underlineY);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        cursorX += segmentWidth;
+      });
+    });
+
+    ctx.restore();
+  }, [topCaptionLayout, panelTexts, lastUsedTextSettings?.fontSize, textScaleFactor]);
+
+  const isPointInTopCaptionArea = useCallback((x, y) => {
+    if (!topCaptionLayout?.enabled || !topCaptionLayout?.rect) return false;
+    const rect = topCaptionLayout.rect;
+    return (
+      x >= rect.x &&
+      x <= rect.x + rect.width &&
+      y >= rect.y &&
+      y <= rect.y + rect.height
+    );
+  }, [topCaptionLayout]);
 
   // Track previous panel rect sizes to adjust transforms when frames resize (border drag)
   const prevPanelRectsRef = useRef({});
@@ -951,11 +1197,6 @@ const CanvasCollagePreview = ({
     }
     return base;
   }, [selectedTemplate, panelCount, customLayoutConfig]);
-
-  // Calculate border pixels
-  const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
-
-
 
   // Border dragging helper functions
   const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
@@ -1529,17 +1770,30 @@ const CanvasCollagePreview = ({
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const width = rect.width || 400;
-        const height = width / aspectRatioValue;
+        const baseImageHeight = width / aspectRatioValue;
+        const captionLayout = resolveTopCaptionLayout(width, baseImageHeight);
+        const totalHeight = captionLayout.totalHeight || baseImageHeight;
+        const imageAreaHeight = captionLayout.imageAreaHeight || baseImageHeight;
+        const imageOffsetY = captionLayout.imageOffsetY || 0;
         
         setComponentWidth(width);
-        setComponentHeight(height);
+        setComponentHeight(totalHeight);
+        setTopCaptionLayout(captionLayout);
         
         if (layoutConfig) {
-          const rects = parseGridToRects(layoutConfig, width, height, panelCount, borderPixels);
-          setPanelRects(rects);
+          const baseRects = parseGridToRects(layoutConfig, width, imageAreaHeight, panelCount, borderPixels);
+          const shiftedRects = baseRects.map((panelRect) => ({
+            ...panelRect,
+            y: panelRect.y + imageOffsetY,
+          }));
+          setPanelRects(shiftedRects);
           
           // Update border zones for dragging
-          const zones = detectBorderZones(layoutConfig, width, height, borderPixels);
+          const zones = detectBorderZones(layoutConfig, width, imageAreaHeight, borderPixels).map((zone) => ({
+            ...zone,
+            y: zone.y + imageOffsetY,
+            centerY: Number.isFinite(zone.centerY) ? zone.centerY + imageOffsetY : zone.centerY,
+          }));
           setBorderZones(zones);
         }
       }
@@ -1549,7 +1803,7 @@ const CanvasCollagePreview = ({
     window.addEventListener('resize', updateDimensions);
     
     return () => window.removeEventListener('resize', updateDimensions);
-  }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
+  }, [aspectRatioValue, layoutConfig, panelCount, borderPixels, resolveTopCaptionLayout]);
 
   // When panel sizes change (e.g., inner border dragged), carry focal point and clamp to avoid gaps
   useEffect(() => {
@@ -1676,6 +1930,8 @@ const CanvasCollagePreview = ({
       ctx.fillStyle = borderColor;
       ctx.fillRect(0, 0, componentWidth, componentHeight);
     }
+
+    drawTopCaptionLayer(ctx, { includePlaceholder: !isGeneratingCollage });
     
     // Check if any panel is in transform mode or reorder mode to hide all captions
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
@@ -2045,7 +2301,8 @@ const CanvasCollagePreview = ({
     fontsReadyVersion,
     stickers,
     loadedStickers,
-    getStickerRectPx
+    getStickerRectPx,
+    drawTopCaptionLayer
   ]);
 
   // Helper function to calculate text area dimensions for a panel
@@ -2668,6 +2925,7 @@ const CanvasCollagePreview = ({
     // Check for border zones first (they have priority)
     const borderZone = findBorderZone(x, y);
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    const isOverTopCaptionArea = isPointInTopCaptionArea(x, y);
     
     // Find which panel is under the mouse
     const hoveredPanelIndex = panelRects.findIndex(panel => 
@@ -2702,7 +2960,15 @@ const CanvasCollagePreview = ({
       setHoveredBorder(borderZone);
     }
 
-    if (hoveredPanelIndex !== hoveredPanel) {
+    if (isOverTopCaptionArea) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      if (hoveredPanel !== null) {
+        setHoveredPanel(null);
+      }
+    } else if (hoveredPanelIndex !== hoveredPanel) {
       // Clear any existing hover timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
@@ -2728,6 +2994,14 @@ const CanvasCollagePreview = ({
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
       const { cursor: borderCursor } = borderZone;
       cursor = borderCursor;
+    } else if (isOverTopCaptionArea && !borderZone) {
+      if (!anyPanelInTransformMode && !isReorderMode) {
+        if (textEditingPanel === null || textEditingPanel === TOP_CAPTION_PANEL_ID) {
+          cursor = 'text';
+        } else {
+          cursor = 'default';
+        }
+      }
     } else if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
       
@@ -2836,7 +3110,7 @@ const CanvasCollagePreview = ({
         setDragStart({ x, y });
       }
     }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag, hoveredBorder, textEditingPanel]);
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag, hoveredBorder, textEditingPanel, isPointInTopCaptionArea]);
 
   // Function to dismiss transform mode for all panels
   const dismissTransformMode = useCallback(() => {
@@ -2989,6 +3263,15 @@ const CanvasCollagePreview = ({
       setBorderDragStart({ x, y });
       return;
     }
+
+    const topCaptionHit = isPointInTopCaptionArea(x, y);
+    if (topCaptionHit && !anyPanelInTransformMode && !isReorderMode) {
+      if (textEditingPanel !== null && textEditingPanel !== TOP_CAPTION_PANEL_ID) {
+        return;
+      }
+      handleTextEdit(TOP_CAPTION_PANEL_ID, e);
+      return;
+    }
     
     const clickedPanelIndex = panelRects.findIndex(panel => 
       x >= panel.x && x <= panel.x + panel.width &&
@@ -3070,7 +3353,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -3290,6 +3573,7 @@ const CanvasCollagePreview = ({
     
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
     if (touches.length === 1) {
       if (activeStickerId) {
@@ -3317,7 +3601,7 @@ const CanvasCollagePreview = ({
       
       // Check for border zone touches first
       const borderZone = findBorderZone(x, y);
-      const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+      const topCaptionHit = isPointInTopCaptionArea(x, y);
       
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
         // Start border dragging
@@ -3326,6 +3610,21 @@ const CanvasCollagePreview = ({
         setIsDraggingBorder(true);
         setDraggedBorder(borderZone);
         setBorderDragStart({ x, y });
+        return;
+      }
+
+      if (topCaptionHit && !anyPanelInTransformMode && !isReorderMode) {
+        if (textEditingPanel !== null && textEditingPanel !== TOP_CAPTION_PANEL_ID) {
+          return;
+        }
+        touchStartInfo.current = {
+          panelId: TOP_CAPTION_PANEL_ID,
+          startX: touch.clientX,
+          startY: touch.clientY,
+          startTime: Date.now(),
+          startScrollY: window.scrollY || window.pageYOffset || 0,
+          isTextArea: true,
+        };
         return;
       }
 
@@ -3475,7 +3774,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -3917,6 +4216,8 @@ const CanvasCollagePreview = ({
           exportCtx.fillRect(0, 0, componentWidth, componentHeight);
         }
 
+        drawTopCaptionLayer(exportCtx, { includePlaceholder: false });
+
         const captionEntries = [];
 
         // Draw panel backgrounds/images first
@@ -4213,7 +4514,7 @@ const CanvasCollagePreview = ({
       } else {
         resolve(null);
       }
-    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor, getStickerRectPx]);
+    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor, getStickerRectPx, drawTopCaptionLayer]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -4615,6 +4916,34 @@ const CanvasCollagePreview = ({
         );
       })}
 
+      {topCaptionLayout?.enabled && topCaptionLayout?.rect && textEditingPanel === TOP_CAPTION_PANEL_ID && (
+        <CaptionEditor
+          panelId={TOP_CAPTION_PANEL_ID}
+          panelTexts={panelTexts}
+          lastUsedTextSettings={lastUsedTextSettings}
+          updatePanelText={updatePanelText}
+          panelRects={[
+            ...panelRects,
+            {
+              panelId: TOP_CAPTION_PANEL_ID,
+              x: topCaptionLayout.rect.x,
+              y: topCaptionLayout.rect.y,
+              width: topCaptionLayout.rect.width,
+              height: topCaptionLayout.rect.height,
+              index: -1,
+            },
+          ]}
+          calculateOptimalFontSize={calculateOptimalFontSize}
+          textScaleFactor={textScaleFactor}
+          onClose={handleTextClose}
+          rect={topCaptionLayout.rect}
+          componentWidth={componentWidth}
+          placeholder={TOP_CAPTION_PLACEHOLDER}
+          allowPositioning={false}
+          clearRemovesEntry
+        />
+      )}
+
       {/* Hover overlays - positioned over canvas panels */}
       {panelRects.map((rect, index) => {
         const { panelId } = rect;
@@ -4943,6 +5272,7 @@ const CanvasCollagePreview = ({
 CanvasCollagePreview.propTypes = {
   selectedTemplate: PropTypes.object,
   panelCount: PropTypes.number,
+  isSingleImageAutoCustomAspect: PropTypes.bool,
   images: PropTypes.arrayOf(PropTypes.oneOfType([
     PropTypes.string,
     PropTypes.shape({

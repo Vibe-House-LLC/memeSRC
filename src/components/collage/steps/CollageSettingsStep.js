@@ -1110,13 +1110,7 @@ const CollageLayoutSettings = ({
             anchorEl={panelActionAnchorEl}
             open={panelActionMenuOpen}
             onClose={closePanelActionMenu}
-            PaperProps={{
-              sx: {
-                minWidth: 200,
-                borderRadius: 2,
-                border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-              },
-            }}
+            PaperProps={{ sx: { minWidth: 200 } }}
           >
             <MenuItem
               onClick={() => triggerPanelAction(onOpenPanelTransform)}

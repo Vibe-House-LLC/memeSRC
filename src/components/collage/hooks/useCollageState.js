@@ -991,6 +991,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
         // Clean up texts for panels that no longer exist in the mapping
         const validPanelIds = new Set(Object.keys(panelImageMapping));
         Object.keys(prev).forEach(panelId => {
+          // Preserve non-panel text entries (e.g., top caption metadata)
+          if (parsePanelIndexFromId(panelId) === null) {
+            return;
+          }
           if (!validPanelIds.has(panelId)) {
             delete updated[panelId];
             if (DEBUG_MODE) {

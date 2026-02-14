@@ -95,6 +95,7 @@ const PANEL_DIM_REFRESH_TIMEOUT_MS = 1800;
 const MAX_IMAGES = 5;
 const DEFAULT_CUSTOM_ASPECT_RATIO = 1;
 const DEFAULT_PANEL_TRANSFORM = { scale: 1, positionX: 0, positionY: 0 };
+const TOP_CAPTION_PANEL_ID = '__top-caption__';
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
@@ -1827,7 +1828,43 @@ export default function CollagePage() {
     return Array.from({ length: Math.max(1, panelCount || 1) }, (_, index) => `panel-${index + 1}`);
   }, [selectedTemplate, panelCount]);
 
-  const handleAddTextRequested = useCallback(() => {
+  const handleAddTextRequested = useCallback((textType = 'subtitle') => {
+    const hasRealImage = getPanelIdsInOrder().some((panelId) => {
+      const mappedImageIndex = panelImageMapping?.[panelId];
+      if (typeof mappedImageIndex !== 'number' || mappedImageIndex < 0) return false;
+      const candidateImage = selectedImages?.[mappedImageIndex];
+      if (!candidateImage) return false;
+      return !isStartFromScratchPlaceholder(candidateImage);
+    });
+
+    if (!hasRealImage) {
+      setSnackbar({
+        open: true,
+        message: 'Add an image to a panel first, then add text.',
+        severity: 'info',
+      });
+      return;
+    }
+
+    if (textType === 'top-caption') {
+      const existingTopCaption = panelTexts?.[TOP_CAPTION_PANEL_ID] || {};
+      const existingRaw = existingTopCaption.rawContent ?? existingTopCaption.content ?? '';
+      updatePanelText(TOP_CAPTION_PANEL_ID, {
+        ...existingTopCaption,
+        content: existingTopCaption.content ?? existingRaw,
+        rawContent: existingRaw,
+        fontFamily: existingTopCaption.fontFamily || 'Impact',
+        fontWeight: existingTopCaption.fontWeight ?? 700,
+        fontStyle: existingTopCaption.fontStyle || 'normal',
+        fontSize: existingTopCaption.fontSize || 42,
+        color: existingTopCaption.color || '#111111',
+        strokeWidth: existingTopCaption.strokeWidth ?? 0,
+        backgroundColor: existingTopCaption.backgroundColor || '#ffffff',
+      });
+      queuePanelTextAutoOpen(TOP_CAPTION_PANEL_ID);
+      return;
+    }
+
     const orderedPanelIds = getPanelIdsInOrder();
     if (!orderedPanelIds.length) return;
 
@@ -1850,7 +1887,7 @@ export default function CollagePage() {
 
     const targetPanelIndex = parsePanelIndexFromId(targetPanelId);
     queuePanelTextAutoOpen(targetPanelId, targetPanelIndex);
-  }, [getPanelIdsInOrder, panelImageMapping, selectedImages, queuePanelTextAutoOpen]);
+  }, [getPanelIdsInOrder, panelImageMapping, panelTexts, queuePanelTextAutoOpen, selectedImages, updatePanelText]);
 
   const handleAddPanelRequested = useCallback((position = 'end') => {
     if (isHydratingProject || isCreatingCollage) return;
@@ -2372,6 +2409,12 @@ export default function CollagePage() {
     selectedTemplate,
     selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
     customAspectRatio,
+    isSingleImageAutoCustomAspect: Boolean(
+      singleImageAutoCustomRef.current &&
+      selectedAspectRatio === 'custom' &&
+      selectedImages.length === 1 &&
+      Math.max(1, panelCount || 1) === 1
+    ),
     borderThickness: borderThicknessValue, // Pass the numeric value
     borderColor,
     borderThicknessOptions,

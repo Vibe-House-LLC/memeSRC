@@ -181,6 +181,9 @@ const CaptionEditor = ({
   onClose,
   rect,
   componentWidth,
+  placeholder = 'Add Caption',
+  allowPositioning = true,
+  clearRemovesEntry = false,
 }) => {
   const theme = useTheme();
   // Current text color for UI bindings (e.g., toolbar swatch)
@@ -728,6 +731,12 @@ const CaptionEditor = ({
 
   // Focus text field when caption editor opens
   useEffect(() => {
+    if (!allowPositioning && positioningOnly) {
+      setPositioningOnly(false);
+    }
+  }, [allowPositioning, positioningOnly]);
+
+  useEffect(() => {
     let focusTimeout;
     let selectionTimeout;
     let touchTimeout;
@@ -795,7 +804,7 @@ const CaptionEditor = ({
                 fullWidth
                 multiline
                 rows={2}
-                placeholder="Add Caption"
+                placeholder={placeholder}
                 value={rawTextValue}
                 onChange={(e) => {
                   const rawValue = e.target.value;
@@ -1128,7 +1137,7 @@ const CaptionEditor = ({
             )}
 
             {/* Placement controls (shown only in positioning mode) */}
-            {positioningOnly && (
+            {allowPositioning && positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Vertical Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1197,7 +1206,7 @@ const CaptionEditor = ({
             </Box>
             )}
 
-            {positioningOnly && (
+            {allowPositioning && positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Horizontal Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1254,7 +1263,7 @@ const CaptionEditor = ({
             </Box>
             )}
 
-            {positioningOnly && (
+            {allowPositioning && positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Tooltip title="Rotation" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1322,23 +1331,25 @@ const CaptionEditor = ({
         {/* Actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Position toggle on the left */}
-            <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
-              <IconButton
-                aria-label="Toggle positioning"
-                onClick={() => setPositioningOnly(v => !v)}
-                sx={{
-                  width: 40,
-                  height: 40,
-                  color: positioningOnly ? '#111' : '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 1,
-                  bgcolor: positioningOnly ? '#fff' : 'transparent',
-                  '&:hover': { bgcolor: positioningOnly ? '#f0f0f0' : 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
-                }}
-              >
-                <ControlCamera fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            {allowPositioning && (
+              <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
+                <IconButton
+                  aria-label="Toggle positioning"
+                  onClick={() => setPositioningOnly(v => !v)}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    color: positioningOnly ? '#111' : '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    borderRadius: 1,
+                    bgcolor: positioningOnly ? '#fff' : 'transparent',
+                    '&:hover': { bgcolor: positioningOnly ? '#f0f0f0' : 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+                  }}
+                >
+                  <ControlCamera fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
 
             {/* Done fills remaining space */}
             <Button
@@ -1362,7 +1373,11 @@ const CaptionEditor = ({
               onClick={() => {
                 const currentText = panelTexts[panelId] || {};
                 if (updatePanelText) {
-                  updatePanelText(panelId, { ...currentText, content: '', rawContent: '' });
+                  if (clearRemovesEntry) {
+                    updatePanelText(panelId, {}, { replace: true });
+                  } else {
+                    updatePanelText(panelId, { ...currentText, content: '', rawContent: '' });
+                  }
                 }
                 if (typeof onClose === 'function') onClose();
               }}
@@ -1438,6 +1453,9 @@ CaptionEditor.propTypes = {
   onClose: PropTypes.func.isRequired,
   rect: PropTypes.object,
   componentWidth: PropTypes.number,
+  placeholder: PropTypes.string,
+  allowPositioning: PropTypes.bool,
+  clearRemovesEntry: PropTypes.bool,
 };
 
 export default CaptionEditor;

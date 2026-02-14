@@ -9,6 +9,16 @@ import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const TOP_CAPTION_DEFAULTS = {
+  fontSize: 42,
+  fontWeight: 700,
+  fontStyle: 'normal',
+  fontFamily: 'Impact',
+  color: '#111111',
+  strokeWidth: 0,
+  backgroundColor: '#ffffff',
+};
 
 // Determine if a persisted custom layout is compatible with the requested panel count
 function isCustomLayoutCompatible(customLayout, panelCount) {
@@ -282,37 +292,116 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   const panelCount = Math.max(1, Math.min(snap.panelCount || 1, 5));
   const borderPct = normalizeBorderThickness(snap.borderThickness);
   const borderColor = snap.borderColor || '#000000';
+  const images = Array.isArray(snap.images) ? snap.images : [];
 
   const width = maxDim;
-  const height = Math.max(1, Math.round(width / ar));
+  const baseImageHeight = Math.max(1, Math.round(width / ar));
   const dpr = 1;
   const BASE_CANVAS_WIDTH = 400; // Keep text scale in sync with preview
   const textScaleFactor = width / BASE_CANVAS_WIDTH;
   const borderPixels = Math.round((borderPct / 100) * width);
+  const wrapSimpleText = (drawCtx, text, maxWidth) => {
+    const lines = [];
+    const manual = String(text || '').split('\n');
+    manual.forEach((line) => {
+      if (drawCtx.measureText(line).width <= maxWidth) {
+        lines.push(line);
+      } else {
+        const words = line.split(' ');
+        let currentLine = '';
+        words.forEach((word) => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = drawCtx.measureText(testLine).width;
+          if (testWidth <= maxWidth) {
+            currentLine = testLine;
+          } else if (currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            let charLine = '';
+            for (let i = 0; i < word.length; i += 1) {
+              const testChar = charLine + word[i];
+              if (drawCtx.measureText(testChar).width <= maxWidth) {
+                charLine = testChar;
+              } else {
+                if (charLine) lines.push(charLine);
+                charLine = word[i];
+              }
+            }
+            if (charLine) lines.push(charLine);
+          }
+        });
+        if (currentLine) lines.push(currentLine);
+      }
+    });
+    return lines;
+  };
+  const topCaptionConfig = snap?.panelTexts?.[TOP_CAPTION_PANEL_ID];
+  const topCaptionRaw = topCaptionConfig?.rawContent ?? topCaptionConfig?.content ?? '';
+  const { cleanText: topCaptionText } = parseFormattedText(String(topCaptionRaw));
+  const hasTopCaptionText = Boolean(topCaptionText && topCaptionText.trim());
+  const shouldExpandForSingleCustom = (
+    selectedAspectRatio === 'custom' &&
+    panelCount === 1 &&
+    images.length === 1
+  );
+  let topCaptionHeight = 0;
+  if (hasTopCaptionText) {
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    const baseFontSize = Number(topCaptionConfig?.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : TOP_CAPTION_DEFAULTS.fontSize;
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    measureCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const horizontalPadding = Math.max(18, Math.round(width * 0.045));
+    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42));
+    const maxTextWidth = Math.max(48, width - (horizontalPadding * 2) - (borderPixels * 2));
+    const wrappedLines = wrapSimpleText(measureCtx, topCaptionText, maxTextWidth);
+    const lineHeight = fontSize * 1.2;
+    const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
+    const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
+    const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
+    const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+    topCaptionHeight = shouldExpandForSingleCustom
+      ? Math.max(56, requestedCaptionHeight)
+      : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+  }
+  const imageAreaHeight = hasTopCaptionText
+    ? (shouldExpandForSingleCustom ? baseImageHeight : Math.max(1, baseImageHeight - topCaptionHeight))
+    : baseImageHeight;
+  const totalHeight = hasTopCaptionText
+    ? (shouldExpandForSingleCustom ? baseImageHeight + topCaptionHeight : baseImageHeight)
+    : baseImageHeight;
   
   // If the snapshot includes the source preview canvas size, compute scale factors
   // so pixel-based transforms (positionX/positionY) scale proportionally
   const sourceCanvasWidth = typeof snap.canvasWidth === 'number' ? snap.canvasWidth : null;
   const sourceCanvasHeight = typeof snap.canvasHeight === 'number' ? snap.canvasHeight : null;
   const scaleX = sourceCanvasWidth && sourceCanvasWidth > 0 ? (width / sourceCanvasWidth) : 1;
-  const scaleY = sourceCanvasHeight && sourceCanvasHeight > 0 ? (height / sourceCanvasHeight) : 1;
+  const scaleY = sourceCanvasHeight && sourceCanvasHeight > 0 ? (totalHeight / sourceCanvasHeight) : 1;
 
   const canvas = document.createElement('canvas');
   canvas.width = width * dpr;
-  canvas.height = height * dpr;
+  canvas.height = totalHeight * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, width, totalHeight);
   if (borderPixels > 0) {
     ctx.fillStyle = borderColor;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, width, totalHeight);
   }
 
   const layoutConfig = createLayoutConfigById(snap.selectedTemplateId, panelCount, snap.customLayout);
-  const rects = parseGridToRects(layoutConfig, width, height, panelCount, borderPixels);
+  const rects = parseGridToRects(layoutConfig, width, imageAreaHeight, panelCount, borderPixels).map((rect) => ({
+    ...rect,
+    y: rect.y + topCaptionHeight,
+  }));
 
   // Load images referenced in snapshot
-  const images = Array.isArray(snap.images) ? snap.images : [];
   const loaded = await Promise.all(images.map(loadImageFromRef));
 
   // Ensure custom fonts are loaded before rendering text so canvas uses intended fonts
@@ -393,6 +482,56 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     });
     return lines;
   };
+
+  if (hasTopCaptionText && topCaptionHeight > 0) {
+    const captionRect = {
+      x: borderPixels,
+      y: Math.max(0, borderPixels),
+      width: Math.max(1, width - (borderPixels * 2)),
+      height: Math.max(1, topCaptionHeight - borderPixels),
+    };
+    const baseFontSize = Number(topCaptionConfig?.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : TOP_CAPTION_DEFAULTS.fontSize;
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const textColor = topCaptionConfig?.color || TOP_CAPTION_DEFAULTS.color;
+    const strokeWidth = topCaptionConfig?.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
+    const backgroundColor = topCaptionConfig?.backgroundColor || TOP_CAPTION_DEFAULTS.backgroundColor;
+
+    ctx.save();
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(captionRect.x, captionRect.y, captionRect.width, captionRect.height);
+    ctx.beginPath();
+    ctx.rect(captionRect.x, captionRect.y, captionRect.width, captionRect.height);
+    ctx.clip();
+
+    const textPadding = Math.max(16, captionRect.width * 0.04);
+    const maxTextWidth = Math.max(24, captionRect.width - textPadding * 2);
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const lines = wrapSimpleText(ctx, topCaptionText, maxTextWidth);
+    const lineHeight = fontSize * 1.2;
+    const totalTextHeight = lines.length * lineHeight;
+    const startY = captionRect.y + ((captionRect.height - totalTextHeight) / 2) + (lineHeight / 2);
+
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (strokeWidth > 0) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.72)';
+      ctx.lineWidth = strokeWidth;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+    }
+    lines.forEach((line, idx) => {
+      const y = startY + idx * lineHeight;
+      if (strokeWidth > 0) ctx.strokeText(line, captionRect.x + captionRect.width / 2, y);
+      ctx.fillText(line, captionRect.x + captionRect.width / 2, y);
+    });
+    ctx.restore();
+  }
 
   // Draw panels: images and captions (to mirror final export)
   rects.forEach(({ x, y, width: w, height: h, panelId }) => {
@@ -555,15 +694,15 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const yRaw = Number(stickerRef?.yPercent);
       const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
       const widthPx = clamp((widthPercent / 100) * width, 12, width * 0.98);
-      const heightPx = clamp(widthPx / aspectRatio, 12, height * 0.98);
+      const heightPx = clamp(widthPx / aspectRatio, 12, totalHeight * 0.98);
       const minVisibleX = Math.min(32, widthPx);
       const minVisibleY = Math.min(32, heightPx);
       const minX = -widthPx + minVisibleX;
       const maxX = width - minVisibleX;
       const minY = -heightPx + minVisibleY;
-      const maxY = height - minVisibleY;
+      const maxY = totalHeight - minVisibleY;
       const xPx = clamp((Number.isFinite(xRaw) ? xRaw : 36) / 100 * width, minX, maxX);
-      const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * height, minY, maxY);
+      const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * totalHeight, minY, maxY);
 
       try {
         if (Math.abs(angleDeg) > 0.01) {

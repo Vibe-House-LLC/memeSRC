@@ -57,6 +57,7 @@ const CollagePreview = ({
   selectedTemplate,
   selectedAspectRatio,
   customAspectRatio = 1,
+  isSingleImageAutoCustomAspect = false,
   panelCount,
   selectedImages,
   addMultipleImages,
@@ -957,6 +958,7 @@ const CollagePreview = ({
         selectedTemplate={selectedTemplate}
         selectedAspectRatio={selectedAspectRatio}
         panelCount={panelCount}
+        isSingleImageAutoCustomAspect={isSingleImageAutoCustomAspect}
         images={selectedImages}
         onPanelClick={handlePanelClick}
         onRemovePanel={onRemovePanelRequest}
@@ -1167,6 +1169,7 @@ CollagePreview.propTypes = {
   selectedTemplate: PropTypes.object,
   selectedAspectRatio: PropTypes.string,
   customAspectRatio: PropTypes.number,
+  isSingleImageAutoCustomAspect: PropTypes.bool,
   panelCount: PropTypes.number,
   selectedImages: PropTypes.array,
   addMultipleImages: PropTypes.func.isRequired,

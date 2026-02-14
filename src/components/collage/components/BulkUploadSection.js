@@ -8,6 +8,7 @@ import {
   Chip,
   Menu,
   MenuItem,
+  ListItemIcon,
   Snackbar,
   Alert,
   Button,
@@ -920,16 +921,22 @@ const BulkUploadSection = ({
             {selectedPanelForAction?.hasImage ? (
               <>
                 <MenuItem onClick={handleReplaceImage}>
-                  <Refresh sx={{ mr: 1, fontSize: 18 }} />
+                  <ListItemIcon>
+                    <Refresh fontSize="small" />
+                  </ListItemIcon>
                   Replace
                 </MenuItem>
                 <MenuItem onClick={handleClearImage}>
-                  <Clear sx={{ mr: 1, fontSize: 18 }} />
+                  <ListItemIcon>
+                    <Clear fontSize="small" />
+                  </ListItemIcon>
                   Remove
                 </MenuItem>
                 {panelCount > 1 && (
                   <MenuItem onClick={handleDeleteFrameWithImage}>
-                    <Delete sx={{ mr: 1, fontSize: 18 }} />
+                    <ListItemIcon>
+                      <Delete fontSize="small" />
+                    </ListItemIcon>
                     Delete frame
                   </MenuItem>
                 )}
@@ -937,12 +944,16 @@ const BulkUploadSection = ({
             ) : (
               <>
                 <MenuItem onClick={handleUploadToPanel}>
-                  <Upload sx={{ mr: 1, fontSize: 18 }} />
+                  <ListItemIcon>
+                    <Upload fontSize="small" />
+                  </ListItemIcon>
                   Add image
                 </MenuItem>
                 {panelCount > 1 && (
                   <MenuItem onClick={handleRemoveFrameFromMenu}>
-                    <RemoveCircle sx={{ mr: 1, fontSize: 18 }} />
+                    <ListItemIcon>
+                      <RemoveCircle fontSize="small" />
+                    </ListItemIcon>
                     Remove frame
                   </MenuItem>
                 )}

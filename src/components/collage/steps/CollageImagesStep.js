@@ -32,6 +32,7 @@ const CollageImagesStep = ({
   selectedTemplate,
   selectedAspectRatio = 'portrait',
   customAspectRatio = 1,
+  isSingleImageAutoCustomAspect = false,
   borderThickness = 'medium',
   borderColor,
   borderThicknessOptions = [
@@ -195,10 +196,16 @@ const CollageImagesStep = ({
   const closeAddMenu = () => {
     setAddMenuAnchorEl(null);
   };
-  const handleAddText = () => {
+  const handleAddTopCaption = () => {
     closeAddMenu();
     if (canAddText) {
-      onAddTextRequest();
+      onAddTextRequest('top-caption');
+    }
+  };
+  const handleAddSubtitleText = () => {
+    closeAddMenu();
+    if (canAddText) {
+      onAddTextRequest('subtitle');
     }
   };
   const handleAddSticker = () => {
@@ -288,6 +295,7 @@ const CollageImagesStep = ({
             selectedTemplate={selectedTemplate}
             selectedAspectRatio={selectedAspectRatio}
             customAspectRatio={customAspectRatio}
+            isSingleImageAutoCustomAspect={isSingleImageAutoCustomAspect}
             panelCount={panelCount || 1} /* Ensure we always have a fallback */
             selectedImages={selectedImages || []}
             addImage={addImage}
@@ -365,9 +373,13 @@ const CollageImagesStep = ({
             },
           }}
         >
-          <MenuItem onClick={handleAddText} disabled={!canAddText}>
+          <MenuItem onClick={handleAddTopCaption} disabled={!canAddText}>
             <ListItemIcon><TextFieldsRoundedIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Add Text" />
+            <ListItemText primary="Add Top Caption" />
+          </MenuItem>
+          <MenuItem onClick={handleAddSubtitleText} disabled={!canAddText}>
+            <ListItemIcon><TextFieldsRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Add Subtitle Text" />
           </MenuItem>
           <MenuItem onClick={handleAddSticker} disabled={!canAddSticker}>
             <ListItemIcon><StyleRoundedIcon fontSize="small" /></ListItemIcon>
@@ -430,6 +442,7 @@ CollageImagesStep.propTypes = {
   selectedTemplate: PropTypes.object,
   selectedAspectRatio: PropTypes.string,
   customAspectRatio: PropTypes.number,
+  isSingleImageAutoCustomAspect: PropTypes.bool,
   borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   borderColor: PropTypes.string,
   borderThicknessOptions: PropTypes.array,
