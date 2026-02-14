@@ -2,7 +2,7 @@ import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "r
 import { Helmet } from "react-helmet-async";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge } from "@mui/material";
-import { Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close } from "@mui/icons-material";
+import { Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close, KeyboardArrowDown } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
 import { UserContext } from "../UserContext";
@@ -286,6 +286,8 @@ export default function CollagePage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [panelAutoOpenRequest, setPanelAutoOpenRequest] = useState(null);
   const [panelTextAutoOpenRequest, setPanelTextAutoOpenRequest] = useState(null);
+  const [panelTransformAutoOpenRequest, setPanelTransformAutoOpenRequest] = useState(null);
+  const [panelReorderAutoOpenRequest, setPanelReorderAutoOpenRequest] = useState(null);
   const [removePanelDialog, setRemovePanelDialog] = useState({ open: false, panelId: null, hasImage: false });
   
   // Adopt a pre-created project id passed via navigation state (e.g., from editor)
@@ -1759,6 +1761,36 @@ export default function CollagePage() {
     setPanelTextAutoOpenRequest(nextRequest);
   }, []);
 
+  const queuePanelTransformAutoOpen = useCallback((panelId, panelIndex) => {
+    if (!panelId) return;
+    const normalizedIndex = Number.isInteger(panelIndex)
+      ? panelIndex
+      : parsePanelIndexFromId(panelId);
+    const nextRequest = {
+      requestId: `transform-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      panelId,
+    };
+    if (Number.isInteger(normalizedIndex)) {
+      nextRequest.panelIndex = normalizedIndex;
+    }
+    setPanelTransformAutoOpenRequest(nextRequest);
+  }, []);
+
+  const queuePanelReorderAutoOpen = useCallback((panelId, panelIndex) => {
+    if (!panelId) return;
+    const normalizedIndex = Number.isInteger(panelIndex)
+      ? panelIndex
+      : parsePanelIndexFromId(panelId);
+    const nextRequest = {
+      requestId: `reorder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      panelId,
+    };
+    if (Number.isInteger(normalizedIndex)) {
+      nextRequest.panelIndex = normalizedIndex;
+    }
+    setPanelReorderAutoOpenRequest(nextRequest);
+  }, []);
+
   const handlePanelAutoOpenHandled = useCallback((requestId) => {
     if (!requestId) return;
     setPanelAutoOpenRequest((prev) => (
@@ -1769,6 +1801,20 @@ export default function CollagePage() {
   const handlePanelTextAutoOpenHandled = useCallback((requestId) => {
     if (!requestId) return;
     setPanelTextAutoOpenRequest((prev) => (
+      prev?.requestId === requestId ? null : prev
+    ));
+  }, []);
+
+  const handlePanelTransformAutoOpenHandled = useCallback((requestId) => {
+    if (!requestId) return;
+    setPanelTransformAutoOpenRequest((prev) => (
+      prev?.requestId === requestId ? null : prev
+    ));
+  }, []);
+
+  const handlePanelReorderAutoOpenHandled = useCallback((requestId) => {
+    if (!requestId) return;
+    setPanelReorderAutoOpenRequest((prev) => (
       prev?.requestId === requestId ? null : prev
     ));
   }, []);
@@ -1899,6 +1945,9 @@ export default function CollagePage() {
   const handleMobileSettingSelect = useCallback((settingId) => {
     setMobileActiveSetting((previousSetting) => (previousSetting === settingId ? null : settingId));
   }, []);
+  const activeMobileSettingLabel = useMemo(() => (
+    MOBILE_SETTING_OPTIONS.find((option) => option.id === mobileActiveSetting)?.label || 'Settings'
+  ), [mobileActiveSetting]);
 
   const handleMovePanel = useCallback((panelId, direction) => {
     if (!panelId || !Number.isFinite(direction) || direction === 0) return;
@@ -1955,6 +2004,42 @@ export default function CollagePage() {
     updatePanelText,
     updatePanelTransform,
   ]);
+
+  const handlePanelSourceRequestedFromSettings = useCallback((panelId, panelIndex) => {
+    const resolvedIndex = Number.isInteger(panelIndex) ? panelIndex : parsePanelIndexFromId(panelId);
+    if (!Number.isInteger(resolvedIndex) || resolvedIndex < 0) return;
+    setMobileActiveSetting(null);
+    queuePanelAutoOpen(resolvedIndex);
+  }, [queuePanelAutoOpen]);
+
+  const handlePanelTextRequestedFromSettings = useCallback((panelId, panelIndex) => {
+    if (!panelId) return;
+    setMobileActiveSetting(null);
+    queuePanelTextAutoOpen(panelId, panelIndex);
+  }, [queuePanelTextAutoOpen]);
+
+  const handlePanelTransformRequestedFromSettings = useCallback((panelId, panelIndex) => {
+    if (!panelId) return;
+    setMobileActiveSetting(null);
+    queuePanelTransformAutoOpen(panelId, panelIndex);
+  }, [queuePanelTransformAutoOpen]);
+
+  const handlePanelReorderRequestedFromSettings = useCallback((panelId, panelIndex) => {
+    if (!panelId) return;
+    setMobileActiveSetting(null);
+    queuePanelReorderAutoOpen(panelId, panelIndex);
+  }, [queuePanelReorderAutoOpen]);
+
+  const handlePanelRemoveRequestedFromSettings = useCallback((panelId) => {
+    if (!panelId) return;
+    setMobileActiveSetting(null);
+    handleRemovePanelRequest(panelId);
+  }, [handleRemovePanelRequest]);
+
+  const handleAddPanelRequestedFromSettings = useCallback(() => {
+    setMobileActiveSetting(null);
+    handleAddPanelRequested('end');
+  }, [handleAddPanelRequested]);
 
 
 
@@ -2230,6 +2315,7 @@ export default function CollagePage() {
     setPanelCount,
     // Needed for safe panel count reduction that may hide an image
     panelImageMapping,
+    panelTexts,
     removeImage,
     aspectRatioPresets,
     layoutTemplates,
@@ -2244,6 +2330,13 @@ export default function CollagePage() {
     onMoveSticker: moveSticker,
     onRemoveSticker: removeSticker,
     onMovePanel: handleMovePanel,
+    canAddPanel: panelCount < MAX_IMAGES,
+    onAddPanelRequest: handleAddPanelRequestedFromSettings,
+    onOpenPanelSource: handlePanelSourceRequestedFromSettings,
+    onOpenPanelText: handlePanelTextRequestedFromSettings,
+    onOpenPanelTransform: handlePanelTransformRequestedFromSettings,
+    onOpenPanelReorder: handlePanelReorderRequestedFromSettings,
+    onRemovePanelRequest: handlePanelRemoveRequestedFromSettings,
     onStickerLibraryOpenChange: setIsStickerLibraryOpen,
   };
 
@@ -2312,6 +2405,10 @@ export default function CollagePage() {
     onPanelAutoOpenHandled: handlePanelAutoOpenHandled,
     panelTextAutoOpenRequest,
     onPanelTextAutoOpenHandled: handlePanelTextAutoOpenHandled,
+    panelTransformAutoOpenRequest,
+    onPanelTransformAutoOpenHandled: handlePanelTransformAutoOpenHandled,
+    panelReorderAutoOpenRequest,
+    onPanelReorderAutoOpenHandled: handlePanelReorderAutoOpenHandled,
     onRemovePanelRequest: handleRemovePanelRequest,
     onAddTextRequest: handleAddTextRequested,
     onAddStickerFromLibrary: handleAddStickerFromLibrary,
@@ -2662,16 +2759,55 @@ export default function CollagePage() {
                           id="collage-mobile-settings-panel"
                           sx={{
                             borderRadius: 2,
-                            border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.92 : 0.8)}`,
-                            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.58 : 0.9),
-                            px: 1.1,
-                            pt: 0.4,
-                            pb: 0.55,
-                            maxHeight: 'min(38vh, 340px)',
+                            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.52 : 0.9),
+                            px: 0.75,
+                            pt: 0.35,
+                            pb: 0.4,
+                            maxHeight: 'min(36vh, 320px)',
                             overflowY: 'auto',
                             overflowX: 'hidden',
                           }}
                         >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 1,
+                              px: 0.35,
+                              mb: 0.2,
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: 'text.secondary',
+                                fontWeight: 700,
+                                letterSpacing: 0.15,
+                              }}
+                            >
+                              {activeMobileSettingLabel}
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant="text"
+                              onClick={() => setMobileActiveSetting(null)}
+                              endIcon={<KeyboardArrowDown fontSize="small" />}
+                              sx={{
+                                minWidth: 0,
+                                px: 0.55,
+                                py: 0.2,
+                                textTransform: 'none',
+                                color: 'text.secondary',
+                                fontWeight: 700,
+                                fontSize: '0.72rem',
+                                lineHeight: 1.1,
+                                '& .MuiButton-endIcon': { ml: 0.2 },
+                              }}
+                            >
+                              Hide
+                            </Button>
+                          </Box>
                           <CollageSettingsStep
                             {...settingsStepProps}
                             showMobileTabs={false}

@@ -13,6 +13,9 @@ import {
   TextField,
   useMediaQuery,
   Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -32,7 +35,13 @@ import {
   ArrowUpward,
   ArrowDownward,
   DeleteOutline,
-  AddPhotoAlternate
+  AddPhotoAlternate,
+  MoreHoriz,
+  Crop,
+  DragIndicator,
+  Image as ImageIcon,
+  Subtitles,
+  Add,
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
 import { LibraryPickerDialog } from "../../library";
@@ -362,6 +371,7 @@ const CollageLayoutSettings = ({
   setCustomAspectRatio,
   panelCount,
   panelImageMapping,
+  panelTexts,
   handleNext,
   aspectRatioPresets,
   layoutTemplates,
@@ -377,6 +387,13 @@ const CollageLayoutSettings = ({
   onMoveSticker,
   onRemoveSticker,
   onMovePanel,
+  canAddPanel = false,
+  onAddPanelRequest,
+  onOpenPanelSource,
+  onOpenPanelText,
+  onOpenPanelTransform,
+  onOpenPanelReorder,
+  onRemovePanelRequest,
   showMobileTabs = true,
   mobileActiveSetting,
   onMobileActiveSettingChange,
@@ -396,6 +413,8 @@ const CollageLayoutSettings = ({
   const [stickerError, setStickerError] = useState('');
   const [customRatioWidthInput, setCustomRatioWidthInput] = useState('100');
   const [customRatioHeightInput, setCustomRatioHeightInput] = useState('100');
+  const [panelActionAnchorEl, setPanelActionAnchorEl] = useState(null);
+  const [panelActionTarget, setPanelActionTarget] = useState(null);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -411,7 +430,10 @@ const CollageLayoutSettings = ({
   const isAdmin = user?.['cognito:groups']?.includes('admins');
   const isMobileSettingControlled = mobileActiveSetting !== undefined;
   const activeMobileSetting = isMobileSettingControlled ? mobileActiveSetting : uncontrolledActiveMobileSetting;
-  const setActiveMobileSetting = (nextSettingId) => {
+  const setActiveMobileSetting = (nextSettingIdOrUpdater) => {
+    const nextSettingId = typeof nextSettingIdOrUpdater === 'function'
+      ? nextSettingIdOrUpdater(activeMobileSetting)
+      : nextSettingIdOrUpdater;
     if (!isMobileSettingControlled) {
       setUncontrolledActiveMobileSetting(nextSettingId);
     }
@@ -848,6 +870,53 @@ const CollageLayoutSettings = ({
       image: mappedImage,
     };
   });
+  const panelActionMenuOpen = Boolean(panelActionAnchorEl);
+  const panelActionLayer = panelActionTarget
+    ? panelLayers.find((layer) => layer.panelId === panelActionTarget.panelId)
+    : null;
+  const panelActionHasImage = Boolean(
+    panelActionLayer &&
+    typeof panelActionLayer.imageIndex === 'number' &&
+    panelActionLayer.image
+  );
+  const panelActionText = panelActionLayer
+    ? panelTexts?.[panelActionLayer.panelId]
+    : null;
+  const panelActionHasCaption = Boolean(
+    panelActionText &&
+    typeof panelActionText.content === 'string' &&
+    panelActionText.content.trim().length > 0
+  );
+
+  const closePanelActionMenu = () => {
+    setPanelActionAnchorEl(null);
+    setPanelActionTarget(null);
+  };
+
+  const openPanelActionMenu = (event, panelLayer) => {
+    event.stopPropagation();
+    setPanelActionAnchorEl(event.currentTarget);
+    setPanelActionTarget({
+      panelId: panelLayer.panelId,
+      panelIndex: panelLayer.panelIndex,
+    });
+  };
+
+  const triggerPanelAction = (callback) => {
+    if (!panelActionTarget || typeof callback !== 'function') {
+      closePanelActionMenu();
+      return;
+    }
+    const { panelId, panelIndex } = panelActionTarget;
+    closePanelActionMenu();
+    callback(panelId, panelIndex);
+  };
+
+  useEffect(() => {
+    if (activeMobileSetting !== 'panels' && panelActionMenuOpen) {
+      closePanelActionMenu();
+    }
+  }, [activeMobileSetting, panelActionMenuOpen]);
   
   // Clean up all the duplicate state variables and use a single savedCustomColor state
   const [savedCustomColor, setSavedCustomColor] = useState(() => {
@@ -926,6 +995,22 @@ const CollageLayoutSettings = ({
             <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, minWidth: 180 }}>
               Rearrange panel order and image placement.
             </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Add fontSize="small" />}
+              disabled={!canAddPanel || typeof onAddPanelRequest !== 'function'}
+              onClick={() => typeof onAddPanelRequest === 'function' && onAddPanelRequest()}
+              sx={{
+                borderRadius: 999,
+                textTransform: 'none',
+                fontWeight: 700,
+                minHeight: 34,
+                px: 1.6,
+              }}
+            >
+              Add panel
+            </Button>
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -994,6 +1079,13 @@ const CollageLayoutSettings = ({
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
                     <IconButton
                       size="small"
+                      onClick={(event) => openPanelActionMenu(event, panelLayer)}
+                      aria-label={`Panel actions for ${panelLabel}`}
+                    >
+                      <MoreHoriz fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
                       onClick={() => canMoveUp && typeof onMovePanel === 'function' && onMovePanel(panelId, 1)}
                       disabled={!canMoveUp}
                       aria-label={`Move ${panelLabel} up`}
@@ -1013,6 +1105,66 @@ const CollageLayoutSettings = ({
               );
             })}
           </Box>
+
+          <Menu
+            anchorEl={panelActionAnchorEl}
+            open={panelActionMenuOpen}
+            onClose={closePanelActionMenu}
+            PaperProps={{
+              sx: {
+                minWidth: 200,
+                borderRadius: 2,
+                border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              },
+            }}
+          >
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelTransform)}
+              disabled={!panelActionHasImage || typeof onOpenPanelTransform !== 'function'}
+            >
+              <ListItemIcon>
+                <Crop fontSize="small" />
+              </ListItemIcon>
+              Crop & Zoom
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelReorder)}
+              disabled={!panelActionHasImage || typeof onOpenPanelReorder !== 'function'}
+            >
+              <ListItemIcon>
+                <DragIndicator fontSize="small" />
+              </ListItemIcon>
+              Rearrange
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelSource)}
+              disabled={typeof onOpenPanelSource !== 'function'}
+            >
+              <ListItemIcon>
+                <ImageIcon fontSize="small" />
+              </ListItemIcon>
+              {panelActionHasImage ? 'Replace Image' : 'Add Image'}
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelText)}
+              disabled={!panelActionHasImage || typeof onOpenPanelText !== 'function'}
+            >
+              <ListItemIcon>
+                <Subtitles fontSize="small" />
+              </ListItemIcon>
+              {panelActionHasCaption ? 'Edit caption' : 'Add caption'}
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onRemovePanelRequest)}
+              disabled={panelCount <= 1 || typeof onRemovePanelRequest !== 'function'}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon sx={{ color: 'inherit' }}>
+                <DeleteOutline fontSize="small" />
+              </ListItemIcon>
+              Remove Panel
+            </MenuItem>
+          </Menu>
         </Box>
       )}
     

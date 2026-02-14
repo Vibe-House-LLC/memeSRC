@@ -662,6 +662,10 @@ const CanvasCollagePreview = ({
   onCaptionEditorVisibleChange,
   panelTextAutoOpenRequest,
   onPanelTextAutoOpenHandled,
+  panelTransformAutoOpenRequest,
+  onPanelTransformAutoOpenHandled,
+  panelReorderAutoOpenRequest,
+  onPanelReorderAutoOpenHandled,
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
   // Render tracking for upstream autosave/thumbnail logic
   renderSig,
@@ -688,6 +692,8 @@ const CanvasCollagePreview = ({
   const hasInitializedStickerIdsRef = useRef(false);
   const previousStickerIdsRef = useRef([]);
   const handledTextAutoOpenRequestRef = useRef(null);
+  const handledTransformAutoOpenRequestRef = useRef(null);
+  const handledReorderAutoOpenRequestRef = useRef(null);
   const stickerDraftsRef = useRef({});
   const pendingStickerPointerRef = useRef(null);
   const stickerRafRef = useRef(null);
@@ -2399,6 +2405,65 @@ const CanvasCollagePreview = ({
       onPanelTextAutoOpenHandled(requestId);
     }
   }, [panelTextAutoOpenRequest, handleTextEdit, onPanelTextAutoOpenHandled, textEditingPanel]);
+
+  useEffect(() => {
+    if (!panelTransformAutoOpenRequest) return;
+    const requestId = panelTransformAutoOpenRequest.requestId;
+    if (!requestId || handledTransformAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelId = panelTransformAutoOpenRequest.panelId || null;
+    if (!requestedPanelId && Number.isInteger(panelTransformAutoOpenRequest.panelIndex)) {
+      requestedPanelId = `panel-${panelTransformAutoOpenRequest.panelIndex + 1}`;
+    }
+    if (!requestedPanelId) return;
+
+    handledTransformAutoOpenRequestRef.current = requestId;
+    if (textEditingPanel !== null) {
+      setTextEditingPanel(null);
+    }
+    if (isReorderMode) {
+      setIsReorderMode(false);
+      setReorderSourcePanel(null);
+    }
+    setIsTransformMode((prev) => ({ ...prev, [requestedPanelId]: true }));
+
+    if (typeof onPanelTransformAutoOpenHandled === 'function') {
+      onPanelTransformAutoOpenHandled(requestId);
+    }
+  }, [
+    panelTransformAutoOpenRequest,
+    onPanelTransformAutoOpenHandled,
+    textEditingPanel,
+    isReorderMode,
+  ]);
+
+  useEffect(() => {
+    if (!panelReorderAutoOpenRequest) return;
+    const requestId = panelReorderAutoOpenRequest.requestId;
+    if (!requestId || handledReorderAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelId = panelReorderAutoOpenRequest.panelId || null;
+    if (!requestedPanelId && Number.isInteger(panelReorderAutoOpenRequest.panelIndex)) {
+      requestedPanelId = `panel-${panelReorderAutoOpenRequest.panelIndex + 1}`;
+    }
+    if (!requestedPanelId) return;
+
+    handledReorderAutoOpenRequestRef.current = requestId;
+    if (textEditingPanel !== null) {
+      setTextEditingPanel(null);
+    }
+    setIsTransformMode({});
+    setIsReorderMode(true);
+    setReorderSourcePanel(requestedPanelId);
+
+    if (typeof onPanelReorderAutoOpenHandled === 'function') {
+      onPanelReorderAutoOpenHandled(requestId);
+    }
+  }, [
+    panelReorderAutoOpenRequest,
+    onPanelReorderAutoOpenHandled,
+    textEditingPanel,
+  ]);
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
@@ -4926,6 +4991,18 @@ CanvasCollagePreview.propTypes = {
     panelIndex: PropTypes.number,
   }),
   onPanelTextAutoOpenHandled: PropTypes.func,
+  panelTransformAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTransformAutoOpenHandled: PropTypes.func,
+  panelReorderAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelReorderAutoOpenHandled: PropTypes.func,
   isGeneratingCollage: PropTypes.bool,
   renderSig: PropTypes.string,
   onRendered: PropTypes.func,

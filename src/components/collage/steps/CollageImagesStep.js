@@ -69,6 +69,10 @@ const CollageImagesStep = ({
   onPanelAutoOpenHandled,
   panelTextAutoOpenRequest,
   onPanelTextAutoOpenHandled,
+  panelTransformAutoOpenRequest,
+  onPanelTransformAutoOpenHandled,
+  panelReorderAutoOpenRequest,
+  onPanelReorderAutoOpenHandled,
   onRemovePanelRequest,
   onAddTextRequest,
   onAddStickerFromLibrary,
@@ -329,6 +333,10 @@ const CollageImagesStep = ({
             onPanelAutoOpenHandled={onPanelAutoOpenHandled}
             panelTextAutoOpenRequest={panelTextAutoOpenRequest}
             onPanelTextAutoOpenHandled={onPanelTextAutoOpenHandled}
+            panelTransformAutoOpenRequest={panelTransformAutoOpenRequest}
+            onPanelTransformAutoOpenHandled={onPanelTransformAutoOpenHandled}
+            panelReorderAutoOpenRequest={panelReorderAutoOpenRequest}
+            onPanelReorderAutoOpenHandled={onPanelReorderAutoOpenHandled}
             onRemovePanelRequest={onRemovePanelRequest}
           />
         </Box>
@@ -478,6 +486,18 @@ CollageImagesStep.propTypes = {
     panelIndex: PropTypes.number,
   }),
   onPanelTextAutoOpenHandled: PropTypes.func,
+  panelTransformAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTransformAutoOpenHandled: PropTypes.func,
+  panelReorderAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelReorderAutoOpenHandled: PropTypes.func,
   onRemovePanelRequest: PropTypes.func,
   onAddTextRequest: PropTypes.func,
   onAddStickerFromLibrary: PropTypes.func,

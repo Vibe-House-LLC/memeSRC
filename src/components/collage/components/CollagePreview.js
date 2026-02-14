@@ -67,6 +67,10 @@ const CollagePreview = ({
   onPanelAutoOpenHandled,
   panelTextAutoOpenRequest,
   onPanelTextAutoOpenHandled,
+  panelTransformAutoOpenRequest,
+  onPanelTransformAutoOpenHandled,
+  panelReorderAutoOpenRequest,
+  onPanelReorderAutoOpenHandled,
   onRemovePanelRequest,
   borderThickness = 0,
   borderColor = '#000000',
@@ -978,6 +982,10 @@ const CollagePreview = ({
         onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
         panelTextAutoOpenRequest={panelTextAutoOpenRequest}
         onPanelTextAutoOpenHandled={onPanelTextAutoOpenHandled}
+        panelTransformAutoOpenRequest={panelTransformAutoOpenRequest}
+        onPanelTransformAutoOpenHandled={onPanelTransformAutoOpenHandled}
+        panelReorderAutoOpenRequest={panelReorderAutoOpenRequest}
+        onPanelReorderAutoOpenHandled={onPanelReorderAutoOpenHandled}
         isGeneratingCollage={isCreatingCollage}
         // Render tracking for autosave thumbnails
         renderSig={renderSig}
@@ -1177,6 +1185,18 @@ CollagePreview.propTypes = {
     panelIndex: PropTypes.number,
   }),
   onPanelTextAutoOpenHandled: PropTypes.func,
+  panelTransformAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTransformAutoOpenHandled: PropTypes.func,
+  panelReorderAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelReorderAutoOpenHandled: PropTypes.func,
   onRemovePanelRequest: PropTypes.func,
   borderThickness: PropTypes.number,
   borderColor: PropTypes.string,
