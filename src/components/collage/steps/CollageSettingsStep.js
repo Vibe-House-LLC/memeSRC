@@ -252,6 +252,7 @@ const MobileSettingsTypeButton = styled(Button, {
 }));
 
 export const MOBILE_SETTING_OPTIONS = [
+  { id: 'panels', label: 'Panels', panelId: 'collage-settings-panel-panels' },
   { id: 'aspect-ratio', label: 'Size/Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
@@ -360,6 +361,7 @@ const CollageLayoutSettings = ({
   customAspectRatio = 1,
   setCustomAspectRatio,
   panelCount,
+  panelImageMapping,
   handleNext,
   aspectRatioPresets,
   layoutTemplates,
@@ -374,6 +376,7 @@ const CollageLayoutSettings = ({
   onAddStickerFromLibrary,
   onMoveSticker,
   onRemoveSticker,
+  onMovePanel,
   showMobileTabs = true,
   mobileActiveSetting,
   onMobileActiveSettingChange,
@@ -830,6 +833,21 @@ const CollageLayoutSettings = ({
   const compatibleTemplates = getCompatibleTemplates();
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
   const stickerLayers = Array.isArray(stickers) ? [...stickers].reverse() : [];
+  const panelLayers = Array.from({ length: Math.max(1, Number(panelCount) || 1) }).map((_, panelIndex) => {
+    const panelId = `panel-${panelIndex + 1}`;
+    const imageIndex = panelImageMapping?.[panelId];
+    const mappedImage = (
+      typeof imageIndex === 'number' &&
+      Array.isArray(selectedImages) &&
+      imageIndex >= 0
+    ) ? selectedImages[imageIndex] : null;
+    return {
+      panelId,
+      panelIndex,
+      imageIndex,
+      image: mappedImage,
+    };
+  });
   
   // Clean up all the duplicate state variables and use a single savedCustomColor state
   const [savedCustomColor, setSavedCustomColor] = useState(() => {
@@ -881,6 +899,120 @@ const CollageLayoutSettings = ({
               );
             })}
           </MobileSettingsTypeScroller>
+        </Box>
+      )}
+
+      {isMobile && (
+        <Box
+          id="collage-settings-panel-panels"
+          role="tabpanel"
+          aria-labelledby="collage-settings-tab-panels"
+          hidden={!isSectionVisible('panels')}
+          sx={{
+            display: isSectionVisible('panels') ? 'block' : 'none',
+            mb: 0.75,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1.25,
+              mb: 1.1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, minWidth: 180 }}>
+              Rearrange panel order and image placement.
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {panelLayers.map((panelLayer) => {
+              const { panelId, panelIndex, imageIndex, image } = panelLayer;
+              const canMoveUp = panelIndex > 0;
+              const canMoveDown = panelIndex < panelLayers.length - 1;
+              const thumbSrc = image?.displayUrl || image?.originalUrl || '';
+              const hasImage = (
+                typeof thumbSrc === 'string' &&
+                thumbSrc.length > 0 &&
+                thumbSrc !== '__START_FROM_SCRATCH__'
+              );
+              const panelLabel = `Panel ${panelIndex + 1}`;
+
+              return (
+                <Box
+                  key={`panel-layer-row-${panelId}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 1,
+                    borderRadius: 1.5,
+                    border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82)}`,
+                    backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.9),
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      bgcolor: alpha(theme.palette.common.black, 0.08),
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {hasImage ? (
+                      <Box
+                        component="img"
+                        src={thumbSrc}
+                        alt={panelLabel}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <GridView sx={{ color: 'text.disabled', fontSize: 20 }} />
+                    )}
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {panelLabel}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {hasImage
+                        ? `Image ${Number(imageIndex) + 1}`
+                        : 'No image assigned'}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveUp && typeof onMovePanel === 'function' && onMovePanel(panelId, 1)}
+                      disabled={!canMoveUp}
+                      aria-label={`Move ${panelLabel} up`}
+                    >
+                      <ArrowUpward fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveDown && typeof onMovePanel === 'function' && onMovePanel(panelId, -1)}
+                      disabled={!canMoveDown}
+                      aria-label={`Move ${panelLabel} down`}
+                    >
+                      <ArrowDownward fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
       )}
     

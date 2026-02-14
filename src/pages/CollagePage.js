@@ -94,6 +94,7 @@ const AUTOSAVE_RETRY_MAX_DELAY_MS = 8000;
 const PANEL_DIM_REFRESH_TIMEOUT_MS = 1800;
 const MAX_IMAGES = 5;
 const DEFAULT_CUSTOM_ASPECT_RATIO = 1;
+const DEFAULT_PANEL_TRANSFORM = { scale: 1, positionX: 0, positionY: 0 };
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
@@ -1899,6 +1900,62 @@ export default function CollagePage() {
     setMobileActiveSetting((previousSetting) => (previousSetting === settingId ? null : settingId));
   }, []);
 
+  const handleMovePanel = useCallback((panelId, direction) => {
+    if (!panelId || !Number.isFinite(direction) || direction === 0) return;
+    const sourceIndex = parsePanelIndexFromId(panelId);
+    if (sourceIndex === null) return;
+
+    const nextIndex = sourceIndex - direction;
+    if (nextIndex < 0 || nextIndex >= panelCount) return;
+
+    const destinationPanelId = `panel-${nextIndex + 1}`;
+    const sourceImageIndex = panelImageMapping?.[panelId];
+    const destinationImageIndex = panelImageMapping?.[destinationPanelId];
+    const sourceText = panelTexts?.[panelId];
+    const destinationText = panelTexts?.[destinationPanelId];
+    const sourceTransform = panelTransforms?.[panelId];
+    const destinationTransform = panelTransforms?.[destinationPanelId];
+
+    const newMapping = { ...(panelImageMapping || {}) };
+
+    if (destinationImageIndex !== undefined) {
+      newMapping[panelId] = destinationImageIndex;
+      if (sourceImageIndex !== undefined) {
+        newMapping[destinationPanelId] = sourceImageIndex;
+      } else {
+        delete newMapping[destinationPanelId];
+      }
+    } else if (sourceImageIndex !== undefined) {
+      newMapping[destinationPanelId] = sourceImageIndex;
+      delete newMapping[panelId];
+    }
+
+    updatePanelImageMapping(newMapping);
+
+    if (sourceText) {
+      updatePanelText(destinationPanelId, { ...sourceText }, { replace: true });
+    } else {
+      updatePanelText(destinationPanelId, {}, { replace: true });
+    }
+
+    if (destinationText) {
+      updatePanelText(panelId, { ...destinationText }, { replace: true });
+    } else {
+      updatePanelText(panelId, {}, { replace: true });
+    }
+
+    updatePanelTransform(destinationPanelId, sourceTransform ? { ...sourceTransform } : DEFAULT_PANEL_TRANSFORM);
+    updatePanelTransform(panelId, destinationTransform ? { ...destinationTransform } : DEFAULT_PANEL_TRANSFORM);
+  }, [
+    panelCount,
+    panelImageMapping,
+    panelTexts,
+    panelTransforms,
+    updatePanelImageMapping,
+    updatePanelText,
+    updatePanelTransform,
+  ]);
+
 
 
   // Handler for floating button - triggers collage generation
@@ -2161,7 +2218,8 @@ export default function CollagePage() {
 
   // Props for settings step (selectedImages length might be useful for UI feedback)
   const settingsStepProps = {
-    selectedImageCount: selectedImages.length, // Pass count instead of full array
+    selectedImageCount: selectedImages.length,
+    selectedImages,
     selectedTemplate,
     setSelectedTemplate,
     selectedAspectRatio, // Pass the original aspect ratio ID, not the converted value
@@ -2185,6 +2243,7 @@ export default function CollagePage() {
     onAddStickerFromLibrary: handleAddStickerFromLibrary,
     onMoveSticker: moveSticker,
     onRemoveSticker: removeSticker,
+    onMovePanel: handleMovePanel,
     onStickerLibraryOpenChange: setIsStickerLibraryOpen,
   };
 
@@ -2639,7 +2698,7 @@ export default function CollagePage() {
                         role="tablist"
                         aria-label="Collage settings categories"
                       >
-                        {MOBILE_SETTING_OPTIONS.map(({ id, label }) => {
+                        {MOBILE_SETTING_OPTIONS.map(({ id, label, panelId }) => {
                           const isSelected = mobileActiveSetting === id;
                           return (
                             <Button
@@ -2647,7 +2706,7 @@ export default function CollagePage() {
                               type="button"
                               role="tab"
                               aria-selected={isSelected}
-                              aria-controls="collage-mobile-settings-panel"
+                              aria-controls={panelId}
                               onClick={() => handleMobileSettingSelect(id)}
                               disableRipple
                               disableTouchRipple
