@@ -3262,6 +3262,8 @@ export default function CollagePage() {
                           display: 'flex',
                           alignItems: 'center',
                           gap: 0.7,
+                          ml: isMobile ? 'calc(-12px - env(safe-area-inset-left, 0px))' : 0,
+                          mr: isMobile ? 'calc(-12px - env(safe-area-inset-right, 0px))' : 0,
                           overflowX: 'auto',
                           overflowY: 'hidden',
                           overscrollBehaviorX: 'contain',
