@@ -1688,6 +1688,7 @@ const CanvasCollagePreview = ({
 
   const handleStickerPointerDown = useCallback((event, sticker, mode = 'move') => {
     if (!sticker?.id || typeof updateSticker !== 'function') return;
+    if (Object.values(isTransformMode).some(Boolean)) return;
     if (event?.button !== undefined && event.button !== 0) return;
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
@@ -1733,10 +1734,11 @@ const CanvasCollagePreview = ({
       centerClientX,
       centerClientY,
     });
-  }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
+  }, [getStickerRectPx, isTransformMode, moveSticker, stickers, updateSticker]);
 
   const handleStickerDelete = useCallback((event, stickerId) => {
     if (!stickerId || typeof removeSticker !== 'function') return;
+    if (Object.values(isTransformMode).some(Boolean)) return;
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
 
@@ -1754,7 +1756,7 @@ const CanvasCollagePreview = ({
       stickerRafRef.current = null;
     }
     removeSticker(stickerId);
-  }, [removeSticker]);
+  }, [isTransformMode, removeSticker]);
 
   const clearActiveStickerSelection = useCallback((event) => {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -1774,6 +1776,17 @@ const CanvasCollagePreview = ({
       stickerRafRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (!Object.values(isTransformMode).some(Boolean)) return;
+    setStickerInteraction(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+    setActiveStickerId(null);
+  }, [isTransformMode]);
 
   const handleStickerDone = useCallback((event) => {
     clearActiveStickerSelection(event);
@@ -2154,6 +2167,7 @@ const CanvasCollagePreview = ({
 
     // Draw stickers between images and captions so captions stay on top.
     if (Array.isArray(stickers) && stickers.length > 0) {
+      const stickerPreviewAlpha = anyPanelInTransformMode ? 0.28 : 1;
       stickers.forEach((sticker) => {
         if (!sticker?.id) return;
         const stickerImage = loadedStickers[sticker.id];
@@ -2161,11 +2175,14 @@ const CanvasCollagePreview = ({
         const stickerRect = getStickerRectPx(sticker, stickerImage);
         if (!stickerRect) return;
 
+        let contextSaved = false;
         try {
+          ctx.save();
+          contextSaved = true;
+          ctx.globalAlpha = stickerPreviewAlpha;
           if (Math.abs(stickerRect.angleDeg || 0) > 0.01) {
             const centerX = stickerRect.x + (stickerRect.width / 2);
             const centerY = stickerRect.y + (stickerRect.height / 2);
-            ctx.save();
             ctx.translate(centerX, centerY);
             ctx.rotate((stickerRect.angleDeg * Math.PI) / 180);
             ctx.drawImage(
@@ -2179,7 +2196,9 @@ const CanvasCollagePreview = ({
             return;
           }
           ctx.drawImage(stickerImage, stickerRect.x, stickerRect.y, stickerRect.width, stickerRect.height);
+          ctx.restore();
         } catch (_) {
+          if (contextSaved) ctx.restore();
           // Ignore sticker draw failures so preview rendering still succeeds.
         }
       });
@@ -4792,7 +4811,7 @@ const CanvasCollagePreview = ({
                   width: rect.width,
                   height: rect.height,
                   zIndex: 1 + index,
-                  pointerEvents: 'auto',
+                  pointerEvents: anyPanelInTransformMode ? 'none' : 'auto',
                   cursor: stickerInteraction?.stickerId === sticker.id
                     ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
                     : 'grab',
@@ -4814,7 +4833,7 @@ const CanvasCollagePreview = ({
             }}
           >
             {stickerLayers.map(({ sticker, index, rect, isActive }) => {
-              if (!isActive) return null;
+              if (!isActive || anyPanelInTransformMode) return null;
               const handleSize = componentWidth < 560 ? 30 : 22;
               const rotateHandleSize = componentWidth < 560 ? 26 : 20;
               const deleteHandleSize = componentWidth < 560 ? 28 : 22;

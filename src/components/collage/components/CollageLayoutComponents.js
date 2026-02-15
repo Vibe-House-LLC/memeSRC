@@ -325,7 +325,6 @@ export const CollageLayout = ({
             />
           </Box>
         ) : isMobile ? (
-          // Mobile: Preview-first flow; settings controls are rendered in the fixed bottom bar
           <Stack spacing={1.25} sx={{ p: 1.5, px: 1 }}>
             {/* Images Section */}
             <Box sx={{ 
@@ -340,6 +339,7 @@ export const CollageLayout = ({
                 {...imagesStepProps} 
                 setFinalImage={setFinalImage}
                 handleOpenExportDialog={handleOpenExportDialog}
+                showTopAddButton={false}
               />
             </Box>
             {renderEditTipCard()}
@@ -394,6 +394,7 @@ export const CollageLayout = ({
                   {...imagesStepProps} 
                   setFinalImage={setFinalImage}
                   handleOpenExportDialog={handleOpenExportDialog}
+                  showTopAddButton={false}
                 />
               </Box>
             </Box>

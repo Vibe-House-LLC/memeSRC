@@ -78,6 +78,9 @@ const CollageImagesStep = ({
   onAddTextRequest,
   onAddStickerFromLibrary,
   canManageStickers = false,
+  showTopAddButton = true,
+  showBottomAddButton = true,
+  previewInteractionDisabled = false,
   // Render tracking passthrough for autosave thumbnails
   renderSig,
   onPreviewRendered,
@@ -238,6 +241,12 @@ const CollageImagesStep = ({
       setStickerPickerBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (previewInteractionDisabled) {
+      closeAddMenu();
+    }
+  }, [previewInteractionDisabled]);
   const addPanelButtonSx = {
     textTransform: 'none',
     fontWeight: 700,
@@ -270,26 +279,32 @@ const CollageImagesStep = ({
         alignItems: 'center',
         position: 'relative',
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            size={isMobile ? 'small' : 'medium'}
-            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
-            endIcon={<ExpandMoreRoundedIcon fontSize="small" />}
-            onClick={(event) => openAddMenu(event, 'start')}
-            sx={addPanelButtonSx}
-          >
-            Add
-          </Button>
-        </Box>
+        {showTopAddButton && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size={isMobile ? 'small' : 'medium'}
+              startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+              endIcon={<ExpandMoreRoundedIcon fontSize="small" />}
+              onClick={(event) => openAddMenu(event, 'start')}
+              sx={addPanelButtonSx}
+            >
+              Add
+            </Button>
+          </Box>
+        )}
 
         {/* Always render the preview, let it handle null templates */}
-        <Box sx={{ 
-          width: '100%', 
-          mb: 1,
-          position: 'relative'
-        }} id="collage-preview-container">
+        <Box
+          sx={{
+            width: '100%',
+            mb: 1,
+            position: 'relative',
+            pointerEvents: previewInteractionDisabled ? 'none' : 'auto',
+          }}
+          id="collage-preview-container"
+        >
           <CollagePreview 
             canvasResetKey={canvasResetKey}
             selectedTemplate={selectedTemplate}
@@ -348,19 +363,21 @@ const CollageImagesStep = ({
             onRemovePanelRequest={onRemovePanelRequest}
           />
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            size={isMobile ? 'small' : 'medium'}
-            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
-            endIcon={<ExpandMoreRoundedIcon fontSize="small" />}
-            onClick={(event) => openAddMenu(event, 'end')}
-            sx={addPanelButtonSx}
-          >
-            Add
-          </Button>
-        </Box>
+        {showBottomAddButton && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size={isMobile ? 'small' : 'medium'}
+              startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+              endIcon={<ExpandMoreRoundedIcon fontSize="small" />}
+              onClick={(event) => openAddMenu(event, 'end')}
+              sx={addPanelButtonSx}
+            >
+              Add
+            </Button>
+          </Box>
+        )}
         <Menu
           anchorEl={addMenuAnchorEl}
           open={isAddMenuOpen}
@@ -515,6 +532,9 @@ CollageImagesStep.propTypes = {
   onAddTextRequest: PropTypes.func,
   onAddStickerFromLibrary: PropTypes.func,
   canManageStickers: PropTypes.bool,
+  showTopAddButton: PropTypes.bool,
+  showBottomAddButton: PropTypes.bool,
+  previewInteractionDisabled: PropTypes.bool,
   canvasResetKey: PropTypes.number,
 };
 

@@ -1,8 +1,8 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme, alpha } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge } from "@mui/material";
-import { Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close, KeyboardArrowDown } from "@mui/icons-material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close, CheckCircle, AddCircleOutlineRounded, ExpandMoreRounded, TextFieldsRounded, StyleRounded, ViewModuleRounded } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
 import { UserContext } from "../UserContext";
@@ -17,6 +17,7 @@ import { createProject, upsertProject, buildSnapshotFromState, getProject as get
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
 import { get as getFromLibrary } from "../utils/library/storage";
+import { LibraryPickerDialog } from "../components/library";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
 import { trackUsageEvent } from "../utils/trackUsageEvent";
@@ -96,6 +97,7 @@ const MAX_IMAGES = 5;
 const DEFAULT_CUSTOM_ASPECT_RATIO = 1;
 const DEFAULT_PANEL_TRANSFORM = { scale: 1, positionX: 0, positionY: 0 };
 const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const MOBILE_SETTINGS_PREVIEW_MIN_HEIGHT = 96;
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
 
@@ -282,6 +284,14 @@ export default function CollagePage() {
   const settingsRef = useRef(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileActiveSetting, setMobileActiveSetting] = useState(null);
+  const [mobileSettingsPreviewSrc, setMobileSettingsPreviewSrc] = useState('');
+  const mobileSettingsPreviewSigRef = useRef(null);
+  const mobileSettingsPreviewRequestRef = useRef(0);
+  const mobileSettingsOpenSigRef = useRef(null);
+  const [headerAddMenuAnchorEl, setHeaderAddMenuAnchorEl] = useState(null);
+  const [headerStickerPickerOpen, setHeaderStickerPickerOpen] = useState(false);
+  const [headerStickerPickerBusy, setHeaderStickerPickerBusy] = useState(false);
+  const [headerStickerPickerError, setHeaderStickerPickerError] = useState('');
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -629,6 +639,11 @@ export default function CollagePage() {
   const [bottomBarHeight, setBottomBarHeight] = useState(0);
   const bottomBarContentRef = useRef(null);
   const [bottomBarCenterX, setBottomBarCenterX] = useState(null);
+  const mobileSettingsPreviewDismissStartYRef = useRef(null);
+  const [mobileViewportHeight, setMobileViewportHeight] = useState(() => (
+    typeof window !== 'undefined' ? window.innerHeight : 0
+  ));
+  const mobileSettingsBodyLockScrollYRef = useRef(0);
   // Suppress frame-level action menus briefly after collage-level long-press
   const frameActionSuppressUntilRef = useRef(0);
 
@@ -643,6 +658,95 @@ export default function CollagePage() {
 
   // Check if user has added at least one image or wants to start from scratch
   const hasImages = selectedImages && selectedImages.length > 0;
+  const mobileSettingsSheetOpen = Boolean(isMobile && hasImages && mobileActiveSetting);
+
+  useEffect(() => {
+    if (!isMobile) return undefined;
+
+    let rafId = null;
+    const scheduleViewportUpdate = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        const visualViewport = window.visualViewport;
+        const nextHeight = Number(visualViewport?.height || window.innerHeight || 0);
+        if (!Number.isFinite(nextHeight) || nextHeight <= 0) return;
+        setMobileViewportHeight((prevHeight) => (
+          Math.abs(prevHeight - nextHeight) < 0.5 ? prevHeight : nextHeight
+        ));
+      });
+    };
+
+    scheduleViewportUpdate();
+    window.addEventListener('resize', scheduleViewportUpdate);
+    window.addEventListener('orientationchange', scheduleViewportUpdate);
+    const visualViewport = window.visualViewport;
+    if (visualViewport) {
+      visualViewport.addEventListener('resize', scheduleViewportUpdate);
+      visualViewport.addEventListener('scroll', scheduleViewportUpdate);
+    }
+
+    return () => {
+      window.removeEventListener('resize', scheduleViewportUpdate);
+      window.removeEventListener('orientationchange', scheduleViewportUpdate);
+      if (visualViewport) {
+        visualViewport.removeEventListener('resize', scheduleViewportUpdate);
+        visualViewport.removeEventListener('scroll', scheduleViewportUpdate);
+      }
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!mobileSettingsSheetOpen) return undefined;
+    if (typeof document === 'undefined') return undefined;
+
+    const html = document.documentElement;
+    const body = document.body;
+    if (!html || !body) return undefined;
+
+    const scrollY = Number(window.scrollY || window.pageYOffset || 0);
+    mobileSettingsBodyLockScrollYRef.current = Number.isFinite(scrollY) ? scrollY : 0;
+
+    const previousStyles = {
+      htmlOverflow: html.style.overflow,
+      htmlOverscrollBehaviorY: html.style.overscrollBehaviorY,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      bodyOverscrollBehaviorY: body.style.overscrollBehaviorY,
+    };
+
+    html.style.overflow = 'hidden';
+    html.style.overscrollBehaviorY = 'none';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${mobileSettingsBodyLockScrollYRef.current}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    body.style.overscrollBehaviorY = 'none';
+
+    return () => {
+      html.style.overflow = previousStyles.htmlOverflow;
+      html.style.overscrollBehaviorY = previousStyles.htmlOverscrollBehaviorY;
+      body.style.overflow = previousStyles.bodyOverflow;
+      body.style.position = previousStyles.bodyPosition;
+      body.style.top = previousStyles.bodyTop;
+      body.style.left = previousStyles.bodyLeft;
+      body.style.right = previousStyles.bodyRight;
+      body.style.width = previousStyles.bodyWidth;
+      body.style.overscrollBehaviorY = previousStyles.bodyOverscrollBehaviorY;
+
+      const restoreY = Number(mobileSettingsBodyLockScrollYRef.current || 0);
+      if (Number.isFinite(restoreY)) {
+        window.scrollTo({ top: restoreY, behavior: 'auto' });
+      }
+    };
+  }, [mobileSettingsSheetOpen]);
 
   const borderThicknessOptions = [
     { label: "None", value: 0 },        // 0%
@@ -830,8 +934,64 @@ export default function CollagePage() {
   const currentSigRef = useRef(currentSig);
   useEffect(() => { currentSnapshotRef.current = currentSnapshot; }, [currentSnapshot]);
   useEffect(() => { currentSigRef.current = currentSig; }, [currentSig]);
+  useEffect(() => {
+    if (mobileSettingsSheetOpen) {
+      if (!mobileSettingsOpenSigRef.current) {
+        mobileSettingsOpenSigRef.current = currentSig;
+      }
+      return;
+    }
+    mobileSettingsOpenSigRef.current = null;
+  }, [mobileSettingsSheetOpen, currentSig]);
   useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
   useEffect(() => { isHydratingProjectRef.current = isHydratingProject; }, [isHydratingProject]);
+
+  useEffect(() => {
+    if (!mobileSettingsSheetOpen) return undefined;
+    if (mobileSettingsPreviewSigRef.current === currentSig) return undefined;
+
+    let cancelled = false;
+    const requestId = mobileSettingsPreviewRequestRef.current + 1;
+    mobileSettingsPreviewRequestRef.current = requestId;
+
+    const renderPreviewImage = async () => {
+      try {
+        let nextPreviewSrc = null;
+        const liveCanvas = document.querySelector('[data-testid="canvas-collage-preview"]');
+        if (liveCanvas) {
+          if (typeof liveCanvas.toDataURL === 'function') {
+            nextPreviewSrc = liveCanvas.toDataURL('image/jpeg', 0.92);
+          } else if (typeof liveCanvas.getCanvasBlob === 'function') {
+            const blob = await liveCanvas.getCanvasBlob();
+            if (blob) {
+              nextPreviewSrc = await blobToDataUrl(blob);
+            }
+          }
+        }
+
+        if (!nextPreviewSrc) {
+          nextPreviewSrc = await renderThumbnailFromSnapshot(currentSnapshotRef.current, { maxDim: 1200 });
+        }
+        if (!nextPreviewSrc) return;
+        if (cancelled) return;
+        if (requestId !== mobileSettingsPreviewRequestRef.current) return;
+        mobileSettingsPreviewSigRef.current = currentSig;
+        setMobileSettingsPreviewSrc((prev) => (prev === nextPreviewSrc ? prev : nextPreviewSrc));
+      } catch (_) {
+        // Ignore best-effort preview snapshot failures and keep previous image.
+      }
+    };
+
+    const timer = setTimeout(() => {
+      void renderPreviewImage();
+    }, 70);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [mobileSettingsSheetOpen, currentSig]);
+
   const maybeNormalizeHydratedTransforms = useCallback(({ canvasWidth = null, canvasHeight = null, panelDimensions = null } = {}) => {
     const pending = hydrationTransformAdjustRef.current;
     if (!pending) return;
@@ -2001,9 +2161,6 @@ export default function CollagePage() {
   const handleMobileSettingSelect = useCallback((settingId) => {
     setMobileActiveSetting((previousSetting) => (previousSetting === settingId ? null : settingId));
   }, []);
-  const activeMobileSettingLabel = useMemo(() => (
-    MOBILE_SETTING_OPTIONS.find((option) => option.id === mobileActiveSetting)?.label || 'Settings'
-  ), [mobileActiveSetting]);
 
   const handleMovePanel = useCallback((panelId, direction) => {
     if (!panelId || !Number.isFinite(direction) || direction === 0) return;
@@ -2096,6 +2253,32 @@ export default function CollagePage() {
     setMobileActiveSetting(null);
     handleAddPanelRequested('end');
   }, [handleAddPanelRequested]);
+
+  const handleMobileSettingsSheetClose = useCallback(() => {
+    setMobileActiveSetting(null);
+  }, []);
+
+  const handleMobileSettingsPreviewPointerDown = useCallback((event) => {
+    mobileSettingsPreviewDismissStartYRef.current = Number(event?.clientY);
+  }, []);
+
+  const handleMobileSettingsPreviewPointerUp = useCallback((event) => {
+    const startY = mobileSettingsPreviewDismissStartYRef.current;
+    mobileSettingsPreviewDismissStartYRef.current = null;
+    if (!Number.isFinite(startY)) {
+      handleMobileSettingsSheetClose();
+      return;
+    }
+    const endY = Number(event?.clientY);
+    if (!Number.isFinite(endY)) {
+      handleMobileSettingsSheetClose();
+      return;
+    }
+    const deltaY = endY - startY;
+    if (deltaY >= 24 || Math.abs(deltaY) < 8) {
+      handleMobileSettingsSheetClose();
+    }
+  }, [handleMobileSettingsSheetClose]);
 
 
 
@@ -2336,6 +2519,58 @@ export default function CollagePage() {
     });
     return stickerId;
   }, [addSticker, canManageStickers, getStickerAspectRatio, resolveStickerSource]);
+
+  const openHeaderAddMenu = useCallback((event) => {
+    setHeaderAddMenuAnchorEl(event.currentTarget);
+  }, []);
+
+  const closeHeaderAddMenu = useCallback(() => {
+    setHeaderAddMenuAnchorEl(null);
+  }, []);
+
+  const handleHeaderAddTopCaption = useCallback(() => {
+    closeHeaderAddMenu();
+    handleAddTextRequested('top-caption');
+  }, [closeHeaderAddMenu, handleAddTextRequested]);
+
+  const handleHeaderAddSubtitle = useCallback(() => {
+    closeHeaderAddMenu();
+    handleAddTextRequested('subtitle');
+  }, [closeHeaderAddMenu, handleAddTextRequested]);
+
+  const handleHeaderAddSticker = useCallback(() => {
+    closeHeaderAddMenu();
+    if (!canManageStickers) return;
+    setHeaderStickerPickerError('');
+    setHeaderStickerPickerOpen(true);
+  }, [canManageStickers, closeHeaderAddMenu]);
+
+  const handleHeaderAddPanel = useCallback(() => {
+    closeHeaderAddMenu();
+    handleAddPanelRequested('start');
+  }, [closeHeaderAddMenu, handleAddPanelRequested]);
+
+  const closeHeaderStickerPicker = useCallback(() => {
+    if (headerStickerPickerBusy) return;
+    setHeaderStickerPickerOpen(false);
+    setHeaderStickerPickerError('');
+  }, [headerStickerPickerBusy]);
+
+  const handleHeaderStickerSelect = useCallback(async (items) => {
+    if (!canManageStickers) return;
+    if (!Array.isArray(items) || items.length === 0) return;
+    setHeaderStickerPickerBusy(true);
+    setHeaderStickerPickerError('');
+    try {
+      await handleAddStickerFromLibrary(items[0]);
+      setHeaderStickerPickerOpen(false);
+    } catch (error) {
+      console.error('Failed to add sticker from header add menu', error);
+      setHeaderStickerPickerError('Unable to add that sticker right now.');
+    } finally {
+      setHeaderStickerPickerBusy(false);
+    }
+  }, [canManageStickers, handleAddStickerFromLibrary]);
 
   const handleAspectRatioSelection = useCallback((nextAspectRatioId) => {
     singleImageAutoCustomRef.current = false;
@@ -2608,6 +2843,46 @@ export default function CollagePage() {
       <Settings />
     </Badge>
   );
+  const showHeaderAddButton = hasImages && currentView === 'editor';
+  const isMobileEditorWithImages = Boolean(isMobile && hasImages && currentView === 'editor');
+  const isHeaderAddMenuOpen = Boolean(headerAddMenuAnchorEl);
+  const canHeaderAddPanel = panelCount < MAX_IMAGES && !isCreatingCollage && !isHydratingProject;
+  const resolvedMobileViewportHeight = mobileViewportHeight > 0 ? Math.round(mobileViewportHeight) : 0;
+  const mobileViewportHeightCss = resolvedMobileViewportHeight > 0 ? `${resolvedMobileViewportHeight}px` : '100dvh';
+  const mobileBottomBarMaxHeight = `calc(${mobileViewportHeightCss} - env(safe-area-inset-top, 0px) - 8px)`;
+  const mobileSettingsControlsMaxHeight = `min(calc(${mobileViewportHeightCss} * 0.56), calc(100% - ${MOBILE_SETTINGS_PREVIEW_MIN_HEIGHT}px))`;
+  const mobileSettingsChangedSinceOpen = Boolean(
+    mobileSettingsSheetOpen &&
+    mobileSettingsOpenSigRef.current &&
+    currentSig !== mobileSettingsOpenSigRef.current
+  );
+  const shouldShowBottomBar = (
+    !showResultDialog
+    && !isCaptionEditorOpen
+    && !isLibraryPickerOpen
+    && !isPanelSourceDialogOpen
+    && !isStickerLibraryOpen
+  );
+  const headerAddButtonSx = {
+    textTransform: 'none',
+    fontWeight: 700,
+    borderRadius: 999,
+    minHeight: isMobile ? 32 : 36,
+    px: isMobile ? 1.15 : 1.5,
+    border: '1px solid',
+    borderColor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.55 : 0.42),
+    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.1),
+    color: 'text.primary',
+    '&:hover': {
+      borderColor: theme.palette.primary.main,
+      bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.24 : 0.16),
+    },
+    '&.Mui-disabled': {
+      borderColor: alpha(theme.palette.action.disabled, 0.35),
+      color: 'text.disabled',
+      bgcolor: alpha(theme.palette.action.disabledBackground, theme.palette.mode === 'dark' ? 0.25 : 0.5),
+    },
+  };
 
   return (
     <>
@@ -2620,7 +2895,11 @@ export default function CollagePage() {
           flexGrow: 1,
           pb: !showResultDialog && hasImages
             ? (isMobile
-              ? `calc(env(safe-area-inset-bottom, 0px) + ${Math.max((bottomBarHeight || 0) + 28, 182)}px)`
+              ? (
+                shouldShowBottomBar
+                  ? `calc(env(safe-area-inset-bottom, 0px) + ${Math.max((bottomBarHeight || 0) + 28, 182)}px)`
+                  : 'calc(env(safe-area-inset-bottom, 0px) + 10px)'
+              )
               : 8)
             : (isMobile ? 2 : 4),
           width: '100%',
@@ -2671,19 +2950,65 @@ export default function CollagePage() {
                   <Box sx={{ width: 1, minHeight: 1 }} />
                 )}
 
-                <Box
-                  sx={{
-                    width: 24,
-                    minWidth: 24,
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                  }}
-                >
-                  {saveIndicator}
-                </Box>
+                <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                  {showHeaderAddButton && (
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      startIcon={<AddCircleOutlineRounded fontSize="small" />}
+                      endIcon={<ExpandMoreRounded fontSize="small" />}
+                      onClick={openHeaderAddMenu}
+                      disabled={isCreatingCollage || isHydratingProject}
+                      sx={headerAddButtonSx}
+                    >
+                      Add
+                    </Button>
+                  )}
+                  <Box
+                    sx={{
+                      width: 24,
+                      minWidth: 24,
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {saveIndicator}
+                  </Box>
+                </Stack>
               </Box>
             </Box>
+
+            <Menu
+              anchorEl={headerAddMenuAnchorEl}
+              open={isHeaderAddMenuOpen}
+              onClose={closeHeaderAddMenu}
+              PaperProps={{
+                sx: {
+                  minWidth: 220,
+                  borderRadius: 2,
+                  border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                },
+              }}
+            >
+              <MenuItem onClick={handleHeaderAddTopCaption}>
+                <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Add Top Caption" />
+              </MenuItem>
+              <MenuItem onClick={handleHeaderAddSubtitle}>
+                <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Add Subtitle Text" />
+              </MenuItem>
+              <MenuItem onClick={handleHeaderAddSticker} disabled={!canManageStickers}>
+                <ListItemIcon><StyleRounded fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Add Sticker" />
+              </MenuItem>
+              <MenuItem onClick={handleHeaderAddPanel} disabled={!canHeaderAddPanel}>
+                <ListItemIcon><ViewModuleRounded fontSize="small" /></ListItemIcon>
+                <ListItemText primary="Add Panel" />
+              </MenuItem>
+            </Menu>
 
             <Collapse in={!!remoteUpdateWarning} unmountOnExit>
               <Alert
@@ -2788,12 +3113,27 @@ export default function CollagePage() {
               </Alert>
             </Snackbar>
 
+            <LibraryPickerDialog
+              open={headerStickerPickerOpen}
+              onClose={closeHeaderStickerPicker}
+              title="Choose a sticker from your library"
+              onSelect={(items) => { void handleHeaderStickerSelect(items); }}
+              busy={headerStickerPickerBusy}
+              errorText={headerStickerPickerError}
+              browserProps={{
+                multiple: false,
+                uploadEnabled: true,
+                deleteEnabled: false,
+                showActionBar: false,
+                selectionEnabled: true,
+                previewOnClick: true,
+                showSelectToggle: true,
+                initialSelectMode: true,
+              }}
+            />
+
             {/* Bottom Action Bar (admins always see; no animation) */}
-            {(!showResultDialog
-              && !isCaptionEditorOpen
-              && !isLibraryPickerOpen
-              && !isPanelSourceDialogOpen
-              && !isStickerLibraryOpen) && (
+            {shouldShowBottomBar && (
                 <Box
                   sx={{
                     position: 'fixed',
@@ -2801,86 +3141,122 @@ export default function CollagePage() {
                     left: 0,
                     right: 0,
                     zIndex: 1600,
-                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.94 : 0.98),
+                    bgcolor: mobileSettingsSheetOpen
+                      ? theme.palette.background.paper
+                      : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.94 : 0.98),
                     borderTop: 1,
                     borderColor: 'divider',
                     p: isMobile ? 1.5 : 2,
                     pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
                     boxShadow: `0 -8px 30px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.14)}`,
-                    backdropFilter: 'blur(20px)',
+                    backdropFilter: mobileSettingsSheetOpen ? 'none' : 'blur(20px)',
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'stretch',
+                    maxHeight: (isMobileEditorWithImages && mobileSettingsSheetOpen) ? mobileBottomBarMaxHeight : undefined,
+                    height: (isMobileEditorWithImages && mobileSettingsSheetOpen) ? mobileBottomBarMaxHeight : undefined,
+                    overflow: (isMobileEditorWithImages && mobileSettingsSheetOpen) ? 'hidden' : 'visible',
                   }}
                 ref={bottomBarRef}
                 >
-                  <Stack spacing={isMobile ? 1 : 0} sx={{ width: '100%', maxWidth: 960 }}>
-                    {isMobile && hasImages && currentView === 'editor' && (
-                      <Collapse in={Boolean(mobileActiveSetting)} unmountOnExit timeout={180}>
+                  <Stack
+                    spacing={isMobile ? 1 : 0}
+                    sx={{
+                      width: '100%',
+                      maxWidth: 960,
+                      minHeight: 0,
+                      height: (isMobileEditorWithImages && mobileSettingsSheetOpen) ? '100%' : 'auto',
+                    }}
+                  >
+                    {(isMobileEditorWithImages && mobileSettingsSheetOpen) && (
+                      <Box
+                        sx={{
+                          minHeight: 0,
+                          flex: '1 1 auto',
+                          display: 'flex',
+                        }}
+                      >
                         <Box
-                          id="collage-mobile-settings-panel"
                           sx={{
                             borderRadius: 2,
-                            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.52 : 0.9),
-                            px: 0.75,
-                            pt: 0.35,
-                            pb: 0.4,
-                            maxHeight: 'min(36vh, 320px)',
-                            overflowY: 'auto',
-                            overflowX: 'hidden',
+                            border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82)}`,
+                            backgroundColor: theme.palette.background.paper,
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            flex: '1 1 auto',
+                            minHeight: 0,
                           }}
                         >
                           <Box
+                            onClick={handleMobileSettingsSheetClose}
+                            onPointerDown={handleMobileSettingsPreviewPointerDown}
+                            onPointerUp={handleMobileSettingsPreviewPointerUp}
+                            onPointerCancel={() => { mobileSettingsPreviewDismissStartYRef.current = null; }}
                             sx={{
+                              minHeight: MOBILE_SETTINGS_PREVIEW_MIN_HEIGHT,
+                              flex: '1 1 180px',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: 1,
-                              px: 0.35,
-                              mb: 0.2,
+                              justifyContent: 'center',
+                              p: 1,
+                              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.85)}`,
+                              backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.2 : 0.05),
+                              touchAction: 'manipulation',
                             }}
                           >
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: 'text.secondary',
-                                fontWeight: 700,
-                                letterSpacing: 0.15,
-                              }}
-                            >
-                              {activeMobileSettingLabel}
-                            </Typography>
-                            <Button
-                              size="small"
-                              variant="text"
-                              onClick={() => setMobileActiveSetting(null)}
-                              endIcon={<KeyboardArrowDown fontSize="small" />}
-                              sx={{
-                                minWidth: 0,
-                                px: 0.55,
-                                py: 0.2,
-                                textTransform: 'none',
-                                color: 'text.secondary',
-                                fontWeight: 700,
-                                fontSize: '0.72rem',
-                                lineHeight: 1.1,
-                                '& .MuiButton-endIcon': { ml: 0.2 },
-                              }}
-                            >
-                              Hide
-                            </Button>
+                            {mobileSettingsPreviewSrc ? (
+                              <Box
+                                component="img"
+                                src={mobileSettingsPreviewSrc}
+                                alt="Collage preview"
+                                sx={{
+                                  maxWidth: '100%',
+                                  maxHeight: '100%',
+                                  width: 'auto',
+                                  height: 'auto',
+                                  objectFit: 'contain',
+                                  borderRadius: 1.25,
+                                  pointerEvents: 'none',
+                                  userSelect: 'none',
+                                  WebkitUserDrag: 'none',
+                                }}
+                              />
+                            ) : (
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                Updating preview…
+                              </Typography>
+                            )}
                           </Box>
-                          <CollageSettingsStep
-                            {...settingsStepProps}
-                            showMobileTabs={false}
-                            mobileActiveSetting={mobileActiveSetting}
-                            onMobileActiveSettingChange={setMobileActiveSetting}
-                          />
+
+                          <Box
+                            sx={{
+                              flex: '0 1 auto',
+                              minHeight: 0,
+                              maxHeight: mobileSettingsControlsMaxHeight,
+                              width: '100%',
+                              overflowY: 'auto',
+                              overflowX: 'hidden',
+                              overscrollBehaviorY: 'contain',
+                              WebkitOverflowScrolling: 'touch',
+                              touchAction: 'pan-y',
+                              px: 0.75,
+                              pt: 0.35,
+                              pb: 0.5,
+                            }}
+                          >
+                            <CollageSettingsStep
+                              {...settingsStepProps}
+                              showMobileTabs={false}
+                              mobileActiveSetting={mobileActiveSetting}
+                              onMobileActiveSettingChange={setMobileActiveSetting}
+                            />
+                          </Box>
                         </Box>
-                      </Collapse>
+                      </Box>
                     )}
 
-                    {isMobile && hasImages && currentView === 'editor' && (
+                    {isMobileEditorWithImages && (
                       <Box
                         sx={{
                           display: 'flex',
@@ -2888,6 +3264,7 @@ export default function CollagePage() {
                           gap: 0.7,
                           overflowX: 'auto',
                           overflowY: 'hidden',
+                          overscrollBehaviorX: 'contain',
                           scrollbarWidth: 'none',
                           '&::-webkit-scrollbar': { display: 'none' },
                           WebkitOverflowScrolling: 'touch',
@@ -2940,7 +3317,18 @@ export default function CollagePage() {
                     )}
 
                     <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'center' }} ref={bottomBarContentRef}>
-                    {hasLibraryAccess ? (
+                    {(isMobileEditorWithImages && mobileSettingsSheetOpen) ? (
+                      <Button
+                        variant="contained"
+                        onClick={handleMobileSettingsSheetClose}
+                        disabled={isCreatingCollage}
+                        startIcon={mobileSettingsChangedSinceOpen ? <CheckCircle /> : <Close />}
+                        sx={mobileSettingsChangedSinceOpen ? primaryActionButtonSx : { ...neutralActionButtonSx, flex: 1 }}
+                        aria-label={mobileSettingsChangedSinceOpen ? 'Done and close settings' : 'Close settings'}
+                      >
+                        {mobileSettingsChangedSinceOpen ? 'Done' : 'Close Settings'}
+                      </Button>
+                    ) : hasLibraryAccess ? (
                       <>
                         {currentView === 'library' && (
                           <>
@@ -3082,7 +3470,7 @@ export default function CollagePage() {
                 </Box>
             )}
             {/* Render the nudge message as a fixed sibling behind the bar */}
-            <Slide in={nudgeMessageVisible} direction="up" mountOnEnter unmountOnExit>
+            <Slide in={nudgeMessageVisible && shouldShowBottomBar && !mobileSettingsSheetOpen} direction="up" mountOnEnter unmountOnExit>
               <Box
                 sx={{
                   position: 'fixed',

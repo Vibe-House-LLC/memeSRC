@@ -2,7 +2,8 @@ import {
   getLayoutsForPanelCount,
   createAutoLayout,
   layoutStyles,
-  recommendedLayouts
+  recommendedLayouts,
+  getLayoutDirection,
 } from './layouts';
 
 const findClosestAspectRatioPreset = (targetRatio, presets) => {
@@ -79,7 +80,7 @@ export const layoutTemplates = [
 ];
 
 // Re-export the getLayoutsForPanelCount function for external use
-export { getLayoutsForPanelCount };
+export { getLayoutsForPanelCount, getLayoutDirection };
 
 // Re-export the layoutStyles and recommendedLayouts for use in UI components
 export { layoutStyles, recommendedLayouts }; 

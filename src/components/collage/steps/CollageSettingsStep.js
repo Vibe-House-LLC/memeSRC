@@ -50,7 +50,7 @@ import { LibraryPickerDialog } from "../../library";
 import { TemplateCard } from "../styled/CollageStyled";
 
 // Import layout configuration
-import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../config/CollageConfig";
+import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount, getLayoutDirection } from "../config/CollageConfig";
 
 // Color presets for border colors
 const COLOR_PRESETS = [
@@ -522,7 +522,25 @@ const CollageLayoutSettings = ({
   // Handle aspect ratio change
   const handleSelectAspectRatio = (aspectRatioId) => {
     setSelectedAspectRatio(aspectRatioId);
-    
+
+    const currentCompatibleTemplates = (typeof getLayoutsForPanelCount === 'function')
+      ? getLayoutsForPanelCount(
+        panelCount,
+        selectedAspectRatio,
+        selectedAspectRatio === 'custom' ? customAspectRatio : null
+      )
+      : compatibleTemplates;
+    const currentDefaultTemplateId = currentCompatibleTemplates?.[0]?.id || null;
+    const selectedTemplateId = selectedTemplate?.id || null;
+    const isManualNonDefaultSelection = Boolean(
+      selectedTemplateId &&
+      currentDefaultTemplateId &&
+      selectedTemplateId !== currentDefaultTemplateId
+    );
+    const preferredDirection = isManualNonDefaultSelection
+      ? getLayoutDirection(selectedTemplateId)
+      : null;
+
     // Get templates optimized for the new aspect ratio
     const newCompatibleTemplates = (typeof getLayoutsForPanelCount === 'function') 
       ? getLayoutsForPanelCount(
@@ -532,11 +550,19 @@ const CollageLayoutSettings = ({
       )
       : compatibleTemplates;
       
-    // If we have templates, select the most suitable one
+    // If we have templates, select the most suitable one.
+    // Preserve manual non-default stack direction when we can.
     if (newCompatibleTemplates.length > 0) {
-      // The templates should already be prioritized based on aspect ratio suitability
-      // The most suitable template for this aspect ratio will be first in the list
-      setSelectedTemplate(newCompatibleTemplates[0]);
+      let nextTemplate = newCompatibleTemplates[0];
+      if (preferredDirection) {
+        const directionMatchedTemplate = newCompatibleTemplates.find((template) => (
+          getLayoutDirection(template?.id) === preferredDirection
+        ));
+        if (directionMatchedTemplate) {
+          nextTemplate = directionMatchedTemplate;
+        }
+      }
+      setSelectedTemplate(nextTemplate);
     }
   };
 
