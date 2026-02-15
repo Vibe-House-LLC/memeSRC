@@ -959,13 +959,20 @@ export default function CollagePage() {
         let nextPreviewSrc = null;
         const liveCanvas = document.querySelector('[data-testid="canvas-collage-preview"]');
         if (liveCanvas) {
-          if (typeof liveCanvas.toDataURL === 'function') {
-            nextPreviewSrc = liveCanvas.toDataURL('image/jpeg', 0.92);
-          } else if (typeof liveCanvas.getCanvasBlob === 'function') {
+          if (typeof liveCanvas.getCanvasBlob === 'function') {
             const blob = await liveCanvas.getCanvasBlob();
             if (blob) {
               nextPreviewSrc = await blobToDataUrl(blob);
             }
+          } else if (typeof liveCanvas.toBlob === 'function') {
+            const blob = await new Promise((resolve) => {
+              liveCanvas.toBlob(resolve, 'image/jpeg', 0.86);
+            });
+            if (blob) {
+              nextPreviewSrc = await blobToDataUrl(blob);
+            }
+          } else if (typeof liveCanvas.toDataURL === 'function') {
+            nextPreviewSrc = liveCanvas.toDataURL('image/jpeg', 0.82);
           }
         }
 
@@ -3144,7 +3151,7 @@ export default function CollagePage() {
                     bgcolor: mobileSettingsSheetOpen
                       ? theme.palette.background.paper
                       : alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.94 : 0.98),
-                    borderTop: 1,
+                    borderTop: mobileSettingsSheetOpen ? 0 : 1,
                     borderColor: 'divider',
                     p: isMobile ? 1.5 : 2,
                     pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
@@ -3179,7 +3186,7 @@ export default function CollagePage() {
                         <Box
                           sx={{
                             borderRadius: 2,
-                            border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82)}`,
+                            border: 0,
                             backgroundColor: theme.palette.background.paper,
                             overflow: 'hidden',
                             display: 'flex',
@@ -3199,10 +3206,12 @@ export default function CollagePage() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
+                              position: 'relative',
                               p: 1,
-                              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.85)}`,
-                              backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.2 : 0.05),
+                              borderBottom: 0,
+                              backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.16 : 0.03),
                               touchAction: 'manipulation',
+                              cursor: 'pointer',
                             }}
                           >
                             {mobileSettingsPreviewSrc ? (
@@ -3217,6 +3226,7 @@ export default function CollagePage() {
                                   height: 'auto',
                                   objectFit: 'contain',
                                   borderRadius: 1.25,
+                                  opacity: 0.88,
                                   pointerEvents: 'none',
                                   userSelect: 'none',
                                   WebkitUserDrag: 'none',
@@ -3227,6 +3237,75 @@ export default function CollagePage() {
                                 Updating preview…
                               </Typography>
                             )}
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.46 : 0.4),
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1,
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  top: 10,
+                                  left: 10,
+                                  px: 1,
+                                  py: 0.4,
+                                  borderRadius: 999,
+                                  fontSize: '0.68rem',
+                                  letterSpacing: 0.35,
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  color: alpha('#ffffff', 0.92),
+                                  backgroundColor: alpha(theme.palette.common.black, 0.5),
+                                }}
+                              >
+                                Preview
+                              </Box>
+                              <Button
+                                variant="contained"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleMobileSettingsSheetClose();
+                                }}
+                                startIcon={<Close />}
+                                sx={{
+                                  pointerEvents: 'auto',
+                                  textTransform: 'none',
+                                  fontWeight: 700,
+                                  fontSize: '0.92rem',
+                                  borderRadius: 999,
+                                  px: 2,
+                                  py: 0.75,
+                                  bgcolor: theme.palette.primary.main,
+                                  color: theme.palette.primary.contrastText,
+                                  border: `1px solid ${alpha(theme.palette.primary.dark, 0.95)}`,
+                                  boxShadow: `0 8px 22px ${alpha(theme.palette.common.black, 0.42)}`,
+                                  '&:hover': {
+                                    bgcolor: theme.palette.primary.dark,
+                                  },
+                                }}
+                              >
+                                Close Settings
+                              </Button>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: alpha('#ffffff', 0.88),
+                                  fontWeight: 600,
+                                  letterSpacing: 0.15,
+                                  pointerEvents: 'none',
+                                }}
+                              >
+                                Tap preview to return to editing
+                              </Typography>
+                            </Box>
                           </Box>
 
                           <Box
@@ -3298,8 +3377,7 @@ export default function CollagePage() {
                                 px: 1.6,
                                 py: 0.55,
                                 color: isSelected ? '#111213' : alpha('#f5f5f5', 0.72),
-                                border: '1px solid',
-                                borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.24),
+                                border: 0,
                                 backgroundColor: isSelected
                                   ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.96 : 0.98)
                                   : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.1 : 0.16),
@@ -3307,7 +3385,6 @@ export default function CollagePage() {
                                   backgroundColor: isSelected
                                     ? alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.96 : 0.98)
                                     : alpha('#f5f5f5', theme.palette.mode === 'dark' ? 0.14 : 0.2),
-                                  borderColor: isSelected ? alpha('#ffffff', 0.95) : alpha('#f5f5f5', 0.28),
                                 },
                               }}
                             >
