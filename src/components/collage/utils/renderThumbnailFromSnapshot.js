@@ -17,7 +17,7 @@ const TOP_CAPTION_DEFAULTS = {
   fontFamily: 'IMPACT',
   color: '#111111',
   strokeWidth: 0,
-  textAlign: 'center',
+  textAlign: 'left',
   captionSpacingY: 0,
   backgroundColor: '#ffffff',
 };

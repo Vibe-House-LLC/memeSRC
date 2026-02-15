@@ -250,8 +250,11 @@ const CaptionEditor = ({
   const theme = useTheme();
   // Current text color for UI bindings (e.g., toolbar swatch)
   const currentTextColor = panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff';
+  const defaultTextAlign = showTopCaptionOptions
+    ? 'left'
+    : (lastUsedTextSettings.textAlign || 'center');
   const currentTextAlign = normalizeTextAlign(
-    panelTexts[panelId]?.textAlign || lastUsedTextSettings.textAlign || 'center'
+    panelTexts[panelId]?.textAlign || defaultTextAlign
   );
   const rawTopCaptionBackgroundColor = panelTexts[panelId]?.backgroundColor;
   const hasExplicitTopCaptionBackground = (
@@ -373,6 +376,7 @@ const CaptionEditor = ({
   const isMobileSize = minPanelSize < 200;
   const sidePadding = Math.max(isMobileSize ? 6 : 4, Math.min(12, rect.width * 0.02));
   const borderRadius = Math.max(3, Math.min(8, minPanelSize * 0.02));
+  const editorVerticalOffset = Math.max(10, Math.min(20, minPanelSize * 0.08));
 
   // Text color scroll handling uses native gestures and indicators
 
@@ -936,14 +940,14 @@ const CaptionEditor = ({
       data-text-editor-container
       sx={{
         position: 'absolute',
-        top: rect.y + rect.height,
+        top: rect.y + rect.height + editorVerticalOffset,
         left: sidePadding,
         width: componentWidth - (sidePadding * 2),
         zIndex: 20,
         backgroundColor: 'rgba(0, 0, 0, 0.97)',
         borderRadius: `${borderRadius}px`,
         border: '1px solid rgba(255, 255, 255, 0.3)',
-        transition: 'all 0.3s ease-in-out',
+        transition: 'none',
         // Prevent double scroll and avoid covering bottom fixed bar
         maxHeight: 'calc(100vh - 140px)',
         overflowY: 'auto',

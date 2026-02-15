@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
@@ -105,7 +105,7 @@ const TOP_CAPTION_DEFAULTS = {
   fontFamily: 'IMPACT',
   color: '#111111',
   strokeWidth: 0,
-  textAlign: 'center',
+  textAlign: 'left',
   captionSpacingY: 0,
   backgroundColor: '#ffffff',
 };
@@ -135,6 +135,60 @@ const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
   if (align === 'left') return anchorX;
   if (align === 'right') return anchorX - blockWidth;
   return anchorX - (blockWidth / 2);
+};
+
+const areNumbersClose = (a, b, epsilon = 0.2) => Math.abs((a || 0) - (b || 0)) <= epsilon;
+
+const areRectsEqual = (prevRects, nextRects, epsilon = 0.2) => {
+  if (!Array.isArray(prevRects) || !Array.isArray(nextRects)) return false;
+  if (prevRects.length !== nextRects.length) return false;
+  for (let i = 0; i < prevRects.length; i += 1) {
+    const prev = prevRects[i];
+    const next = nextRects[i];
+    if ((prev?.panelId || '') !== (next?.panelId || '')) return false;
+    if (!areNumbersClose(prev?.x, next?.x, epsilon)) return false;
+    if (!areNumbersClose(prev?.y, next?.y, epsilon)) return false;
+    if (!areNumbersClose(prev?.width, next?.width, epsilon)) return false;
+    if (!areNumbersClose(prev?.height, next?.height, epsilon)) return false;
+  }
+  return true;
+};
+
+const areBorderZonesEqual = (prevZones, nextZones, epsilon = 0.2) => {
+  if (!Array.isArray(prevZones) || !Array.isArray(nextZones)) return false;
+  if (prevZones.length !== nextZones.length) return false;
+  for (let i = 0; i < prevZones.length; i += 1) {
+    const prev = prevZones[i];
+    const next = nextZones[i];
+    if ((prev?.id || '') !== (next?.id || '')) return false;
+    if ((prev?.type || '') !== (next?.type || '')) return false;
+    if ((prev?.index ?? -1) !== (next?.index ?? -1)) return false;
+    if (!areNumbersClose(prev?.x, next?.x, epsilon)) return false;
+    if (!areNumbersClose(prev?.y, next?.y, epsilon)) return false;
+    if (!areNumbersClose(prev?.width, next?.width, epsilon)) return false;
+    if (!areNumbersClose(prev?.height, next?.height, epsilon)) return false;
+    if (!areNumbersClose(prev?.centerX, next?.centerX, epsilon)) return false;
+    if (!areNumbersClose(prev?.centerY, next?.centerY, epsilon)) return false;
+  }
+  return true;
+};
+
+const areTopCaptionLayoutsEqual = (prevLayout, nextLayout, epsilon = 0.2) => {
+  if (!prevLayout || !nextLayout) return false;
+  if (Boolean(prevLayout.enabled) !== Boolean(nextLayout.enabled)) return false;
+  if (!areNumbersClose(prevLayout.captionHeight, nextLayout.captionHeight, epsilon)) return false;
+  if (!areNumbersClose(prevLayout.imageAreaHeight, nextLayout.imageAreaHeight, epsilon)) return false;
+  if (!areNumbersClose(prevLayout.totalHeight, nextLayout.totalHeight, epsilon)) return false;
+  if (!areNumbersClose(prevLayout.imageOffsetY, nextLayout.imageOffsetY, epsilon)) return false;
+  const prevRect = prevLayout.rect;
+  const nextRect = nextLayout.rect;
+  if (!prevRect && !nextRect) return true;
+  if (!prevRect || !nextRect) return false;
+  if (!areNumbersClose(prevRect.x, nextRect.x, epsilon)) return false;
+  if (!areNumbersClose(prevRect.y, nextRect.y, epsilon)) return false;
+  if (!areNumbersClose(prevRect.width, nextRect.width, epsilon)) return false;
+  if (!areNumbersClose(prevRect.height, nextRect.height, epsilon)) return false;
+  return true;
 };
 
 const resolveInlineSegmentStyle = (baseStyle, inlineStyle = {}) => ({
@@ -1080,10 +1134,11 @@ const CanvasCollagePreview = ({
     ctx.strokeStyle = strokeColor;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.shadowColor = hasActualText ? 'rgba(0, 0, 0, 0.16)' : 'transparent';
+    // Top caption intentionally has no drop shadow for clean meme-style text.
+    ctx.shadowColor = 'transparent';
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
-    ctx.shadowBlur = hasActualText ? 8 : 0;
+    ctx.shadowBlur = 0;
 
     if (requestedStrokeWidth === 0) {
       ctx.lineWidth = 0;
@@ -1816,8 +1871,9 @@ const CanvasCollagePreview = ({
     };
   }, [getStickerDraftFromPointer, stickerInteraction, updateSticker]);
 
-  // Update component dimensions and panel rectangles
-  useEffect(() => {
+  // Update component dimensions and panel rectangles.
+  // useLayoutEffect keeps overlays/editor in sync during rapid caption height changes.
+  useLayoutEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
@@ -1828,9 +1884,15 @@ const CanvasCollagePreview = ({
         const imageAreaHeight = captionLayout.imageAreaHeight || baseImageHeight;
         const imageOffsetY = captionLayout.imageOffsetY || 0;
         
-        setComponentWidth(width);
-        setComponentHeight(totalHeight);
-        setTopCaptionLayout(captionLayout);
+        setComponentWidth((prevWidth) => (
+          areNumbersClose(prevWidth, width) ? prevWidth : width
+        ));
+        setComponentHeight((prevHeight) => (
+          areNumbersClose(prevHeight, totalHeight) ? prevHeight : totalHeight
+        ));
+        setTopCaptionLayout((prevLayout) => (
+          areTopCaptionLayoutsEqual(prevLayout, captionLayout) ? prevLayout : captionLayout
+        ));
         
         if (layoutConfig) {
           const baseRects = parseGridToRects(layoutConfig, width, imageAreaHeight, panelCount, borderPixels);
@@ -1838,7 +1900,9 @@ const CanvasCollagePreview = ({
             ...panelRect,
             y: panelRect.y + imageOffsetY,
           }));
-          setPanelRects(shiftedRects);
+          setPanelRects((prevRects) => (
+            areRectsEqual(prevRects, shiftedRects) ? prevRects : shiftedRects
+          ));
           
           // Update border zones for dragging
           const zones = detectBorderZones(layoutConfig, width, imageAreaHeight, borderPixels).map((zone) => ({
@@ -1846,7 +1910,12 @@ const CanvasCollagePreview = ({
             y: zone.y + imageOffsetY,
             centerY: Number.isFinite(zone.centerY) ? zone.centerY + imageOffsetY : zone.centerY,
           }));
-          setBorderZones(zones);
+          setBorderZones((prevZones) => (
+            areBorderZonesEqual(prevZones, zones) ? prevZones : zones
+          ));
+        } else {
+          setPanelRects((prevRects) => (prevRects.length === 0 ? prevRects : []));
+          setBorderZones((prevZones) => (prevZones.length === 0 ? prevZones : []));
         }
       }
     };
@@ -5058,9 +5127,10 @@ const CanvasCollagePreview = ({
               width: rect.width,
               height: rect.height,
               backgroundColor: 'rgba(0, 0, 0, 0.50)', // Light darkening
-              backdropFilter: 'blur(1px) grayscale(50%)', // Blur and grayscale effect
+              // Avoid heavy backdrop filters during rapid top-caption resizing.
+              backdropFilter: 'none',
               pointerEvents: isReorderMode ? 'auto' : 'none', // Allow clicks during reorder mode
-              transition: 'all 0.35s ease-out', // Clearly noticeable fade
+              transition: 'none',
               zIndex: 15, // Above hover overlays, below caption editor controls
               cursor: isReorderMode ? 'pointer' : 'default',
             }}

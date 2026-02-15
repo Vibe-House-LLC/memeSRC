@@ -1871,7 +1871,7 @@ export default function CollagePage() {
         fontSize: existingTopCaption.fontSize || 42,
         color: existingTopCaption.color || '#111111',
         strokeWidth: existingTopCaption.strokeWidth ?? 0,
-        textAlign: existingTopCaption.textAlign || 'center',
+        textAlign: existingTopCaption.textAlign || 'left',
         captionSpacingY: existingTopCaption.captionSpacingY ?? 0,
         ...(hasExplicitBackgroundColor
           ? {
