@@ -879,6 +879,7 @@ const CanvasCollagePreview = ({
   const [draggedBorder, setDraggedBorder] = useState(null);
   const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
+  const [selectedBorderZoneId, setSelectedBorderZoneId] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
   const [topCaptionLayout, setTopCaptionLayout] = useState({
     enabled: false,
@@ -1436,6 +1437,11 @@ const CanvasCollagePreview = ({
     return found;
   }, [borderZones]);
 
+  const getBorderZoneId = useCallback((zone) => {
+    if (!zone) return null;
+    return zone.id || `${zone.type}-${zone.index}`;
+  }, []);
+
   // Load only images currently mapped to panels (avoid decoding/holding unused images)
   useEffect(() => {
     const loadImage = (src, key) => new Promise((resolve) => {
@@ -1690,6 +1696,18 @@ const CanvasCollagePreview = ({
     if (!sticker?.id || typeof updateSticker !== 'function') return;
     if (Object.values(isTransformMode).some(Boolean)) return;
     if (event?.button !== undefined && event.button !== 0) return;
+    const isMoveInteraction = mode === 'move';
+    const isAlreadySelected = activeStickerId === sticker.id;
+
+    // Require an intentional second interaction before moving a sticker.
+    if (isMoveInteraction && !isAlreadySelected) {
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      setActiveStickerId(sticker.id);
+      setStickerInteraction(null);
+      setSelectedBorderZoneId(null);
+      return;
+    }
+
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
     try {
@@ -1711,6 +1729,7 @@ const CanvasCollagePreview = ({
     }
 
     setActiveStickerId(sticker.id);
+    setSelectedBorderZoneId(null);
     pendingStickerPointerRef.current = null;
     if (stickerRafRef.current !== null) {
       window.cancelAnimationFrame(stickerRafRef.current);
@@ -1734,7 +1753,7 @@ const CanvasCollagePreview = ({
       centerClientX,
       centerClientY,
     });
-  }, [getStickerRectPx, isTransformMode, moveSticker, stickers, updateSticker]);
+  }, [getStickerRectPx, isTransformMode, moveSticker, stickers, updateSticker, activeStickerId]);
 
   const handleStickerDelete = useCallback((event, stickerId) => {
     if (!stickerId || typeof removeSticker !== 'function') return;
@@ -1758,9 +1777,10 @@ const CanvasCollagePreview = ({
     removeSticker(stickerId);
   }, [isTransformMode, removeSticker]);
 
-  const clearActiveStickerSelection = useCallback((event) => {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  const clearActiveStickerSelection = useCallback((event, options = {}) => {
+    const { suppressEvents = true } = options;
+    if (suppressEvents && event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (suppressEvents && event && typeof event.stopPropagation === 'function') event.stopPropagation();
     // Clear hover overlays immediately when dismissing a sticker selection.
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -1768,6 +1788,7 @@ const CanvasCollagePreview = ({
     }
     setHoveredPanel(null);
     setHoveredBorder(null);
+    setSelectedBorderZoneId(null);
     setActiveStickerId(null);
     setStickerInteraction(null);
     pendingStickerPointerRef.current = null;
@@ -2993,6 +3014,7 @@ const CanvasCollagePreview = ({
       if (isDraggingBorder) {
         setIsDraggingBorder(false);
         setDraggedBorder(null);
+        setSelectedBorderZoneId(null);
       }
     };
 
@@ -3000,6 +3022,7 @@ const CanvasCollagePreview = ({
       if (isDraggingBorder) {
         setIsDraggingBorder(false);
         setDraggedBorder(null);
+        setSelectedBorderZoneId(null);
       }
     };
 
@@ -3404,11 +3427,19 @@ const CanvasCollagePreview = ({
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
-      // Start border dragging
+      const borderZoneId = getBorderZoneId(borderZone);
+      if (selectedBorderZoneId !== borderZoneId) {
+        setSelectedBorderZoneId(borderZoneId);
+        return;
+      }
+      // Start border dragging after intentional selection
       setIsDraggingBorder(true);
       setDraggedBorder(borderZone);
       setBorderDragStart({ x, y });
       return;
+    }
+    if (selectedBorderZoneId !== null) {
+      setSelectedBorderZoneId(null);
     }
 
     const topCaptionHit = isPointInTopCaptionArea(x, y);
@@ -3500,7 +3531,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -3508,10 +3539,14 @@ const CanvasCollagePreview = ({
       longPressTimerRef.current = null;
     }
     longPressActiveRef.current = false;
+    const wasDraggingBorder = isDraggingBorder;
     setIsDragging(false);
     setIsDraggingBorder(false);
     setDraggedBorder(null);
-  }, []);
+    if (wasDraggingBorder) {
+      setSelectedBorderZoneId(null);
+    }
+  }, [isDraggingBorder]);
 
   const handleMouseLeave = useCallback(() => {
     // Clear any pending hover timeout
@@ -3726,7 +3761,7 @@ const CanvasCollagePreview = ({
       if (activeStickerId) {
         touchStartInfo.current = null;
         frameTapSuppressUntilRef.current = Date.now() + 260;
-        clearActiveStickerSelection(e);
+        clearActiveStickerSelection(e, { suppressEvents: false });
         return;
       }
       // Single touch - handle like mouse down
@@ -3751,13 +3786,21 @@ const CanvasCollagePreview = ({
       const topCaptionHit = isPointInTopCaptionArea(x, y);
       
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
-        // Start border dragging
+        const borderZoneId = getBorderZoneId(borderZone);
+        if (selectedBorderZoneId !== borderZoneId) {
+          setSelectedBorderZoneId(borderZoneId);
+          return;
+        }
+        // Start border dragging after intentional selection
         e.preventDefault();
         e.stopPropagation();
         setIsDraggingBorder(true);
         setDraggedBorder(borderZone);
         setBorderDragStart({ x, y });
         return;
+      }
+      if (selectedBorderZoneId !== null) {
+        setSelectedBorderZoneId(null);
       }
 
       if (topCaptionHit && !anyPanelInTransformMode && !isReorderMode) {
@@ -3921,7 +3964,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -4161,11 +4204,15 @@ const CanvasCollagePreview = ({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    const wasDraggingBorder = isDraggingBorder;
     setIsDragging(false);
     setIsDraggingBorder(false);
     setDraggedBorder(null);
     setTouchStartDistance(null);
     setTouchStartScale(1);
+    if (wasDraggingBorder) {
+      setSelectedBorderZoneId(null);
+    }
 
     // If a long-press fired, suppress tap actions
     if (longPressActiveRef.current) {
@@ -4238,7 +4285,7 @@ const CanvasCollagePreview = ({
     
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen]);
+  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen, isDraggingBorder]);
 
   // Cancel reorder mode
   const cancelReorderMode = useCallback(() => {
@@ -4814,8 +4861,8 @@ const CanvasCollagePreview = ({
                   pointerEvents: anyPanelInTransformMode ? 'none' : 'auto',
                   cursor: stickerInteraction?.stickerId === sticker.id
                     ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
-                    : 'grab',
-                  touchAction: 'none',
+                    : (activeStickerId === sticker.id ? 'grab' : 'pointer'),
+                  touchAction: activeStickerId === sticker.id ? 'none' : 'pan-y pinch-zoom',
                   transformOrigin: 'center center',
                   transform: `rotate(${rect.angleDeg || 0}deg)`,
                 }}
@@ -5292,57 +5339,71 @@ const CanvasCollagePreview = ({
       {!Object.values(isTransformMode).some(enabled => enabled) &&
        textEditingPanel === null &&
        !isReorderMode &&
-       borderZones.map((zone) => (
-        <Box
-          key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDraggingBorder(true);
-            setDraggedBorder(zone);
-            const rect = containerRef.current.getBoundingClientRect();
-            setBorderDragStart({ 
-              x: e.clientX - rect.left, 
-              y: e.clientY - rect.top 
-            });
-          }}
-          onTouchStart={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDraggingBorder(true);
-            setDraggedBorder(zone);
-            const rect = containerRef.current.getBoundingClientRect();
-            const touch = e.touches[0];
-            setBorderDragStart({ 
-              x: touch.clientX - rect.left, 
-              y: touch.clientY - rect.top 
-            });
-          }}
-          sx={{
-            position: 'absolute',
-            top: zone.y,
-            left: zone.x,
-            width: zone.width,
-            height: zone.height,
-            cursor: zone.cursor,
-            backgroundColor: isDraggingBorder && draggedBorder === zone 
-              ? 'rgba(33, 150, 243, 0.4)' 
-              : hoveredBorder === zone 
-                ? 'rgba(33, 150, 243, 0.2)' 
-                : 'transparent',
-            transition: 'background-color 0.2s ease',
-            zIndex: 10, // Above canvas and overlays, below text editor
-            pointerEvents: 'auto',
-            // Add a subtle visual indicator on hover
-            '&:hover': {
-              backgroundColor: 'rgba(33, 150, 243, 0.25)',
-            },
-            // Touch-friendly styling
-            touchAction: 'none', // Prevent default touch behaviors
-            userSelect: 'none', // Prevent text selection
-          }}
-        />
-      ))}
+       borderZones.map((zone) => {
+         const zoneId = getBorderZoneId(zone);
+         const isSelectedBorder = selectedBorderZoneId === zoneId;
+         return (
+           <Box
+             key={`border-zone-${zoneId}`}
+             onMouseDown={(e) => {
+               e.stopPropagation();
+               if (!isSelectedBorder) {
+                 setSelectedBorderZoneId(zoneId);
+                 return;
+               }
+               e.preventDefault();
+               setIsDraggingBorder(true);
+               setDraggedBorder(zone);
+               const rect = containerRef.current.getBoundingClientRect();
+               setBorderDragStart({
+                 x: e.clientX - rect.left,
+                 y: e.clientY - rect.top
+               });
+             }}
+             onTouchStart={(e) => {
+               e.stopPropagation();
+               if (!isSelectedBorder) {
+                 setSelectedBorderZoneId(zoneId);
+                 return;
+               }
+               e.preventDefault();
+               setIsDraggingBorder(true);
+               setDraggedBorder(zone);
+               const rect = containerRef.current.getBoundingClientRect();
+               const touch = e.touches[0];
+               setBorderDragStart({
+                 x: touch.clientX - rect.left,
+                 y: touch.clientY - rect.top
+               });
+             }}
+             sx={{
+               position: 'absolute',
+               top: zone.y,
+               left: zone.x,
+               width: zone.width,
+               height: zone.height,
+               cursor: zone.cursor,
+               backgroundColor: isDraggingBorder && draggedBorder === zone
+                 ? 'rgba(33, 150, 243, 0.4)'
+                 : isSelectedBorder
+                   ? 'rgba(33, 150, 243, 0.28)'
+                   : hoveredBorder === zone
+                     ? 'rgba(33, 150, 243, 0.2)'
+                     : 'transparent',
+               transition: 'background-color 0.2s ease',
+               zIndex: 10, // Above canvas and overlays, below text editor
+               pointerEvents: 'auto',
+               // Add a subtle visual indicator on hover
+               '&:hover': {
+                 backgroundColor: 'rgba(33, 150, 243, 0.25)',
+               },
+               // Allow normal page scroll until a border is intentionally selected.
+               touchAction: isSelectedBorder ? 'none' : 'pan-y pinch-zoom',
+               userSelect: 'none', // Prevent text selection
+             }}
+           />
+         );
+       })}
 
       {/* Action menu for panel controls (Crop & Zoom, Rearrange, Replace Image) */}
       <Menu
