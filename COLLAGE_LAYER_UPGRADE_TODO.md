@@ -9,7 +9,7 @@
 # Step-by-Step Milestones
 
 - [x] 1. Add intentional selection-first interactions for current draggable objects that interrupt scroll (`stickers` and frame `border drag zones`): first tap/click selects; second interaction manipulates.
-- [ ] 2. Introduce caption/text overlay interaction layers (move/resize/rotate) that preserve current default subtitle/placeholder placement.
+- [x] 2. Introduce caption/text overlay interaction layers (move/resize/rotate) that preserve current default subtitle/placeholder placement.
 - [ ] 3. Add text layer ordering controls, aligned with sticker ordering behavior and consistent with `V2EditorPage.js` expectations.
 - [ ] 4. Hide the floating caption controls while text is actively moving/resizing, then restore them after placement.
 - [ ] 5. Regression pass for touch scroll behavior, caption defaults, sticker controls, and export output.

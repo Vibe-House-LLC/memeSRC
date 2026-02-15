@@ -109,6 +109,12 @@ const TOP_CAPTION_DEFAULTS = {
   captionSpacingY: 0,
   backgroundColor: '#ffffff',
 };
+const CAPTION_PLACEHOLDER_TEXT = 'Add Caption';
+const TEXT_PADDING_PX = 10;
+const TEXT_DEFAULT_BOTTOM_RATIO = 0.95;
+const TEXT_EXTENDED_BOTTOM_RATIO = 1.1;
+const TEXT_MIN_FONT_SIZE = 8;
+const TEXT_MAX_FONT_SIZE = 72;
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -776,6 +782,8 @@ const CanvasCollagePreview = ({
   const [activeStickerId, setActiveStickerId] = useState(null);
   const [stickerInteraction, setStickerInteraction] = useState(null);
   const [stickerDrafts, setStickerDrafts] = useState({});
+  const [activeTextLayerId, setActiveTextLayerId] = useState(null);
+  const [textLayerInteraction, setTextLayerInteraction] = useState(null);
   const hasInitializedStickerIdsRef = useRef(false);
   const previousStickerIdsRef = useRef([]);
   const handledTextAutoOpenRequestRef = useRef(null);
@@ -784,6 +792,8 @@ const CanvasCollagePreview = ({
   const stickerDraftsRef = useRef({});
   const pendingStickerPointerRef = useRef(null);
   const stickerRafRef = useRef(null);
+  const pendingTextLayerPointerRef = useRef(null);
+  const textLayerRafRef = useRef(null);
   // Trigger redraws once custom fonts are ready (especially after loading a saved project)
   const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
 
@@ -959,6 +969,44 @@ const CanvasCollagePreview = ({
   // Calculate text scale factor based on current canvas size vs base size
   const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
   const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
+  const getTextAnchorXFromPosition = useCallback((panel, textPositionX) => {
+    if (!panel) return 0;
+    const maxTextWidth = Math.max(1, panel.width - (TEXT_PADDING_PX * 2));
+    return panel.x + TEXT_PADDING_PX + ((textPositionX + 100) / 200) * maxTextWidth;
+  }, []);
+
+  const getTextPositionXFromAnchor = useCallback((panel, anchorX) => {
+    if (!panel) return 0;
+    const maxTextWidth = Math.max(1, panel.width - (TEXT_PADDING_PX * 2));
+    return clamp((((anchorX - (panel.x + TEXT_PADDING_PX)) / maxTextWidth) * 200) - 100, -100, 100);
+  }, []);
+
+  const getTextAnchorYFromPosition = useCallback((panel, textPositionY) => {
+    if (!panel) return 0;
+    const defaultBottom = panel.y + (panel.height * TEXT_DEFAULT_BOTTOM_RATIO);
+    if (textPositionY <= 0) {
+      const extendedBottom = panel.y + (panel.height * TEXT_EXTENDED_BOTTOM_RATIO);
+      const t = Math.abs(textPositionY) / 100;
+      return defaultBottom + t * (extendedBottom - defaultBottom);
+    }
+    return defaultBottom + ((textPositionY / 100) * (panel.y - defaultBottom));
+  }, []);
+
+  const getTextPositionYFromAnchor = useCallback((panel, anchorY) => {
+    if (!panel) return 0;
+    const defaultBottom = panel.y + (panel.height * TEXT_DEFAULT_BOTTOM_RATIO);
+    if (anchorY >= defaultBottom) {
+      const downSpan = Math.max(1, panel.height * (TEXT_EXTENDED_BOTTOM_RATIO - TEXT_DEFAULT_BOTTOM_RATIO));
+      return clamp(-((anchorY - defaultBottom) / downSpan) * 100, -100, 0);
+    }
+    const upSpan = Math.max(1, panel.height * TEXT_DEFAULT_BOTTOM_RATIO);
+    return clamp(((defaultBottom - anchorY) / upSpan) * 100, 0, 100);
+  }, []);
+
+  const resolvePanelTextForCanvas = useCallback((panelId) => (
+    (panelTexts && typeof panelTexts === 'object' && panelTexts[panelId]) ? panelTexts[panelId] : {}
+  ), [panelTexts]);
+
   const resolveTopCaptionLayout = useCallback((canvasWidth, baseImageHeight) => {
     const topCaptionConfig = panelTexts?.[TOP_CAPTION_PANEL_ID];
     if (!topCaptionConfig || typeof topCaptionConfig !== 'object') {
@@ -1696,6 +1744,15 @@ const CanvasCollagePreview = ({
     if (!sticker?.id || typeof updateSticker !== 'function') return;
     if (Object.values(isTransformMode).some(Boolean)) return;
     if (event?.button !== undefined && event.button !== 0) return;
+    if (activeTextLayerId) {
+      setActiveTextLayerId(null);
+      setTextLayerInteraction(null);
+      pendingTextLayerPointerRef.current = null;
+      if (textLayerRafRef.current !== null) {
+        window.cancelAnimationFrame(textLayerRafRef.current);
+        textLayerRafRef.current = null;
+      }
+    }
     const isMoveInteraction = mode === 'move';
     const isAlreadySelected = activeStickerId === sticker.id;
 
@@ -1753,7 +1810,7 @@ const CanvasCollagePreview = ({
       centerClientX,
       centerClientY,
     });
-  }, [getStickerRectPx, isTransformMode, moveSticker, stickers, updateSticker, activeStickerId]);
+  }, [getStickerRectPx, isTransformMode, moveSticker, stickers, updateSticker, activeStickerId, activeTextLayerId]);
 
   const handleStickerDelete = useCallback((event, stickerId) => {
     if (!stickerId || typeof removeSticker !== 'function') return;
@@ -2100,7 +2157,7 @@ const CanvasCollagePreview = ({
       const imageIndex = panelImageMapping[panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
-      const panelText = panelTexts[panelId] || {};
+      const panelText = resolvePanelTextForCanvas(panelId);
 
       // Draw panel background
       ctx.fillStyle = hasImage
@@ -2232,7 +2289,7 @@ const CanvasCollagePreview = ({
       const { cleanText, ranges } = parseFormattedText(rawCaption);
       const hasActualText = cleanText && cleanText.trim();
       const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
-      const displayText = hasActualText ? cleanText : 'Add Caption';
+      const displayText = hasActualText ? cleanText : CAPTION_PLACEHOLDER_TEXT;
       const activeRanges = hasActualText ? ranges : [];
 
       // Hide all captions when any panel is in transform mode or reorder mode
@@ -2340,13 +2397,13 @@ const CanvasCollagePreview = ({
         ctx.shadowBlur = 14;
 
         // Calculate available text area (with padding on sides and bottom)
-        const textPadding = 10;
+        const textPadding = TEXT_PADDING_PX;
         const maxTextWidth = width - (textPadding * 2);
 
         // Calculate text position based on position settings
         // textPositionX: -100 (left) to 100 (right), 0 = center
         // textPositionY: -100 (bottom anchored) to 100 (top anchored), 0 = default bottom position
-        const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
+        const textAnchorX = getTextAnchorXFromPosition(rect, textPositionX);
 
         const lineHeight = fontSize * 1.2;
         const wrappedLines = buildWrappedLines(
@@ -2370,22 +2427,7 @@ const CanvasCollagePreview = ({
         // textPositionY = 0: bottom edge of text at 95% of panel height (default position)
         // textPositionY = 100: top edge of text at top of panel (y + textPadding)
 
-        let textAnchorY;
-        if (textPositionY <= 0) {
-          // Position between default bottom (95%) and beyond frame bottom edge
-          const defaultBottomPosition = y + (height * 0.95);
-          const extendedBottomPosition = y + height + (height * 0.1); // Allow text to extend 10% beyond frame bottom
-          const t = Math.abs(textPositionY) / 100; // 0 to 1
-          textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
-          // Text is anchored by its bottom edge
-        } else {
-          // Position between default bottom (95%) and frame top edge (0%)
-          const defaultBottomPosition = y + (height * 0.95);
-          const frameTopPosition = y; // Allow text to extend to frame edge
-          const t = textPositionY / 100; // 0 to 1
-          textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
-          // Text is anchored by its bottom edge
-        }
+        const textAnchorY = getTextAnchorYFromPosition(rect, textPositionY);
 
         // Calculate where the first line should start (top of text block)
         const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
@@ -2467,39 +2509,40 @@ const CanvasCollagePreview = ({
     stickers,
     loadedStickers,
     getStickerRectPx,
-    drawTopCaptionLayer
+    drawTopCaptionLayer,
+    resolvePanelTextForCanvas,
+    getTextAnchorXFromPosition,
+    getTextAnchorYFromPosition
   ]);
 
   // Helper function to calculate text area dimensions for a panel
   const getTextAreaBounds = useCallback((panel, panelText) => {
     if (!panel) return null;
-    
-    // Get text properties (same as in drawCanvas)
-    const baseFontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
-    const scaledFontSize = baseFontSize * textScaleFactor;
-    const textPadding = 10; // Visual padding for text rendering
-    const activationPadding = 1; // Extremely tight padding for activation area
-    const lineHeight = scaledFontSize * 1.2;
+
+    const activationPadding = 1;
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
     const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     const textRotation = panelText?.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
     const textAlign = normalizeTextAlignValue(panelText?.textAlign || lastUsedTextSettings.textAlign || 'center');
-    
+
     const rawCaption = panelText?.rawContent ?? panelText?.content ?? '';
     const { cleanText, ranges } = parseFormattedText(rawCaption);
     const hasActualText = cleanText && cleanText.trim();
-    const displayText = hasActualText ? cleanText : 'Add Caption';
+    const displayText = hasActualText ? cleanText : CAPTION_PLACEHOLDER_TEXT;
     const activeRanges = hasActualText ? ranges : [];
-    
-    // Use the same accurate text measurement logic as drawCanvas
-    const maxTextWidth = panel.width - (textPadding * 2);
-    
-    // Create temporary canvas for accurate text measurement
+
+    let baseFontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
+    if (hasActualText && !panelText?.fontSize && typeof calculateOptimalFontSize === 'function') {
+      baseFontSize = calculateOptimalFontSize(cleanText, panel.width, panel.height);
+    }
+    const scaledFontSize = baseFontSize * textScaleFactor;
+    const lineHeight = scaledFontSize * 1.2;
+    const maxTextWidth = Math.max(24, panel.width - (TEXT_PADDING_PX * 2));
+
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return null;
-    
-    // Set font properties exactly like in drawCanvas
+
     const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 400;
     const fontStyle = panelText?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
     const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
@@ -2518,62 +2561,39 @@ const CanvasCollagePreview = ({
       scaledFontSize,
       fontFamily,
     );
-    const actualLines = wrappedLines.length;
-    
-    // Calculate actual text width from the wrapped lines
+    const actualLines = Math.max(1, wrappedLines.length);
     const actualTextWidth = Math.max(...wrappedLines.map(line => line.width), 0);
-    
-    // Calculate actual text dimensions
     const actualTextHeight = actualLines * lineHeight;
-    
-    // Calculate text position based on position settings (same as drawCanvas)
-    const textAnchorX = panel.x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
+
+    const textAnchorX = getTextAnchorXFromPosition(panel, textPositionX);
     const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, actualTextWidth);
-    
-    // Use the same improved vertical positioning logic as in drawCanvas
-    let textAnchorY;
-    if (textPositionY <= 0) {
-      // Position between default bottom (95%) and beyond frame bottom edge
-      const defaultBottomPosition = panel.y + (panel.height * 0.95);
-      const extendedBottomPosition = panel.y + panel.height + (panel.height * 0.1); // Allow text to extend 10% beyond frame bottom
-      const t = Math.abs(textPositionY) / 100; // 0 to 1
-      textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
-      // Text is anchored by its bottom edge
-    } else {
-      // Position between default bottom (95%) and frame top edge (0%)
-      const defaultBottomPosition = panel.y + (panel.height * 0.95);
-      const frameTopPosition = panel.y; // Allow text to extend to frame edge
-      const t = textPositionY / 100; // 0 to 1
-      textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
-      // Text is anchored by its bottom edge
-    }
-    
-    // Calculate where the text block starts (top of text block)
+    const textAnchorY = getTextAnchorYFromPosition(panel, textPositionY);
     const textBlockY = textAnchorY - actualTextHeight;
-    
-    // Calculate activation area bounds around the actual text block position
-    let activationAreaHeight = actualTextHeight + (activationPadding * 2);
-    let activationAreaWidth = actualTextWidth + (activationPadding * 2);
-    let activationAreaX = textBlockLeft - activationPadding;
-    let activationAreaY = textBlockY - activationPadding;
-    
-    // If rotation is applied, calculate rotated bounds
+
+    const controlWidth = Math.max(12, actualTextWidth + (activationPadding * 2));
+    const controlHeight = Math.max(12, actualTextHeight + (activationPadding * 2));
+    const controlX = textBlockLeft - activationPadding;
+    const controlY = textBlockY - activationPadding;
+
+    let activationAreaWidth = controlWidth;
+    let activationAreaHeight = controlHeight;
+    let activationAreaX = controlX;
+    let activationAreaY = controlY;
+
     if (textRotation !== 0) {
       const textCenterX = textBlockLeft + (actualTextWidth / 2);
       const textCenterY = textAnchorY - actualTextHeight / 2;
       const radians = (textRotation * Math.PI) / 180;
       const cos = Math.cos(radians);
       const sin = Math.sin(radians);
-      
-      // Calculate corners of unrotated text box
+
       const corners = [
-        { x: activationAreaX, y: activationAreaY },
-        { x: activationAreaX + activationAreaWidth, y: activationAreaY },
-        { x: activationAreaX + activationAreaWidth, y: activationAreaY + activationAreaHeight },
-        { x: activationAreaX, y: activationAreaY + activationAreaHeight }
+        { x: controlX, y: controlY },
+        { x: controlX + controlWidth, y: controlY },
+        { x: controlX + controlWidth, y: controlY + controlHeight },
+        { x: controlX, y: controlY + controlHeight }
       ];
-      
-      // Rotate corners around text center
+
       const rotatedCorners = corners.map(corner => {
         const dx = corner.x - textCenterX;
         const dy = corner.y - textCenterY;
@@ -2583,27 +2603,47 @@ const CanvasCollagePreview = ({
         };
       });
       
-      // Calculate bounding box of rotated text
       const minX = Math.min(...rotatedCorners.map(c => c.x));
       const maxX = Math.max(...rotatedCorners.map(c => c.x));
       const minY = Math.min(...rotatedCorners.map(c => c.y));
       const maxY = Math.max(...rotatedCorners.map(c => c.y));
-      
+
       activationAreaX = minX;
       activationAreaY = minY;
       activationAreaWidth = maxX - minX;
       activationAreaHeight = maxY - minY;
     }
-    
+
+    const boundedWidth = Math.min(activationAreaWidth, panel.width);
+    const boundedHeight = Math.min(activationAreaHeight, panel.height);
+    const boundedX = Math.max(panel.x, Math.min(panel.x + panel.width - boundedWidth, activationAreaX));
+    const boundedY = Math.max(panel.y, Math.min(panel.y + panel.height - boundedHeight, activationAreaY));
+
     return {
-      x: Math.max(panel.x, Math.min(panel.x + panel.width - activationAreaWidth, activationAreaX)), // Keep within panel bounds
-      y: Math.max(panel.y, Math.min(panel.y + panel.height - activationAreaHeight, activationAreaY)), // Keep within panel bounds
-      width: Math.min(activationAreaWidth, panel.width), // Don't exceed panel width
-      height: Math.min(activationAreaHeight, panel.height), // Don't exceed panel height
+      x: boundedX,
+      y: boundedY,
+      width: boundedWidth,
+      height: boundedHeight,
       actualTextY: textAnchorY,
-      actualTextHeight
+      actualTextHeight,
+      textAnchorX,
+      textAnchorY,
+      textPositionX,
+      textPositionY,
+      textRotation,
+      baseFontSize,
+      controlX,
+      controlY,
+      controlWidth,
+      controlHeight,
     };
-  }, [lastUsedTextSettings, textScaleFactor]);
+  }, [
+    lastUsedTextSettings,
+    textScaleFactor,
+    calculateOptimalFontSize,
+    getTextAnchorXFromPosition,
+    getTextAnchorYFromPosition,
+  ]);
 
   // Handle text editing
   const handleTextEdit = useCallback((panelId) => {
@@ -2611,6 +2651,13 @@ const CanvasCollagePreview = ({
     if (isReorderMode) {
       setIsReorderMode(false);
       setReorderSourcePanel(null);
+    }
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
     }
     
     const isOpening = textEditingPanel !== panelId;
@@ -2898,6 +2945,222 @@ const CanvasCollagePreview = ({
 
 
 
+  const clearActiveTextLayerSelection = useCallback((event, options = {}) => {
+    const { suppressEvents = true } = options;
+    if (suppressEvents && event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (suppressEvents && event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
+    }
+  }, []);
+
+  const getTextLayerUpdateFromPointer = useCallback((interaction, clientX, clientY) => {
+    if (!interaction) return null;
+    const panel = interaction.panelRect;
+    if (!panel) return null;
+
+    if (interaction.mode === 'rotate') {
+      const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
+      return {
+        textRotation: normalizeAngleDeg(pointerAngle + 90),
+      };
+    }
+
+    const dx = clientX - interaction.startClientX;
+    const dy = clientY - interaction.startClientY;
+
+    if (interaction.mode === 'resize') {
+      const widthScale = (interaction.startControlWidth + dx) / Math.max(1, interaction.startControlWidth);
+      const heightScale = (interaction.startControlHeight + dy) / Math.max(1, interaction.startControlHeight);
+      const scale = Math.max(0.25, widthScale, heightScale);
+      return {
+        fontSize: clamp(interaction.startFontSize * scale, TEXT_MIN_FONT_SIZE, TEXT_MAX_FONT_SIZE),
+      };
+    }
+
+    const nextAnchorX = interaction.startAnchorX + dx;
+    const nextAnchorY = interaction.startAnchorY + dy;
+    return {
+      textPositionX: getTextPositionXFromAnchor(panel, nextAnchorX),
+      textPositionY: getTextPositionYFromAnchor(panel, nextAnchorY),
+    };
+  }, [getTextPositionXFromAnchor, getTextPositionYFromAnchor]);
+
+  const handleTextLayerPointerDown = useCallback((event, textLayer, mode = 'move') => {
+    if (!textLayer?.panelId || !textLayer?.panel || !textLayer?.bounds) return;
+    if (event?.button !== undefined && event.button !== 0) return;
+    if (Object.values(isTransformMode).some(Boolean) || isReorderMode || textEditingPanel !== null) return;
+
+    const panelId = textLayer.panelId;
+    const isMoveInteraction = mode === 'move';
+    const isAlreadySelected = activeTextLayerId === panelId;
+    if (isMoveInteraction && !isAlreadySelected) {
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      setActiveTextLayerId(panelId);
+      setTextLayerInteraction(null);
+      setSelectedBorderZoneId(null);
+      return;
+    }
+
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    try {
+      if (event?.currentTarget && typeof event.currentTarget.setPointerCapture === 'function' && event.pointerId !== undefined) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
+    } catch (_) {
+      // ignore pointer capture failures
+    }
+
+    setActiveTextLayerId(panelId);
+    setSelectedBorderZoneId(null);
+    setActiveStickerId(null);
+    setStickerInteraction(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+
+    const currentText = panelTextsRef.current?.[panelId] || {};
+    const containerRect = containerRef.current?.getBoundingClientRect?.();
+    const centerLocalX = textLayer.bounds.controlX + (textLayer.bounds.controlWidth / 2);
+    const centerLocalY = textLayer.bounds.controlY + (textLayer.bounds.controlHeight / 2);
+    const centerClientX = (containerRect?.left || 0) + centerLocalX;
+    const centerClientY = (containerRect?.top || 0) + centerLocalY;
+
+    setTextLayerInteraction({
+      panelId,
+      mode,
+      panelRect: {
+        x: textLayer.panel.x,
+        y: textLayer.panel.y,
+        width: textLayer.panel.width,
+        height: textLayer.panel.height,
+      },
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startAnchorX: textLayer.bounds.textAnchorX,
+      startAnchorY: textLayer.bounds.textAnchorY,
+      startControlWidth: textLayer.bounds.controlWidth,
+      startControlHeight: textLayer.bounds.controlHeight,
+      startFontSize: Number.isFinite(Number(textLayer.bounds.baseFontSize))
+        ? Number(textLayer.bounds.baseFontSize)
+        : (Number(currentText.fontSize) || lastUsedTextSettings.fontSize || 26),
+      centerClientX,
+      centerClientY,
+    });
+  }, [
+    activeTextLayerId,
+    isTransformMode,
+    isReorderMode,
+    textEditingPanel,
+    lastUsedTextSettings.fontSize,
+  ]);
+
+  const handleTextLayerDone = useCallback((event) => {
+    clearActiveTextLayerSelection(event);
+  }, [clearActiveTextLayerSelection]);
+
+  const handleTextLayerEdit = useCallback((event, panelId) => {
+    if (!panelId) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    clearActiveTextLayerSelection(null, { suppressEvents: false });
+    handleTextEdit(panelId);
+  }, [clearActiveTextLayerSelection, handleTextEdit]);
+
+  useEffect(() => {
+    if (!textLayerInteraction || typeof updatePanelText !== 'function') return;
+
+    const applyPointerSample = () => {
+      const pending = pendingTextLayerPointerRef.current;
+      if (!pending) return;
+      pendingTextLayerPointerRef.current = null;
+      const updates = getTextLayerUpdateFromPointer(textLayerInteraction, pending.clientX, pending.clientY);
+      if (!updates) return;
+
+      const currentText = panelTextsRef.current?.[textLayerInteraction.panelId] || {};
+      const nextUpdates = {};
+      Object.entries(updates).forEach(([key, value]) => {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) return;
+        const previousValue = Number(currentText[key]);
+        if (!Number.isFinite(previousValue) || Math.abs(previousValue - numericValue) > 0.01) {
+          nextUpdates[key] = numericValue;
+        }
+      });
+
+      if (Object.keys(nextUpdates).length > 0) {
+        updatePanelText(textLayerInteraction.panelId, nextUpdates);
+      }
+    };
+
+    const requestPointerApply = () => {
+      if (textLayerRafRef.current !== null) return;
+      textLayerRafRef.current = window.requestAnimationFrame(() => {
+        textLayerRafRef.current = null;
+        applyPointerSample();
+      });
+    };
+
+    const handlePointerMove = (event) => {
+      pendingTextLayerPointerRef.current = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
+      requestPointerApply();
+    };
+
+    const handlePointerEnd = () => {
+      if (textLayerRafRef.current !== null) {
+        window.cancelAnimationFrame(textLayerRafRef.current);
+        textLayerRafRef.current = null;
+      }
+      applyPointerSample();
+      setTextLayerInteraction(null);
+      pendingTextLayerPointerRef.current = null;
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      if (textLayerRafRef.current !== null) {
+        window.cancelAnimationFrame(textLayerRafRef.current);
+        textLayerRafRef.current = null;
+      }
+      pendingTextLayerPointerRef.current = null;
+    };
+  }, [getTextLayerUpdateFromPointer, textLayerInteraction, updatePanelText]);
+
+  useEffect(() => {
+    if (textEditingPanel === null && !Object.values(isTransformMode).some(Boolean) && !isReorderMode) return;
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
+    }
+  }, [textEditingPanel, isTransformMode, isReorderMode]);
+
+  useEffect(() => {
+    if (!activeTextLayerId) return;
+    const panelExists = panelRects.some((panel) => panel.panelId === activeTextLayerId);
+    if (!panelExists) {
+      setActiveTextLayerId(null);
+      setTextLayerInteraction(null);
+    }
+  }, [activeTextLayerId, panelRects]);
+
   // Redraw canvas when dependencies change
   useEffect(() => {
     drawCanvas();
@@ -2959,7 +3222,12 @@ const CanvasCollagePreview = ({
   // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
   useEffect(() => {
     const anyPanelInTransformMode = Object.values(isTransformMode).some(Boolean);
-    const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder || Boolean(stickerInteraction);
+    const active = anyPanelInTransformMode
+      || isReorderMode
+      || (textEditingPanel !== null)
+      || isDraggingBorder
+      || Boolean(stickerInteraction)
+      || Boolean(textLayerInteraction);
     try {
       const canvas = canvasRef.current;
       if (canvas) canvas.dataset.editing = active ? '1' : '0';
@@ -2967,7 +3235,7 @@ const CanvasCollagePreview = ({
     if (typeof onEditingSessionChange === 'function') {
       onEditingSessionChange(active);
     }
-  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, stickerInteraction, onEditingSessionChange]);
+  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, stickerInteraction, textLayerInteraction, onEditingSessionChange]);
 
 
 
@@ -3412,6 +3680,11 @@ const CanvasCollagePreview = ({
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (activeTextLayerId) {
+      frameTapSuppressUntilRef.current = Date.now() + 260;
+      clearActiveTextLayerSelection(e);
+      return;
+    }
     if (activeStickerId) {
       frameTapSuppressUntilRef.current = Date.now() + 260;
       clearActiveStickerSelection(e);
@@ -3531,7 +3804,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -3758,6 +4031,12 @@ const CanvasCollagePreview = ({
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
     if (touches.length === 1) {
+      if (activeTextLayerId) {
+        touchStartInfo.current = null;
+        frameTapSuppressUntilRef.current = Date.now() + 260;
+        clearActiveTextLayerSelection(e, { suppressEvents: false });
+        return;
+      }
       if (activeStickerId) {
         touchStartInfo.current = null;
         frameTapSuppressUntilRef.current = Date.now() + 260;
@@ -3964,7 +4243,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -4775,6 +5054,22 @@ const CanvasCollagePreview = ({
         })
         .filter(Boolean)
     : [];
+  const textLayers = panelRects
+    .map((panel) => {
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      if (!hasImage) return null;
+      const panelText = resolvePanelTextForCanvas(panel.panelId);
+      const bounds = getTextAreaBounds(panel, panelText);
+      if (!bounds) return null;
+      return {
+        panelId: panel.panelId,
+        panel,
+        bounds,
+        isActive: activeTextLayerId === panel.panelId,
+      };
+    })
+    .filter(Boolean);
 
   return (
     <Box 
@@ -4997,6 +5292,191 @@ const CanvasCollagePreview = ({
                   </Box>
                   <Box
                     onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
+                    sx={{
+                      position: 'absolute',
+                      right: -(handleSize * 0.35),
+                      bottom: -(handleSize * 0.35),
+                      width: handleSize,
+                      height: handleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: 'nwse-resize',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </>
+      )}
+
+      {!anyPanelInTransformMode && !isReorderMode && textEditingPanel === null && textLayers.length > 0 && (
+        <>
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              zIndex: 33,
+              pointerEvents: 'none',
+            }}
+          >
+            {textLayers.map((layer) => (
+              <Box
+                key={`text-layer-hitbox-${layer.panelId}`}
+                onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'move')}
+                sx={{
+                  position: 'absolute',
+                  left: layer.bounds.x,
+                  top: layer.bounds.y,
+                  width: layer.bounds.width,
+                  height: layer.bounds.height,
+                  pointerEvents: 'auto',
+                  cursor: textLayerInteraction?.panelId === layer.panelId
+                    ? ((textLayerInteraction?.mode === 'move' || textLayerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
+                    : (layer.isActive ? 'grab' : 'pointer'),
+                  touchAction: layer.isActive ? 'none' : 'pan-y pinch-zoom',
+                  border: layer.isActive ? '1px solid rgba(33, 150, 243, 0.85)' : '1px solid transparent',
+                  borderRadius: 1,
+                  backgroundColor: layer.isActive ? 'rgba(33, 150, 243, 0.08)' : 'transparent',
+                }}
+              />
+            ))}
+          </Box>
+
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'visible',
+              zIndex: 34,
+              pointerEvents: 'none',
+            }}
+          >
+            {textLayers.map((layer) => {
+              if (!layer.isActive) return null;
+              const handleSize = componentWidth < 560 ? 28 : 22;
+              const rotateHandleSize = componentWidth < 560 ? 24 : 18;
+              const actionHandleSize = componentWidth < 560 ? 28 : 22;
+              return (
+                <Box
+                  key={`text-layer-controls-${layer.panelId}`}
+                  sx={{
+                    position: 'absolute',
+                    left: layer.bounds.controlX,
+                    top: layer.bounds.controlY,
+                    width: layer.bounds.controlWidth,
+                    height: layer.bounds.controlHeight,
+                    pointerEvents: 'none',
+                    transformOrigin: 'center center',
+                    transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      border: '2px solid rgba(33, 150, 243, 0.95)',
+                      borderRadius: 1,
+                      boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -18,
+                      width: 2,
+                      height: 14,
+                      transform: 'translateX(-50%)',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'rotate')}
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -(rotateHandleSize + 14),
+                      width: rotateHandleSize,
+                      height: rotateHandleSize,
+                      transform: 'translateX(-50%)',
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(117, 117, 117, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: textLayerInteraction?.panelId === layer.panelId && textLayerInteraction?.mode === 'rotate'
+                        ? 'grabbing'
+                        : 'grab',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
+                  </Box>
+                  <Box
+                    onPointerDown={handleTextLayerDone}
+                    sx={{
+                      position: 'absolute',
+                      left: -(actionHandleSize * 0.35),
+                      top: -(actionHandleSize * 0.35),
+                      width: actionHandleSize,
+                      height: actionHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(67, 160, 71, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Check sx={{ fontSize: actionHandleSize * 0.62 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleTextLayerEdit(event, layer.panelId)}
+                    sx={{
+                      position: 'absolute',
+                      right: -(actionHandleSize * 0.35),
+                      top: -(actionHandleSize * 0.35),
+                      width: actionHandleSize,
+                      height: actionHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Subtitles sx={{ fontSize: actionHandleSize * 0.58 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize')}
                     sx={{
                       position: 'absolute',
                       right: -(handleSize * 0.35),
