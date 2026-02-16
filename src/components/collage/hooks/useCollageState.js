@@ -71,7 +71,7 @@ export const useCollageState = () => {
   const [panelImageMapping, setPanelImageMapping] = useState({});
   // panelTransforms maps: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
   const [panelTransforms, setPanelTransforms] = useState({});
-  // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number } }
+  // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number, textBoxWidthPercent?: number } }
   const [panelTexts, setPanelTexts] = useState({});
   // stickers are global overlays on the full collage canvas (not inside individual panels)
   const [stickers, setStickers] = useState([]);
@@ -83,6 +83,7 @@ export const useCollageState = () => {
     color: '#ffffff',
     strokeWidth: 2,
     textAlign: 'center',
+    textBoxWidthPercent: 90,
   });
   
   // Auto-save to library is disabled; keep state for legacy props but do not use
@@ -949,6 +950,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
           color: lastUsedTextSettings.color,
           strokeWidth: lastUsedTextSettings.strokeWidth,
           textAlign: lastUsedTextSettings.textAlign || 'center',
+          textBoxWidthPercent: lastUsedTextSettings.textBoxWidthPercent || 90,
           autoAssigned: true, // Mark as auto-assigned from subtitle
           subtitleShowing: imageData.subtitleShowing || false
         };

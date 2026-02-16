@@ -19,6 +19,10 @@ const normalizeAngleDeg = (value) => {
 const angleFromPointDeg = (centerX, centerY, pointX, pointY) => (
   Math.atan2(pointY - centerY, pointX - centerX) * (180 / Math.PI)
 );
+const snapAngleToZeroDeg = (value) => {
+  const normalized = normalizeAngleDeg(value);
+  return Math.abs(normalized) <= ROTATION_ZERO_SNAP_THRESHOLD_DEG ? 0 : normalized;
+};
 
 
 
@@ -115,6 +119,21 @@ const TEXT_DEFAULT_BOTTOM_RATIO = 0.95;
 const TEXT_EXTENDED_BOTTOM_RATIO = 1.1;
 const TEXT_MIN_FONT_SIZE = 8;
 const TEXT_MAX_FONT_SIZE = 72;
+const TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT = 90;
+const TEXT_LAYER_MIN_BOX_WIDTH_PERCENT = 20;
+const TEXT_LAYER_MAX_BOX_WIDTH_PERCENT = 100;
+const TEXT_LAYER_MIN_BOX_WIDTH_PX = 36;
+const TEXT_LAYER_CONTROL_PADDING_PX = 16;
+const TEXT_LAYER_HANDLE_OVERHANG_RATIO = 0.55;
+const TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO = 0.02;
+const TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX = 4;
+const TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX = 10;
+const ROTATION_ZERO_SNAP_THRESHOLD_DEG = 2;
+const TOUCH_TAP_MAX_MOVEMENT_PX = 10;
+const TOUCH_TAP_MAX_DURATION_MS = 500;
+const BORDER_ZONE_MIN_HIT_SIZE_PX = 16;
+const BORDER_ZONE_HANDLE_LENGTH_PX = 30;
+const BORDER_ZONE_HANDLE_THICKNESS_PX = 10;
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -128,6 +147,27 @@ const normalizeTextAlignValue = (value) => {
   if (value === 'left' || value === 'center' || value === 'right') return value;
   return 'center';
 };
+
+const normalizeTextBoxWidthPercent = (value, fallback = TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return clamp(numeric, TEXT_LAYER_MIN_BOX_WIDTH_PERCENT, TEXT_LAYER_MAX_BOX_WIDTH_PERCENT);
+};
+
+const getTextBoxWidthPx = (panelWidth, textBoxWidthPercent) => {
+  const availableTextWidth = Math.max(24, Number(panelWidth || 0) - (TEXT_PADDING_PX * 2));
+  const minWidthPx = Math.min(TEXT_LAYER_MIN_BOX_WIDTH_PX, availableTextWidth);
+  const normalizedPercent = normalizeTextBoxWidthPercent(textBoxWidthPercent);
+  return clamp((availableTextWidth * normalizedPercent) / 100, minWidthPx, availableTextWidth);
+};
+
+const resolveTextBoxWidthPercent = (panelText, lastUsedTextSettings) => normalizeTextBoxWidthPercent(
+  panelText?.textBoxWidthPercent ?? lastUsedTextSettings?.textBoxWidthPercent,
+);
+
+const resolveTextBoxWidthPx = (panel, panelText, lastUsedTextSettings) => (
+  getTextBoxWidthPx(panel?.width, resolveTextBoxWidthPercent(panelText, lastUsedTextSettings))
+);
 
 const getLineStartX = (textAlign, anchorX, lineWidth) => {
   const align = normalizeTextAlignValue(textAlign);
@@ -175,6 +215,8 @@ const areBorderZonesEqual = (prevZones, nextZones, epsilon = 0.2) => {
     if (!areNumbersClose(prev?.height, next?.height, epsilon)) return false;
     if (!areNumbersClose(prev?.centerX, next?.centerX, epsilon)) return false;
     if (!areNumbersClose(prev?.centerY, next?.centerY, epsilon)) return false;
+    if (!areNumbersClose(prev?.handleWidth, next?.handleWidth, epsilon)) return false;
+    if (!areNumbersClose(prev?.handleHeight, next?.handleHeight, epsilon)) return false;
   }
   return true;
 };
@@ -455,8 +497,18 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
   if (!layoutConfig) return [];
   
   const zones = [];
-  // Make threshold larger for mobile - minimum 16px hit area for better touch interaction
-  const threshold = Math.max(16, borderPixels * 2);
+  const interiorInset = Math.max(0, Number(borderPixels) || 0);
+  const interiorX = interiorInset;
+  const interiorY = interiorInset;
+  const interiorWidth = Math.max(1, containerWidth - (interiorInset * 2));
+  const interiorHeight = Math.max(1, containerHeight - (interiorInset * 2));
+  const handleLong = BORDER_ZONE_HANDLE_LENGTH_PX;
+  const handleShort = BORDER_ZONE_HANDLE_THICKNESS_PX;
+  const hitPadding = 6;
+  const verticalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleShort + (hitPadding * 2));
+  const verticalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
+  const horizontalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
+  const horizontalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleShort + (hitPadding * 2));
   
   // Parse grid columns and rows to get track sizes
   let columnSizes = [1];
@@ -525,11 +577,14 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
       zones.push({
         type: 'vertical',
         index: i,
-        x: currentX - threshold / 2,
-        y: 0,
-        width: threshold,
-        height: containerHeight,
+        x: currentX - verticalHitWidth / 2,
+        y: interiorY + (interiorHeight / 2) - (verticalHitHeight / 2),
+        width: verticalHitWidth,
+        height: verticalHitHeight,
         centerX: currentX,
+        centerY: interiorY + (interiorHeight / 2),
+        handleWidth: handleShort,
+        handleHeight: handleLong,
         cursor: 'col-resize',
         id: `vertical-${i}` // Add ID for debugging
       });
@@ -547,11 +602,14 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
       zones.push({
         type: 'horizontal',
         index: i,
-        x: 0,
-        y: currentY - threshold / 2,
-        width: containerWidth,
-        height: threshold,
+        x: interiorX + (interiorWidth / 2) - (horizontalHitWidth / 2),
+        y: currentY - horizontalHitHeight / 2,
+        width: horizontalHitWidth,
+        height: horizontalHitHeight,
+        centerX: interiorX + (interiorWidth / 2),
         centerY: currentY,
+        handleWidth: handleLong,
+        handleHeight: handleShort,
         cursor: 'row-resize',
         id: `horizontal-${i}` // Add ID for debugging
       });
@@ -784,6 +842,7 @@ const CanvasCollagePreview = ({
   const [stickerDrafts, setStickerDrafts] = useState({});
   const [activeTextLayerId, setActiveTextLayerId] = useState(null);
   const [textLayerInteraction, setTextLayerInteraction] = useState(null);
+  const [textLayerSnapGuide, setTextLayerSnapGuide] = useState(null);
   const hasInitializedStickerIdsRef = useRef(false);
   const previousStickerIdsRef = useRef([]);
   const handledTextAutoOpenRequestRef = useRef(null);
@@ -794,6 +853,7 @@ const CanvasCollagePreview = ({
   const stickerRafRef = useRef(null);
   const pendingTextLayerPointerRef = useRef(null);
   const textLayerRafRef = useRef(null);
+  const textLayerGestureRef = useRef({ moved: false, editorHiddenDuringMove: false });
   // Trigger redraws once custom fonts are ready (especially after loading a saved project)
   const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
 
@@ -853,6 +913,7 @@ const CanvasCollagePreview = ({
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
+  const overlayTouchTapTrackerRef = useRef(null);
   const defaultCaptionCacheRef = useRef({});
   const panelTextsRef = useRef(panelTexts);
 
@@ -860,6 +921,73 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     panelTextsRef.current = panelTexts;
   }, [panelTexts]);
+
+  const clearOverlayTouchTapTracker = useCallback(() => {
+    const tracker = overlayTouchTapTrackerRef.current;
+    if (!tracker) return;
+    window.removeEventListener('pointermove', tracker.handlePointerMove);
+    window.removeEventListener('pointerup', tracker.handlePointerEnd);
+    window.removeEventListener('pointercancel', tracker.handlePointerCancel);
+    overlayTouchTapTrackerRef.current = null;
+  }, []);
+
+  const beginOverlayTouchTapTracking = useCallback((startEvent, onTap) => {
+    if (!startEvent || startEvent.pointerType !== 'touch' || typeof onTap !== 'function') return false;
+    clearOverlayTouchTapTracker();
+
+    const pointerId = startEvent.pointerId;
+    const startX = startEvent.clientX;
+    const startY = startEvent.clientY;
+    const startTime = Date.now();
+    const startScrollY = window.scrollY || window.pageYOffset || 0;
+
+    const hasExceededTapThreshold = (event) => {
+      const currentX = Number.isFinite(event?.clientX) ? event.clientX : startX;
+      const currentY = Number.isFinite(event?.clientY) ? event.clientY : startY;
+      const deltaX = Math.abs(currentX - startX);
+      const deltaY = Math.abs(currentY - startY);
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - startScrollY);
+      return (
+        deltaX > TOUCH_TAP_MAX_MOVEMENT_PX
+        || deltaY > TOUCH_TAP_MAX_MOVEMENT_PX
+        || deltaScrollY > TOUCH_TAP_MAX_MOVEMENT_PX
+      );
+    };
+
+    const finalize = (event, canceled = false) => {
+      if (pointerId !== undefined && event?.pointerId !== undefined && event.pointerId !== pointerId) return;
+      const shouldCancelForMovement = hasExceededTapThreshold(event);
+      const duration = Date.now() - startTime;
+      const isQuickTap = duration <= TOUCH_TAP_MAX_DURATION_MS;
+      clearOverlayTouchTapTracker();
+      if (!canceled && !shouldCancelForMovement && isQuickTap) {
+        onTap(event);
+      }
+    };
+
+    const handlePointerMove = (event) => {
+      if (pointerId !== undefined && event?.pointerId !== undefined && event.pointerId !== pointerId) return;
+      if (hasExceededTapThreshold(event)) {
+        finalize(event, true);
+      }
+    };
+    const handlePointerEnd = (event) => finalize(event, false);
+    const handlePointerCancel = (event) => finalize(event, true);
+
+    overlayTouchTapTrackerRef.current = {
+      handlePointerMove,
+      handlePointerEnd,
+      handlePointerCancel,
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    return true;
+  }, [clearOverlayTouchTapTracker]);
+
+  useEffect(() => () => {
+    clearOverlayTouchTapTracker();
+  }, [clearOverlayTouchTapTracker]);
 
   // Notify parent when caption editor visibility changes
   useEffect(() => {
@@ -1709,7 +1837,7 @@ const CanvasCollagePreview = ({
       // Top handle sits at -90deg relative to +X axis, so angle is ray + 90deg.
       const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
       return {
-        angleDeg: normalizeAngleDeg(pointerAngle + 90),
+        angleDeg: snapAngleToZeroDeg(pointerAngle + 90),
       };
     }
 
@@ -1744,6 +1872,7 @@ const CanvasCollagePreview = ({
     if (!sticker?.id || typeof updateSticker !== 'function') return;
     if (Object.values(isTransformMode).some(Boolean)) return;
     if (event?.button !== undefined && event.button !== 0) return;
+    clearOverlayTouchTapTracker();
     if (activeTextLayerId) {
       setActiveTextLayerId(null);
       setTextLayerInteraction(null);
@@ -1758,6 +1887,15 @@ const CanvasCollagePreview = ({
 
     // Require an intentional second interaction before moving a sticker.
     if (isMoveInteraction && !isAlreadySelected) {
+      if (event?.pointerType === 'touch') {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        const started = beginOverlayTouchTapTracking(event, () => {
+          setActiveStickerId(sticker.id);
+          setStickerInteraction(null);
+          setSelectedBorderZoneId(null);
+        });
+        if (started) return;
+      }
       if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
       setActiveStickerId(sticker.id);
       setStickerInteraction(null);
@@ -1810,7 +1948,17 @@ const CanvasCollagePreview = ({
       centerClientX,
       centerClientY,
     });
-  }, [getStickerRectPx, isTransformMode, moveSticker, stickers, updateSticker, activeStickerId, activeTextLayerId]);
+  }, [
+    getStickerRectPx,
+    isTransformMode,
+    moveSticker,
+    stickers,
+    updateSticker,
+    activeStickerId,
+    activeTextLayerId,
+    beginOverlayTouchTapTracking,
+    clearOverlayTouchTapTracker,
+  ]);
 
   const handleStickerDelete = useCallback((event, stickerId) => {
     if (!stickerId || typeof removeSticker !== 'function') return;
@@ -2396,9 +2544,8 @@ const CanvasCollagePreview = ({
         ctx.shadowOffsetY = 0;
         ctx.shadowBlur = 14;
 
-        // Calculate available text area (with padding on sides and bottom)
-        const textPadding = TEXT_PADDING_PX;
-        const maxTextWidth = width - (textPadding * 2);
+        // Use a configurable text box width so captions can stay wide (Fabric-like textbox behavior).
+        const textBoxWidth = resolveTextBoxWidthPx(rect, panelText, lastUsedTextSettings);
 
         // Calculate text position based on position settings
         // textPositionX: -100 (left) to 100 (right), 0 = center
@@ -2410,14 +2557,13 @@ const CanvasCollagePreview = ({
           ctx,
           displayText,
           activeRanges,
-          maxTextWidth,
+          textBoxWidth,
           baseInlineStyle,
           fontSize,
           fontFamily,
         );
-        const maxLineWidth = wrappedLines.reduce((max, line) => Math.max(max, line.width), 0);
-        const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
-        const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
+        const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, textBoxWidth);
+        const textBlockCenterX = textBlockLeft + (textBoxWidth / 2);
 
         // Calculate text block positioning with proper anchoring
         const totalTextHeight = wrappedLines.length * lineHeight;
@@ -2519,7 +2665,7 @@ const CanvasCollagePreview = ({
   const getTextAreaBounds = useCallback((panel, panelText) => {
     if (!panel) return null;
 
-    const activationPadding = 1;
+    const controlPadding = TEXT_LAYER_CONTROL_PADDING_PX;
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
     const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     const textRotation = panelText?.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
@@ -2537,7 +2683,8 @@ const CanvasCollagePreview = ({
     }
     const scaledFontSize = baseFontSize * textScaleFactor;
     const lineHeight = scaledFontSize * 1.2;
-    const maxTextWidth = Math.max(24, panel.width - (TEXT_PADDING_PX * 2));
+    const textBoxWidthPercent = resolveTextBoxWidthPercent(panelText, lastUsedTextSettings);
+    const textBoxWidth = getTextBoxWidthPx(panel.width, textBoxWidthPercent);
 
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
@@ -2556,7 +2703,7 @@ const CanvasCollagePreview = ({
       tempCtx,
       displayText,
       activeRanges,
-      maxTextWidth,
+      textBoxWidth,
       baseInlineStyle,
       scaledFontSize,
       fontFamily,
@@ -2566,14 +2713,14 @@ const CanvasCollagePreview = ({
     const actualTextHeight = actualLines * lineHeight;
 
     const textAnchorX = getTextAnchorXFromPosition(panel, textPositionX);
-    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, actualTextWidth);
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, textBoxWidth);
     const textAnchorY = getTextAnchorYFromPosition(panel, textPositionY);
     const textBlockY = textAnchorY - actualTextHeight;
 
-    const controlWidth = Math.max(12, actualTextWidth + (activationPadding * 2));
-    const controlHeight = Math.max(12, actualTextHeight + (activationPadding * 2));
-    const controlX = textBlockLeft - activationPadding;
-    const controlY = textBlockY - activationPadding;
+    const controlWidth = Math.max(22, textBoxWidth + (controlPadding * 2));
+    const controlHeight = Math.max(22, actualTextHeight + (controlPadding * 2));
+    const controlX = textBlockLeft - controlPadding;
+    const controlY = textBlockY - controlPadding;
 
     let activationAreaWidth = controlWidth;
     let activationAreaHeight = controlHeight;
@@ -2581,7 +2728,7 @@ const CanvasCollagePreview = ({
     let activationAreaY = controlY;
 
     if (textRotation !== 0) {
-      const textCenterX = textBlockLeft + (actualTextWidth / 2);
+      const textCenterX = textBlockLeft + (textBoxWidth / 2);
       const textCenterY = textAnchorY - actualTextHeight / 2;
       const radians = (textRotation * Math.PI) / 180;
       const cos = Math.cos(radians);
@@ -2626,6 +2773,9 @@ const CanvasCollagePreview = ({
       height: boundedHeight,
       actualTextY: textAnchorY,
       actualTextHeight,
+      actualTextWidth,
+      textBoxWidth,
+      textBoxWidthPercent,
       textAnchorX,
       textAnchorY,
       textPositionX,
@@ -2652,7 +2802,9 @@ const CanvasCollagePreview = ({
       setIsReorderMode(false);
       setReorderSourcePanel(null);
     }
-    setActiveTextLayerId(null);
+    setActiveTextLayerId(
+      panelId && panelId !== TOP_CAPTION_PANEL_ID ? panelId : null
+    );
     setTextLayerInteraction(null);
     pendingTextLayerPointerRef.current = null;
     if (textLayerRafRef.current !== null) {
@@ -2951,6 +3103,7 @@ const CanvasCollagePreview = ({
     if (suppressEvents && event && typeof event.stopPropagation === 'function') event.stopPropagation();
     setActiveTextLayerId(null);
     setTextLayerInteraction(null);
+    setTextLayerSnapGuide(null);
     pendingTextLayerPointerRef.current = null;
     if (textLayerRafRef.current !== null) {
       window.cancelAnimationFrame(textLayerRafRef.current);
@@ -2966,7 +3119,10 @@ const CanvasCollagePreview = ({
     if (interaction.mode === 'rotate') {
       const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
       return {
-        textRotation: normalizeAngleDeg(pointerAngle + 90),
+        updates: {
+          textRotation: snapAngleToZeroDeg(pointerAngle + 90),
+        },
+        snapGuide: null,
       };
     }
 
@@ -2974,32 +3130,99 @@ const CanvasCollagePreview = ({
     const dy = clientY - interaction.startClientY;
 
     if (interaction.mode === 'resize') {
-      const widthScale = (interaction.startControlWidth + dx) / Math.max(1, interaction.startControlWidth);
+      const safeTextWidth = Math.max(24, panel.width - (TEXT_PADDING_PX * 2));
+      const minTextWidth = Math.min(TEXT_LAYER_MIN_BOX_WIDTH_PX, safeTextWidth);
+      const startTextBoxWidthPx = Number.isFinite(interaction.startTextBoxWidthPx)
+        ? interaction.startTextBoxWidthPx
+        : getTextBoxWidthPx(panel.width, interaction.startTextBoxWidthPercent);
+      const nextTextBoxWidthPx = clamp(startTextBoxWidthPx + dx, minTextWidth, safeTextWidth);
+      const nextTextBoxWidthPercent = clamp(
+        (nextTextBoxWidthPx / safeTextWidth) * 100,
+        TEXT_LAYER_MIN_BOX_WIDTH_PERCENT,
+        TEXT_LAYER_MAX_BOX_WIDTH_PERCENT,
+      );
       const heightScale = (interaction.startControlHeight + dy) / Math.max(1, interaction.startControlHeight);
-      const scale = Math.max(0.25, widthScale, heightScale);
+      const fontScale = Math.max(0.25, heightScale);
       return {
-        fontSize: clamp(interaction.startFontSize * scale, TEXT_MIN_FONT_SIZE, TEXT_MAX_FONT_SIZE),
+        updates: {
+          fontSize: clamp(interaction.startFontSize * fontScale, TEXT_MIN_FONT_SIZE, TEXT_MAX_FONT_SIZE),
+          textBoxWidthPercent: nextTextBoxWidthPercent,
+        },
+        snapGuide: null,
       };
     }
 
-    const nextAnchorX = interaction.startAnchorX + dx;
-    const nextAnchorY = interaction.startAnchorY + dy;
+    const panelCenterX = panel.x + (panel.width / 2);
+    const panelCenterY = panel.y + (panel.height / 2);
+    const snapThresholdX = clamp(
+      panel.width * TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX,
+    );
+    const snapThresholdY = clamp(
+      panel.height * TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX,
+    );
+    const nextControlCenterX = interaction.startControlCenterX + dx;
+    const nextControlCenterY = interaction.startControlCenterY + dy;
+    const snappedToCenterX = Math.abs(nextControlCenterX - panelCenterX) <= snapThresholdX;
+    const snappedToCenterY = Math.abs(nextControlCenterY - panelCenterY) <= snapThresholdY;
+    const snappedControlCenterX = snappedToCenterX ? panelCenterX : nextControlCenterX;
+    const snappedControlCenterY = snappedToCenterY ? panelCenterY : nextControlCenterY;
+    const nextAnchorX = interaction.startAnchorX + (snappedControlCenterX - interaction.startControlCenterX);
+    const nextAnchorY = interaction.startAnchorY + (snappedControlCenterY - interaction.startControlCenterY);
     return {
-      textPositionX: getTextPositionXFromAnchor(panel, nextAnchorX),
-      textPositionY: getTextPositionYFromAnchor(panel, nextAnchorY),
+      updates: {
+        textPositionX: getTextPositionXFromAnchor(panel, nextAnchorX),
+        textPositionY: getTextPositionYFromAnchor(panel, nextAnchorY),
+      },
+      snapGuide: (snappedToCenterX || snappedToCenterY) ? {
+        panelRect: panel,
+        x: snappedToCenterX ? panelCenterX : null,
+        y: snappedToCenterY ? panelCenterY : null,
+      } : null,
     };
   }, [getTextPositionXFromAnchor, getTextPositionYFromAnchor]);
 
   const handleTextLayerPointerDown = useCallback((event, textLayer, mode = 'move') => {
     if (!textLayer?.panelId || !textLayer?.panel || !textLayer?.bounds) return;
     if (event?.button !== undefined && event.button !== 0) return;
-    if (Object.values(isTransformMode).some(Boolean) || isReorderMode || textEditingPanel !== null) return;
+    if (Object.values(isTransformMode).some(Boolean) || isReorderMode) return;
+    if (textEditingPanel !== null && textEditingPanel !== textLayer.panelId) return;
+    clearOverlayTouchTapTracker();
 
     const panelId = textLayer.panelId;
+    const currentText = panelTextsRef.current?.[panelId] || {};
+    const currentRawText = currentText.rawContent ?? currentText.content ?? '';
+    const hasActualText = Boolean(parseFormattedText(currentRawText).cleanText.trim());
     const isMoveInteraction = mode === 'move';
     const isAlreadySelected = activeTextLayerId === panelId;
     if (isMoveInteraction && !isAlreadySelected) {
+      if (event?.pointerType === 'touch') {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        const started = beginOverlayTouchTapTracking(event, () => {
+          if (!hasActualText) {
+            setActiveTextLayerId(panelId);
+            if (textEditingPanel !== panelId) {
+              handleTextEdit(panelId);
+            }
+            return;
+          }
+          setActiveTextLayerId(panelId);
+          setTextLayerInteraction(null);
+          setSelectedBorderZoneId(null);
+        });
+        if (started) return;
+      }
       if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      if (!hasActualText) {
+        setActiveTextLayerId(panelId);
+        if (textEditingPanel !== panelId) {
+          handleTextEdit(panelId);
+        }
+        return;
+      }
       setActiveTextLayerId(panelId);
       setTextLayerInteraction(null);
       setSelectedBorderZoneId(null);
@@ -3018,6 +3241,7 @@ const CanvasCollagePreview = ({
 
     setActiveTextLayerId(panelId);
     setSelectedBorderZoneId(null);
+    setTextLayerSnapGuide(null);
     setActiveStickerId(null);
     setStickerInteraction(null);
     pendingStickerPointerRef.current = null;
@@ -3026,12 +3250,16 @@ const CanvasCollagePreview = ({
       stickerRafRef.current = null;
     }
 
-    const currentText = panelTextsRef.current?.[panelId] || {};
     const containerRect = containerRef.current?.getBoundingClientRect?.();
     const centerLocalX = textLayer.bounds.controlX + (textLayer.bounds.controlWidth / 2);
     const centerLocalY = textLayer.bounds.controlY + (textLayer.bounds.controlHeight / 2);
     const centerClientX = (containerRect?.left || 0) + centerLocalX;
     const centerClientY = (containerRect?.top || 0) + centerLocalY;
+    const initialTextBoxWidthPercent = resolveTextBoxWidthPercent(currentText, lastUsedTextSettings);
+    const initialTextBoxWidthPx = Number.isFinite(Number(textLayer.bounds.textBoxWidth))
+      ? Number(textLayer.bounds.textBoxWidth)
+      : getTextBoxWidthPx(textLayer.panel.width, initialTextBoxWidthPercent);
+    textLayerGestureRef.current = { moved: false, editorHiddenDuringMove: false };
 
     setTextLayerInteraction({
       panelId,
@@ -3046,13 +3274,19 @@ const CanvasCollagePreview = ({
       startClientY: event.clientY,
       startAnchorX: textLayer.bounds.textAnchorX,
       startAnchorY: textLayer.bounds.textAnchorY,
+      startControlCenterX: centerLocalX,
+      startControlCenterY: centerLocalY,
       startControlWidth: textLayer.bounds.controlWidth,
       startControlHeight: textLayer.bounds.controlHeight,
       startFontSize: Number.isFinite(Number(textLayer.bounds.baseFontSize))
         ? Number(textLayer.bounds.baseFontSize)
         : (Number(currentText.fontSize) || lastUsedTextSettings.fontSize || 26),
+      startTextBoxWidthPx: initialTextBoxWidthPx,
+      startTextBoxWidthPercent: initialTextBoxWidthPercent,
       centerClientX,
       centerClientY,
+      startedWithEditorOpen: textEditingPanel === panelId,
+      hasActualText,
     });
   }, [
     activeTextLayerId,
@@ -3060,6 +3294,10 @@ const CanvasCollagePreview = ({
     isReorderMode,
     textEditingPanel,
     lastUsedTextSettings.fontSize,
+    lastUsedTextSettings.textBoxWidthPercent,
+    handleTextEdit,
+    beginOverlayTouchTapTracking,
+    clearOverlayTouchTapTracker,
   ]);
 
   const handleTextLayerDone = useCallback((event) => {
@@ -3070,9 +3308,10 @@ const CanvasCollagePreview = ({
     if (!panelId) return;
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-    clearActiveTextLayerSelection(null, { suppressEvents: false });
-    handleTextEdit(panelId);
-  }, [clearActiveTextLayerSelection, handleTextEdit]);
+    if (textEditingPanel !== panelId) {
+      handleTextEdit(panelId);
+    }
+  }, [handleTextEdit, textEditingPanel]);
 
   useEffect(() => {
     if (!textLayerInteraction || typeof updatePanelText !== 'function') return;
@@ -3081,8 +3320,11 @@ const CanvasCollagePreview = ({
       const pending = pendingTextLayerPointerRef.current;
       if (!pending) return;
       pendingTextLayerPointerRef.current = null;
-      const updates = getTextLayerUpdateFromPointer(textLayerInteraction, pending.clientX, pending.clientY);
-      if (!updates) return;
+      const pointerResult = getTextLayerUpdateFromPointer(textLayerInteraction, pending.clientX, pending.clientY);
+      if (!pointerResult) return;
+      const { updates, snapGuide } = pointerResult;
+      setTextLayerSnapGuide(snapGuide);
+      if (!updates || typeof updates !== 'object') return;
 
       const currentText = panelTextsRef.current?.[textLayerInteraction.panelId] || {};
       const nextUpdates = {};
@@ -3109,6 +3351,17 @@ const CanvasCollagePreview = ({
     };
 
     const handlePointerMove = (event) => {
+      if (textLayerInteraction.mode === 'move') {
+        const moveDistance = Math.abs(event.clientX - textLayerInteraction.startClientX)
+          + Math.abs(event.clientY - textLayerInteraction.startClientY);
+        if (moveDistance >= 3) {
+          textLayerGestureRef.current.moved = true;
+          if (textLayerInteraction.startedWithEditorOpen && !textLayerGestureRef.current.editorHiddenDuringMove) {
+            setTextEditingPanel((prev) => (prev === textLayerInteraction.panelId ? null : prev));
+            textLayerGestureRef.current.editorHiddenDuringMove = true;
+          }
+        }
+      }
       pendingTextLayerPointerRef.current = {
         clientX: event.clientX,
         clientY: event.clientY,
@@ -3122,8 +3375,22 @@ const CanvasCollagePreview = ({
         textLayerRafRef.current = null;
       }
       applyPointerSample();
+      setTextLayerSnapGuide(null);
+      const panelId = textLayerInteraction.panelId;
+      const didMove = textLayerGestureRef.current.moved;
+      const editorWasHiddenDuringMove = textLayerGestureRef.current.editorHiddenDuringMove;
+      textLayerGestureRef.current = { moved: false, editorHiddenDuringMove: false };
       setTextLayerInteraction(null);
       pendingTextLayerPointerRef.current = null;
+      if (textLayerInteraction.mode === 'move' && panelId) {
+        if (didMove) {
+          if (textLayerInteraction.startedWithEditorOpen && editorWasHiddenDuringMove) {
+            handleTextEdit(panelId);
+          }
+        } else if ((activeTextLayerId === panelId || !textLayerInteraction.hasActualText) && textEditingPanel !== panelId) {
+          handleTextEdit(panelId);
+        }
+      }
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -3139,18 +3406,19 @@ const CanvasCollagePreview = ({
       }
       pendingTextLayerPointerRef.current = null;
     };
-  }, [getTextLayerUpdateFromPointer, textLayerInteraction, updatePanelText]);
+  }, [getTextLayerUpdateFromPointer, textLayerInteraction, updatePanelText, handleTextEdit, activeTextLayerId, textEditingPanel]);
 
   useEffect(() => {
-    if (textEditingPanel === null && !Object.values(isTransformMode).some(Boolean) && !isReorderMode) return;
+    if (!Object.values(isTransformMode).some(Boolean) && !isReorderMode) return;
     setActiveTextLayerId(null);
     setTextLayerInteraction(null);
+    setTextLayerSnapGuide(null);
     pendingTextLayerPointerRef.current = null;
     if (textLayerRafRef.current !== null) {
       window.cancelAnimationFrame(textLayerRafRef.current);
       textLayerRafRef.current = null;
     }
-  }, [textEditingPanel, isTransformMode, isReorderMode]);
+  }, [isTransformMode, isReorderMode]);
 
   useEffect(() => {
     if (!activeTextLayerId) return;
@@ -3158,6 +3426,7 @@ const CanvasCollagePreview = ({
     if (!panelExists) {
       setActiveTextLayerId(null);
       setTextLayerInteraction(null);
+      setTextLayerSnapGuide(null);
     }
   }, [activeTextLayerId, panelRects]);
 
@@ -3701,11 +3970,8 @@ const CanvasCollagePreview = ({
     
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
       const borderZoneId = getBorderZoneId(borderZone);
-      if (selectedBorderZoneId !== borderZoneId) {
-        setSelectedBorderZoneId(borderZoneId);
-        return;
-      }
-      // Start border dragging after intentional selection
+      setSelectedBorderZoneId(borderZoneId);
+      e.preventDefault();
       setIsDraggingBorder(true);
       setDraggedBorder(borderZone);
       setBorderDragStart({ x, y });
@@ -4066,11 +4332,8 @@ const CanvasCollagePreview = ({
       
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
         const borderZoneId = getBorderZoneId(borderZone);
-        if (selectedBorderZoneId !== borderZoneId) {
-          setSelectedBorderZoneId(borderZoneId);
-          return;
-        }
-        // Start border dragging after intentional selection
+        // Start border dragging directly from the handle.
+        setSelectedBorderZoneId(borderZoneId);
         e.preventDefault();
         e.stopPropagation();
         setIsDraggingBorder(true);
@@ -4886,9 +5149,8 @@ const CanvasCollagePreview = ({
             exportCtx.shadowOffsetY = 0;
             exportCtx.shadowBlur = 14;
 
-            const textPadding = 10;
-            const maxTextWidth = width - (textPadding * 2);
-            const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
+            const textBoxWidth = resolveTextBoxWidthPx(rect, panelText, lastUsedTextSettings);
+            const textAnchorX = getTextAnchorXFromPosition(rect, textPositionX);
 
             const lineHeight = fontSize * 1.2;
 
@@ -4896,14 +5158,13 @@ const CanvasCollagePreview = ({
               exportCtx,
               cleanText,
               ranges,
-              maxTextWidth,
+              textBoxWidth,
               baseInlineStyle,
               fontSize,
               fontFamily,
             );
-            const maxLineWidth = lines.reduce((max, line) => Math.max(max, line.width), 0);
-            const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
-            const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
+            const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, textBoxWidth);
+            const textBlockCenterX = textBlockLeft + (textBoxWidth / 2);
 
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
@@ -5070,6 +5331,16 @@ const CanvasCollagePreview = ({
       };
     })
     .filter(Boolean);
+  const textLayerBoundsByPanelId = textLayers.reduce((next, layer) => {
+    if (!layer?.panelId || !layer?.bounds) return next;
+    next[layer.panelId] = {
+      x: layer.bounds.x,
+      y: layer.bounds.y,
+      width: layer.bounds.width,
+      height: layer.bounds.height,
+    };
+    return next;
+  }, {});
 
   return (
     <Box 
@@ -5319,7 +5590,7 @@ const CanvasCollagePreview = ({
         </>
       )}
 
-      {!anyPanelInTransformMode && !isReorderMode && textEditingPanel === null && textLayers.length > 0 && (
+      {!anyPanelInTransformMode && !isReorderMode && textLayers.length > 0 && (
         <>
           <Box
             sx={{
@@ -5347,7 +5618,7 @@ const CanvasCollagePreview = ({
                   touchAction: layer.isActive ? 'none' : 'pan-y pinch-zoom',
                   border: layer.isActive ? '1px solid rgba(33, 150, 243, 0.85)' : '1px solid transparent',
                   borderRadius: 1,
-                  backgroundColor: layer.isActive ? 'rgba(33, 150, 243, 0.08)' : 'transparent',
+                  backgroundColor: 'transparent',
                 }}
               />
             ))}
@@ -5433,8 +5704,8 @@ const CanvasCollagePreview = ({
                     onPointerDown={handleTextLayerDone}
                     sx={{
                       position: 'absolute',
-                      left: -(actionHandleSize * 0.35),
-                      top: -(actionHandleSize * 0.35),
+                      left: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
                       width: actionHandleSize,
                       height: actionHandleSize,
                       borderRadius: '50%',
@@ -5456,8 +5727,8 @@ const CanvasCollagePreview = ({
                     onPointerDown={(event) => handleTextLayerEdit(event, layer.panelId)}
                     sx={{
                       position: 'absolute',
-                      right: -(actionHandleSize * 0.35),
-                      top: -(actionHandleSize * 0.35),
+                      right: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
                       width: actionHandleSize,
                       height: actionHandleSize,
                       borderRadius: '50%',
@@ -5479,8 +5750,8 @@ const CanvasCollagePreview = ({
                     onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize')}
                     sx={{
                       position: 'absolute',
-                      right: -(handleSize * 0.35),
-                      bottom: -(handleSize * 0.35),
+                      right: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      bottom: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
                       width: handleSize,
                       height: handleSize,
                       borderRadius: '50%',
@@ -5502,6 +5773,44 @@ const CanvasCollagePreview = ({
             })}
           </Box>
         </>
+      )}
+
+      {textLayerInteraction?.mode === 'move' && textLayerSnapGuide?.panelRect && (textLayerSnapGuide.x !== null || textLayerSnapGuide.y !== null) && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 35,
+          }}
+        >
+          {textLayerSnapGuide.x !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: textLayerSnapGuide.x,
+                top: textLayerSnapGuide.panelRect.y,
+                width: 0,
+                height: textLayerSnapGuide.panelRect.height,
+                borderLeft: '1px solid rgba(33, 150, 243, 0.95)',
+                transform: 'translateX(-0.5px)',
+              }}
+            />
+          )}
+          {textLayerSnapGuide.y !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: textLayerSnapGuide.panelRect.x,
+                top: textLayerSnapGuide.y,
+                width: textLayerSnapGuide.panelRect.width,
+                height: 0,
+                borderTop: '1px solid rgba(33, 150, 243, 0.95)',
+                transform: 'translateY(-0.5px)',
+              }}
+            />
+          )}
+        </Box>
       )}
       
       {/* Control panels positioned over canvas */}
@@ -5584,7 +5893,7 @@ const CanvasCollagePreview = ({
                 calculateOptimalFontSize={calculateOptimalFontSize}
                 textScaleFactor={textScaleFactor}
                 onClose={handleTextClose}
-                rect={rect}
+                rect={textLayerBoundsByPanelId[panelId] || rect}
                 componentWidth={componentWidth}
               />
             )}
@@ -5821,17 +6130,19 @@ const CanvasCollagePreview = ({
        !isReorderMode &&
        borderZones.map((zone) => {
          const zoneId = getBorderZoneId(zone);
-         const isSelectedBorder = selectedBorderZoneId === zoneId;
+         const handleWidth = Number.isFinite(zone.handleWidth)
+           ? zone.handleWidth
+           : (zone.type === 'vertical' ? BORDER_ZONE_HANDLE_THICKNESS_PX : BORDER_ZONE_HANDLE_LENGTH_PX);
+         const handleHeight = Number.isFinite(zone.handleHeight)
+           ? zone.handleHeight
+           : (zone.type === 'vertical' ? BORDER_ZONE_HANDLE_LENGTH_PX : BORDER_ZONE_HANDLE_THICKNESS_PX);
          return (
            <Box
              key={`border-zone-${zoneId}`}
              onMouseDown={(e) => {
                e.stopPropagation();
-               if (!isSelectedBorder) {
-                 setSelectedBorderZoneId(zoneId);
-                 return;
-               }
                e.preventDefault();
+               setSelectedBorderZoneId(zoneId);
                setIsDraggingBorder(true);
                setDraggedBorder(zone);
                const rect = containerRef.current.getBoundingClientRect();
@@ -5842,11 +6153,8 @@ const CanvasCollagePreview = ({
              }}
              onTouchStart={(e) => {
                e.stopPropagation();
-               if (!isSelectedBorder) {
-                 setSelectedBorderZoneId(zoneId);
-                 return;
-               }
                e.preventDefault();
+               setSelectedBorderZoneId(zoneId);
                setIsDraggingBorder(true);
                setDraggedBorder(zone);
                const rect = containerRef.current.getBoundingClientRect();
@@ -5863,25 +6171,28 @@ const CanvasCollagePreview = ({
                width: zone.width,
                height: zone.height,
                cursor: zone.cursor,
-               backgroundColor: isDraggingBorder && draggedBorder === zone
-                 ? 'rgba(33, 150, 243, 0.4)'
-                 : isSelectedBorder
-                   ? 'rgba(33, 150, 243, 0.28)'
-                   : hoveredBorder === zone
-                     ? 'rgba(33, 150, 243, 0.2)'
-                     : 'transparent',
-               transition: 'background-color 0.2s ease',
+               backgroundColor: 'transparent',
                zIndex: 10, // Above canvas and overlays, below text editor
                pointerEvents: 'auto',
-               // Add a subtle visual indicator on hover
-               '&:hover': {
-                 backgroundColor: 'rgba(33, 150, 243, 0.25)',
-               },
-               // Allow normal page scroll until a border is intentionally selected.
-               touchAction: isSelectedBorder ? 'none' : 'pan-y pinch-zoom',
+               touchAction: 'none',
                userSelect: 'none', // Prevent text selection
              }}
-           />
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: handleWidth,
+                  height: handleHeight,
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(255,255,255,0.92)',
+                  pointerEvents: 'none',
+                  opacity: 0.45,
+                }}
+              />
+            </Box>
          );
        })}
 
