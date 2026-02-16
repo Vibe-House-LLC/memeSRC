@@ -3198,34 +3198,35 @@ const CanvasCollagePreview = ({
     const hasActualText = Boolean(parseFormattedText(currentRawText).cleanText.trim());
     const isMoveInteraction = mode === 'move';
     const isAlreadySelected = activeTextLayerId === panelId;
-    if (isMoveInteraction && !isAlreadySelected) {
-      if (event?.pointerType === 'touch') {
-        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-        const started = beginOverlayTouchTapTracking(event, () => {
-          if (!hasActualText) {
-            setActiveTextLayerId(panelId);
-            if (textEditingPanel !== panelId) {
-              handleTextEdit(panelId);
-            }
-            return;
-          }
-          setActiveTextLayerId(panelId);
-          setTextLayerInteraction(null);
-          setSelectedBorderZoneId(null);
-        });
-        if (started) return;
-      }
-      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
-      if (!hasActualText) {
-        setActiveTextLayerId(panelId);
-        if (textEditingPanel !== panelId) {
-          handleTextEdit(panelId);
-        }
-        return;
-      }
+    const selectLayerAndOpenEditor = () => {
       setActiveTextLayerId(panelId);
       setTextLayerInteraction(null);
       setSelectedBorderZoneId(null);
+      if (textEditingPanel !== panelId) {
+        handleTextEdit(panelId);
+      }
+    };
+    const openPlaceholderEditor = () => {
+      setActiveTextLayerId(panelId);
+      if (textEditingPanel !== panelId) {
+        handleTextEdit(panelId);
+      }
+    };
+    if (isMoveInteraction && !isAlreadySelected) {
+      if (event?.pointerType === 'touch') {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        const started = beginOverlayTouchTapTracking(
+          event,
+          hasActualText ? selectLayerAndOpenEditor : openPlaceholderEditor
+        );
+        if (started) return;
+      }
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      if (hasActualText) {
+        selectLayerAndOpenEditor();
+      } else {
+        openPlaceholderEditor();
+      }
       return;
     }
 

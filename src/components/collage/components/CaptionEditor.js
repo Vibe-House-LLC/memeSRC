@@ -943,7 +943,7 @@ const CaptionEditor = ({
         top: rect.y + rect.height + editorVerticalOffset,
         left: sidePadding,
         width: componentWidth - (sidePadding * 2),
-        zIndex: 20,
+        zIndex: 40,
         backgroundColor: 'rgba(0, 0, 0, 0.97)',
         borderRadius: `${borderRadius}px`,
         border: '1px solid rgba(255, 255, 255, 0.3)',
