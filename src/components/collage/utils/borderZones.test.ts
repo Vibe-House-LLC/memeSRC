@@ -78,6 +78,43 @@ const detectVerticalZones = (panelRects: ReturnType<typeof createVerticalAsymmet
   }).filter((zone) => zone.type === 'vertical')
 );
 
+const createHorizontalSplitRects = (splitStart: number) => {
+  const interiorLeft = BORDER_PIXELS;
+  const interiorTop = BORDER_PIXELS;
+  const interiorRight = CANVAS_WIDTH - BORDER_PIXELS;
+  const interiorBottom = CANVAS_HEIGHT - BORDER_PIXELS;
+  const splitEnd = splitStart + BORDER_PIXELS;
+  const width = interiorRight - interiorLeft;
+
+  return [
+    {
+      panelId: 'panel-1',
+      index: 0,
+      x: interiorLeft,
+      y: interiorTop,
+      width,
+      height: splitStart - interiorTop,
+    },
+    {
+      panelId: 'panel-2',
+      index: 1,
+      x: interiorLeft,
+      y: splitEnd,
+      width,
+      height: interiorBottom - splitEnd,
+    },
+  ];
+};
+
+const detectHorizontalZones = (panelRects: ReturnType<typeof createHorizontalSplitRects>) => (
+  detectBorderZonesFromPanelRects({
+    containerWidth: CANVAS_WIDTH,
+    containerHeight: CANVAS_HEIGHT,
+    borderPixels: BORDER_PIXELS,
+    panelRects,
+  }).filter((zone) => zone.type === 'horizontal')
+);
+
 const getSplitStarts = (panelRects: ReturnType<typeof createVerticalAsymmetricRects>) => {
   const topLeft = panelRects.find((panel) => panel.panelId === 'panel-1');
   const bottomLeft = panelRects.find((panel) => panel.panelId === 'panel-4');
@@ -85,6 +122,35 @@ const getSplitStarts = (panelRects: ReturnType<typeof createVerticalAsymmetricRe
     top: Number(topLeft?.x || 0) + Number(topLeft?.width || 0),
     bottom: Number(bottomLeft?.x || 0) + Number(bottomLeft?.width || 0),
   };
+};
+
+const getHorizontalSplitStart = (panelRects: ReturnType<typeof createHorizontalSplitRects>) => {
+  const top = panelRects.find((panel) => panel.panelId === 'panel-1');
+  return Number(top?.y || 0) + Number(top?.height || 0);
+};
+
+const getVerticalCenterDelta = (
+  panelRects: ReturnType<typeof createVerticalAsymmetricRects>,
+  minPanelWidthPx: number,
+) => {
+  const left = panelRects.find((panel) => panel.panelId === 'panel-1');
+  const right = panelRects.find((panel) => panel.panelId === 'panel-2');
+  if (!left || !right) return 0;
+  const minAllowedDelta = minPanelWidthPx - left.width;
+  const maxAllowedDelta = right.width - minPanelWidthPx;
+  return (minAllowedDelta + maxAllowedDelta) / 2;
+};
+
+const getHorizontalCenterDelta = (
+  panelRects: ReturnType<typeof createHorizontalSplitRects>,
+  minPanelHeightPx: number,
+) => {
+  const top = panelRects.find((panel) => panel.panelId === 'panel-1');
+  const bottom = panelRects.find((panel) => panel.panelId === 'panel-2');
+  if (!top || !bottom) return 0;
+  const minAllowedDelta = minPanelHeightPx - top.height;
+  const maxAllowedDelta = bottom.height - minPanelHeightPx;
+  return (minAllowedDelta + maxAllowedDelta) / 2;
 };
 
 describe('borderZones disjoint drag behavior', () => {
@@ -214,5 +280,98 @@ describe('borderZones disjoint drag behavior', () => {
     const finalZones = detectVerticalZones(rects);
     expect(findBorderZoneByEdgeId(finalZones, 'v|panel-1|panel-2')).toBeTruthy();
     expect(findBorderZoneByEdgeId(finalZones, 'v|panel-4|panel-5')).toBeTruthy();
+  });
+
+  it('does not center-snap when snap config is omitted', () => {
+    const initialRects = createVerticalAsymmetricRects(220, 340);
+    const zones = detectVerticalZones(initialRects);
+    const topZone = findBorderZoneByEdgeId(zones, 'v|panel-1|panel-2');
+
+    const dragResult = applyBorderDragDelta({
+      panelRects: initialRects,
+      borderZone: topZone,
+      deltaX: 92,
+      deltaY: 0,
+      minPanelWidthPx: 24,
+      minPanelHeightPx: 24,
+    });
+
+    expect(dragResult.outcome).toBe('changed');
+    expect(dragResult.appliedDeltaX).toBeCloseTo(92, 4);
+  });
+
+  it('lightly snaps vertical borders to the center of their allowed range', () => {
+    const minPanelWidthPx = 24;
+    const initialRects = createVerticalAsymmetricRects(220, 340);
+    const zones = detectVerticalZones(initialRects);
+    const topZone = findBorderZoneByEdgeId(zones, 'v|panel-1|panel-2');
+    const expectedCenterDelta = getVerticalCenterDelta(initialRects, minPanelWidthPx);
+    const initialSplit = getSplitStarts(initialRects).top;
+
+    const dragResult = applyBorderDragDelta({
+      panelRects: initialRects,
+      borderZone: topZone,
+      deltaX: expectedCenterDelta - 3,
+      deltaY: 0,
+      minPanelWidthPx,
+      minPanelHeightPx: 24,
+      centerSnap: {
+        enabled: true,
+        thresholdPx: 4,
+      },
+    });
+
+    expect(dragResult.outcome).toBe('changed');
+    expect(dragResult.appliedDeltaX).toBeCloseTo(expectedCenterDelta, 4);
+    expect(getSplitStarts(dragResult.nextPanelRects).top).toBeCloseTo(initialSplit + expectedCenterDelta, 4);
+  });
+
+  it('lightly snaps horizontal borders to the center of their allowed range', () => {
+    const minPanelHeightPx = 24;
+    const initialRects = createHorizontalSplitRects(300);
+    const zones = detectHorizontalZones(initialRects);
+    const splitZone = findBorderZoneByEdgeId(zones, 'h|panel-1|panel-2');
+    const expectedCenterDelta = getHorizontalCenterDelta(initialRects, minPanelHeightPx);
+    const initialSplit = getHorizontalSplitStart(initialRects);
+
+    const dragResult = applyBorderDragDelta({
+      panelRects: initialRects,
+      borderZone: splitZone,
+      deltaX: 0,
+      deltaY: expectedCenterDelta - 2,
+      minPanelWidthPx: 24,
+      minPanelHeightPx,
+      centerSnap: {
+        enabled: true,
+        thresholdPx: 3,
+      },
+    });
+
+    expect(dragResult.outcome).toBe('changed');
+    expect(dragResult.appliedDeltaY).toBeCloseTo(expectedCenterDelta, 4);
+    expect(getHorizontalSplitStart(dragResult.nextPanelRects)).toBeCloseTo(initialSplit + expectedCenterDelta, 4);
+  });
+
+  it('flags center-snap no-op drags so callers can accumulate through the snap', () => {
+    const centeredRects = createHorizontalSplitRects(475);
+    const zones = detectHorizontalZones(centeredRects);
+    const splitZone = findBorderZoneByEdgeId(zones, 'h|panel-1|panel-2');
+
+    const dragResult = applyBorderDragDelta({
+      panelRects: centeredRects,
+      borderZone: splitZone,
+      deltaX: 0,
+      deltaY: 2,
+      minPanelWidthPx: 24,
+      minPanelHeightPx: 24,
+      centerSnap: {
+        enabled: true,
+        thresholdPx: 3,
+      },
+    });
+
+    expect(dragResult.outcome).toBe('noop');
+    expect(dragResult.changed).toBe(false);
+    expect(dragResult.snappedToCenter).toBe(true);
   });
 });

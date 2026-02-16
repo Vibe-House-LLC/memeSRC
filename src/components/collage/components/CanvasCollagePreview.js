@@ -246,6 +246,9 @@ const BORDER_ZONE_INTERVAL_EPSILON_PX = 0.25;
 const BORDER_ZONE_HIT_LENGTH_RATIO = 0.7;
 const BORDER_ZONE_MIN_HIT_LENGTH_PX = 56;
 const BORDER_ZONE_MAX_HIT_LENGTH_PX = 140;
+const BORDER_CENTER_SNAP_THRESHOLD_RATIO = 0.014;
+const BORDER_CENTER_SNAP_THRESHOLD_MIN_PX = 2;
+const BORDER_CENTER_SNAP_THRESHOLD_MAX_PX = 5;
 const BORDER_ZONE_SHOW_HIT_AREA_DEBUG = false;
 const BORDER_DRAG_ACTION_SUPPRESS_MS = 420;
 const LAYOUT_COORD_QUANTUM_PX = 0.001;
@@ -1736,6 +1739,12 @@ const CanvasCollagePreview = ({
       deltaY,
       minPanelWidthPx,
       minPanelHeightPx,
+      centerSnap: {
+        enabled: true,
+        thresholdRatio: BORDER_CENTER_SNAP_THRESHOLD_RATIO,
+        thresholdMinPx: BORDER_CENTER_SNAP_THRESHOLD_MIN_PX,
+        thresholdMaxPx: BORDER_CENTER_SNAP_THRESHOLD_MAX_PX,
+      },
     });
     if (BORDER_DEBUG_MODE) {
       borderDebugLog('drag-step', {
@@ -1754,7 +1763,7 @@ const CanvasCollagePreview = ({
       });
     }
     if (dragResult.outcome === 'invalid') return false;
-    if (!dragResult.changed) return true;
+    if (!dragResult.changed) return !dragResult.snappedToCenter;
 
     const newLayoutConfig = buildPanelRectLayoutFromRects(
       dragResult.nextPanelRects,

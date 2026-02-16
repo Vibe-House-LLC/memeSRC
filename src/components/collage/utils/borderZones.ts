@@ -57,12 +57,27 @@ const DEFAULT_DETECTION_OPTIONS: BorderZoneDetectionOptions = {
   hitPaddingPx: 8,
 };
 
+const DEFAULT_CENTER_SNAP_OPTIONS: BorderDragCenterSnapOptions = {
+  enabled: false,
+  thresholdRatio: 0.025,
+  thresholdMinPx: 4,
+  thresholdMaxPx: 10,
+};
+
 export interface DetectBorderZonesInput {
   containerWidth: number;
   containerHeight: number;
   borderPixels: number;
   panelRects: PanelRect[];
   options?: Partial<BorderZoneDetectionOptions>;
+}
+
+export interface BorderDragCenterSnapOptions {
+  enabled?: boolean;
+  thresholdPx?: number;
+  thresholdRatio?: number;
+  thresholdMinPx?: number;
+  thresholdMaxPx?: number;
 }
 
 export interface ApplyBorderDragDeltaInput {
@@ -72,6 +87,7 @@ export interface ApplyBorderDragDeltaInput {
   deltaY: number;
   minPanelWidthPx: number;
   minPanelHeightPx: number;
+  centerSnap?: BorderDragCenterSnapOptions;
 }
 
 export interface ApplyBorderDragDeltaResult {
@@ -80,6 +96,7 @@ export interface ApplyBorderDragDeltaResult {
   nextPanelRects: PanelRect[];
   appliedDeltaX: number;
   appliedDeltaY: number;
+  snappedToCenter: boolean;
 }
 
 interface VerticalEdgeNode {
@@ -127,6 +144,41 @@ interface HorizontalEdgeComponent {
 }
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const applyCenterSnapDelta = (
+  proposedDelta: number,
+  minAllowedDelta: number,
+  maxAllowedDelta: number,
+  centerSnap?: BorderDragCenterSnapOptions,
+) => {
+  const config: BorderDragCenterSnapOptions = {
+    ...DEFAULT_CENTER_SNAP_OPTIONS,
+    ...centerSnap,
+  };
+  if (!config.enabled) return { delta: proposedDelta, snappedToCenter: false };
+  if (!Number.isFinite(proposedDelta) || !Number.isFinite(minAllowedDelta) || !Number.isFinite(maxAllowedDelta)) {
+    return { delta: proposedDelta, snappedToCenter: false };
+  }
+  if (minAllowedDelta > maxAllowedDelta) return { delta: proposedDelta, snappedToCenter: false };
+
+  const centerDelta = (minAllowedDelta + maxAllowedDelta) / 2;
+  const rangeSpan = Math.max(0, maxAllowedDelta - minAllowedDelta);
+  const thresholdMinPx = Math.max(0, Number(config.thresholdMinPx) || 0);
+  const thresholdMaxPx = Math.max(thresholdMinPx, Number(config.thresholdMaxPx) || thresholdMinPx);
+  const threshold = Number.isFinite(config.thresholdPx)
+    ? Math.max(0, Number(config.thresholdPx))
+    : clamp(
+      rangeSpan * Math.max(0, Number(config.thresholdRatio) || 0),
+      thresholdMinPx,
+      thresholdMaxPx,
+    );
+
+  if (threshold <= 0) return { delta: proposedDelta, snappedToCenter: false };
+  if (Math.abs(proposedDelta - centerDelta) <= threshold) {
+    return { delta: centerDelta, snappedToCenter: true };
+  }
+  return { delta: proposedDelta, snappedToCenter: false };
+};
 
 const uniquePanelIds = (panelIds: Array<string | undefined | null> = []) => (
   Array.from(new Set(panelIds.filter((panelId): panelId is string => Boolean(panelId)))).sort()
@@ -606,6 +658,7 @@ export const applyBorderDragDelta = ({
   deltaY,
   minPanelWidthPx,
   minPanelHeightPx,
+  centerSnap,
 }: ApplyBorderDragDeltaInput): ApplyBorderDragDeltaResult => {
   if (!Array.isArray(panelRects) || panelRects.length === 0) {
     return {
@@ -614,6 +667,7 @@ export const applyBorderDragDelta = ({
       nextPanelRects: panelRects,
       appliedDeltaX: 0,
       appliedDeltaY: 0,
+      snappedToCenter: false,
     };
   }
   if (!borderZone || (borderZone.type !== 'vertical' && borderZone.type !== 'horizontal')) {
@@ -623,6 +677,7 @@ export const applyBorderDragDelta = ({
       nextPanelRects: panelRects,
       appliedDeltaX: 0,
       appliedDeltaY: 0,
+      snappedToCenter: false,
     };
   }
 
@@ -633,6 +688,7 @@ export const applyBorderDragDelta = ({
 
   let appliedDeltaX = 0;
   let appliedDeltaY = 0;
+  let snappedToCenter = false;
 
   if (borderZone.type === 'vertical') {
     const leftPanelIds = uniquePanelIds(borderZone.leftPanelIds).filter((panelId) => rectsById[panelId]);
@@ -644,6 +700,7 @@ export const applyBorderDragDelta = ({
         nextPanelRects: panelRects,
         appliedDeltaX: 0,
         appliedDeltaY: 0,
+        snappedToCenter: false,
       };
     }
 
@@ -662,10 +719,14 @@ export const applyBorderDragDelta = ({
         nextPanelRects: panelRects,
         appliedDeltaX: 0,
         appliedDeltaY: 0,
+        snappedToCenter: false,
       };
     }
 
-    const appliedDelta = clamp(deltaX, minAllowedDelta, maxAllowedDelta);
+    const snapResult = applyCenterSnapDelta(deltaX, minAllowedDelta, maxAllowedDelta, centerSnap);
+    const snappedDelta = snapResult.delta;
+    snappedToCenter = snapResult.snappedToCenter;
+    const appliedDelta = clamp(snappedDelta, minAllowedDelta, maxAllowedDelta);
     if (Math.abs(appliedDelta) < 0.01) {
       return {
         outcome: 'noop',
@@ -673,6 +734,7 @@ export const applyBorderDragDelta = ({
         nextPanelRects: panelRects,
         appliedDeltaX: 0,
         appliedDeltaY: 0,
+        snappedToCenter,
       };
     }
 
@@ -694,6 +756,7 @@ export const applyBorderDragDelta = ({
         nextPanelRects: panelRects,
         appliedDeltaX: 0,
         appliedDeltaY: 0,
+        snappedToCenter: false,
       };
     }
 
@@ -712,10 +775,14 @@ export const applyBorderDragDelta = ({
         nextPanelRects: panelRects,
         appliedDeltaX: 0,
         appliedDeltaY: 0,
+        snappedToCenter: false,
       };
     }
 
-    const appliedDelta = clamp(deltaY, minAllowedDelta, maxAllowedDelta);
+    const snapResult = applyCenterSnapDelta(deltaY, minAllowedDelta, maxAllowedDelta, centerSnap);
+    const snappedDelta = snapResult.delta;
+    snappedToCenter = snapResult.snappedToCenter;
+    const appliedDelta = clamp(snappedDelta, minAllowedDelta, maxAllowedDelta);
     if (Math.abs(appliedDelta) < 0.01) {
       return {
         outcome: 'noop',
@@ -723,6 +790,7 @@ export const applyBorderDragDelta = ({
         nextPanelRects: panelRects,
         appliedDeltaX: 0,
         appliedDeltaY: 0,
+        snappedToCenter,
       };
     }
 
@@ -751,5 +819,6 @@ export const applyBorderDragDelta = ({
     nextPanelRects,
     appliedDeltaX,
     appliedDeltaY,
+    snappedToCenter,
   };
 };
