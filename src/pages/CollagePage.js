@@ -250,6 +250,7 @@ export default function CollagePage() {
   // Simplified autosave: no throttling/deferral; save only on tool exit
   const lastRenderedSigRef = useRef(null);
   const editingSessionActiveRef = useRef(false);
+  const deferredAutosaveRef = useRef(null);
   const captionOpenPrevRef = useRef(false);
   const exitSaveTimerRef = useRef(null);
   const loadingProjectRef = useRef(false);
@@ -1524,18 +1525,54 @@ export default function CollagePage() {
   }, [activeProjectId, setSnackbar, upsertProject, renderThumbnailFromSnapshot]);
 
   const enqueueSave = useCallback(
-    ({ reason = 'autosave', immediate = false, forceThumbnail = false, showToast = false } = {}) => {
+    ({
+      reason = 'autosave',
+      immediate = false,
+      forceThumbnail = false,
+      showToast = false,
+      deferDuringEditing = true,
+    } = {}) => {
       if (!activeProjectId) return saveChainRef.current;
       const sig = currentSigRef.current;
       const hasChanges = forceThumbnail || sig !== lastSavedSigRef.current;
       if (!hasChanges) {
         return saveChainRef.current;
       }
+      if (deferDuringEditing && editingSessionActiveRef.current) {
+        const previousDeferred = deferredAutosaveRef.current || {};
+        deferredAutosaveRef.current = {
+          reason,
+          forceThumbnail: Boolean(previousDeferred.forceThumbnail || forceThumbnail),
+          showToast: Boolean(previousDeferred.showToast || showToast),
+        };
+        if (DEBUG_MODE) debugLog('[autosave] deferred-until-edit-end', {
+          reason,
+          forceThumbnail,
+          sig,
+        });
+        return saveChainRef.current;
+      }
       if (DEBUG_MODE) debugLog('[autosave] queue', { reason, immediate, sig, forceThumbnail });
       queuedSigRef.current = sig;
       setSaveStatus((prev) => (prev.state === 'saving' ? prev : { state: 'queued', time: prev.time, error: null }));
       const schedule = () => {
-        const run = () => saveProjectNow({ showToast, forceThumbnail });
+        const run = () => {
+          if (deferDuringEditing && editingSessionActiveRef.current) {
+            const previousDeferred = deferredAutosaveRef.current || {};
+            deferredAutosaveRef.current = {
+              reason,
+              forceThumbnail: Boolean(previousDeferred.forceThumbnail || forceThumbnail),
+              showToast: Boolean(previousDeferred.showToast || showToast),
+            };
+            if (DEBUG_MODE) debugLog('[autosave] deferred-at-run-time', {
+              reason,
+              forceThumbnail,
+              sig: currentSigRef.current,
+            });
+            return undefined;
+          }
+          return saveProjectNow({ showToast, forceThumbnail });
+        };
         saveChainRef.current = saveChainRef.current
           .catch(() => undefined)
           .then(run)
@@ -1592,7 +1629,18 @@ export default function CollagePage() {
       if (exitSaveTimerRef.current) clearTimeout(exitSaveTimerRef.current);
       exitSaveTimerRef.current = setTimeout(() => {
         exitSaveTimerRef.current = null;
-        enqueueSave({ reason: 'editing-session-end' });
+        const deferred = deferredAutosaveRef.current;
+        deferredAutosaveRef.current = null;
+        if (deferred) {
+          enqueueSave({
+            reason: deferred.reason || 'editing-session-end',
+            forceThumbnail: Boolean(deferred.forceThumbnail),
+            showToast: Boolean(deferred.showToast),
+            deferDuringEditing: false,
+          });
+          return;
+        }
+        enqueueSave({ reason: 'editing-session-end', deferDuringEditing: false });
       }, 80);
     }
   }, [enqueueSave]);
@@ -1814,7 +1862,13 @@ export default function CollagePage() {
 
   // Manual Save handler (forces immediate thumbnail generation)
   const handleManualSave = useCallback(async () => {
-    const promise = enqueueSave({ reason: 'manual', immediate: true, forceThumbnail: true, showToast: true });
+    const promise = enqueueSave({
+      reason: 'manual',
+      immediate: true,
+      forceThumbnail: true,
+      showToast: true,
+      deferDuringEditing: false,
+    });
     try {
       await promise;
     } catch (_) {
@@ -1825,7 +1879,12 @@ export default function CollagePage() {
   // Save before switching to the project picker so recent changes (e.g., replace image) persist
   const handleBackToProjects = useCallback(async () => {
     try {
-      await enqueueSave({ reason: 'navigate-back', immediate: true, forceThumbnail: true });
+      await enqueueSave({
+        reason: 'navigate-back',
+        immediate: true,
+        forceThumbnail: true,
+        deferDuringEditing: false,
+      });
       await saveChainRef.current;
     } catch (_) { /* best-effort save */ }
     if (hasProjectsAccess) navigate('/projects');

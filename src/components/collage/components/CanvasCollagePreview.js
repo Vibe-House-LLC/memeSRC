@@ -653,18 +653,6 @@ const subtractIntervals = (minValue, maxValue, occludedIntervals) => {
   return visible;
 };
 
-const getLongestInterval = (intervals, fallbackStart, fallbackEnd) => {
-  if (!Array.isArray(intervals) || intervals.length === 0) {
-    return { start: fallbackStart, end: fallbackEnd };
-  }
-
-  return intervals.reduce((longest, interval) => {
-    const intervalLength = interval.end - interval.start;
-    const longestLength = longest.end - longest.start;
-    return intervalLength > longestLength ? interval : longest;
-  }, intervals[0]);
-};
-
 const panelSpansVerticalBoundary = (panel, boundaryStartX, boundaryEndX) => {
   const panelX = Number(panel?.x);
   const panelWidth = Number(panel?.width);
@@ -699,6 +687,432 @@ const panelSpansHorizontalBoundary = (panel, boundaryStartY, boundaryEndY) => {
     panelY < (boundaryStartY - BORDER_ZONE_INTERVAL_EPSILON_PX)
     && panelBottom > (boundaryStartY + BORDER_ZONE_INTERVAL_EPSILON_PX)
   );
+};
+
+const getIntervalOverlap = (startA, endA, startB, endB) => {
+  const start = Math.max(startA, startB);
+  const end = Math.min(endA, endB);
+  return Math.max(0, end - start);
+};
+
+const getUniquePanelIds = (panelIds = []) => Array.from(new Set(panelIds.filter(Boolean)));
+
+const resolveVerticalSegmentAdjacency = (panelRects, boundaryStartX, boundaryEndX, segmentStartY, segmentEndY) => {
+  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.8);
+  const leftPanelIds = [];
+  const rightPanelIds = [];
+
+  panelRects.forEach((panel) => {
+    const panelLeft = Number(panel?.x);
+    const panelWidth = Number(panel?.width);
+    const panelTop = Number(panel?.y);
+    const panelHeight = Number(panel?.height);
+    if (
+      !Number.isFinite(panelLeft)
+      || !Number.isFinite(panelWidth)
+      || !Number.isFinite(panelTop)
+      || !Number.isFinite(panelHeight)
+      || panelWidth <= 0
+      || panelHeight <= 0
+    ) {
+      return;
+    }
+
+    const panelRight = panelLeft + panelWidth;
+    const panelBottom = panelTop + panelHeight;
+    const overlap = getIntervalOverlap(panelTop, panelBottom, segmentStartY, segmentEndY);
+    if (overlap <= BORDER_ZONE_INTERVAL_EPSILON_PX) return;
+
+    if (Math.abs(panelRight - boundaryStartX) <= edgeEpsilon) {
+      leftPanelIds.push(panel.panelId);
+    }
+    if (Math.abs(panelLeft - boundaryEndX) <= edgeEpsilon) {
+      rightPanelIds.push(panel.panelId);
+    }
+  });
+
+  return {
+    leftPanelIds: getUniquePanelIds(leftPanelIds),
+    rightPanelIds: getUniquePanelIds(rightPanelIds),
+  };
+};
+
+const resolveHorizontalSegmentAdjacency = (panelRects, boundaryStartY, boundaryEndY, segmentStartX, segmentEndX) => {
+  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.8);
+  const topPanelIds = [];
+  const bottomPanelIds = [];
+
+  panelRects.forEach((panel) => {
+    const panelLeft = Number(panel?.x);
+    const panelWidth = Number(panel?.width);
+    const panelTop = Number(panel?.y);
+    const panelHeight = Number(panel?.height);
+    if (
+      !Number.isFinite(panelLeft)
+      || !Number.isFinite(panelWidth)
+      || !Number.isFinite(panelTop)
+      || !Number.isFinite(panelHeight)
+      || panelWidth <= 0
+      || panelHeight <= 0
+    ) {
+      return;
+    }
+
+    const panelRight = panelLeft + panelWidth;
+    const panelBottom = panelTop + panelHeight;
+    const overlap = getIntervalOverlap(panelLeft, panelRight, segmentStartX, segmentEndX);
+    if (overlap <= BORDER_ZONE_INTERVAL_EPSILON_PX) return;
+
+    if (Math.abs(panelBottom - boundaryStartY) <= edgeEpsilon) {
+      topPanelIds.push(panel.panelId);
+    }
+    if (Math.abs(panelTop - boundaryEndY) <= edgeEpsilon) {
+      bottomPanelIds.push(panel.panelId);
+    }
+  });
+
+  return {
+    topPanelIds: getUniquePanelIds(topPanelIds),
+    bottomPanelIds: getUniquePanelIds(bottomPanelIds),
+  };
+};
+
+const buildBoundarySegmentZoneId = (type, index, segmentIndex) => (
+  `${type}-${index}-segment-${segmentIndex}`
+);
+
+const uniqueSortedCoordinates = (values, epsilon = 0.5) => (
+  values
+    .filter((value) => Number.isFinite(value))
+    .sort((a, b) => a - b)
+    .reduce((unique, value) => {
+      if (unique.length === 0) {
+        unique.push(value);
+        return unique;
+      }
+      const previous = unique[unique.length - 1];
+      if (Math.abs(previous - value) <= epsilon) {
+        unique[unique.length - 1] = (previous + value) / 2;
+      } else {
+        unique.push(value);
+      }
+      return unique;
+    }, [])
+);
+
+const findCoordinateIndex = (coordinates, value, epsilon = 0.8) => {
+  if (!Array.isArray(coordinates) || coordinates.length === 0 || !Number.isFinite(value)) return -1;
+  let bestIndex = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  coordinates.forEach((coordinate, index) => {
+    const distance = Math.abs(coordinate - value);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  if (bestDistance > epsilon) return -1;
+  return bestIndex;
+};
+
+const formatFrUnit = (value) => {
+  if (!Number.isFinite(value) || value <= 0) return '1';
+  const rounded = Number(value.toFixed(5));
+  const safe = Math.max(0.001, rounded);
+  return String(safe).replace(/(?:\.0+|(\.\d*?)0+)$/, '$1');
+};
+
+const getPanelOrderIndex = (panel, fallbackIndex = 0) => {
+  const explicitIndex = Number(panel?.index);
+  if (Number.isFinite(explicitIndex)) return explicitIndex;
+  const panelId = String(panel?.panelId || '');
+  const idMatch = panelId.match(/^panel-(\d+)$/);
+  if (idMatch) {
+    return Math.max(0, parseInt(idMatch[1], 10) - 1);
+  }
+  return fallbackIndex;
+};
+
+const isBoundaryGapLength = (length, borderPixels) => {
+  const target = Number(borderPixels) || 0;
+  if (target <= BORDER_ZONE_INTERVAL_EPSILON_PX) return false;
+  const tolerance = Math.max(0.9, target * 0.35);
+  return Math.abs(length - target) <= tolerance;
+};
+
+const compressCoordinateByGapIntervals = (coordinate, gapIntervals = []) => {
+  if (!Number.isFinite(coordinate) || !Array.isArray(gapIntervals) || gapIntervals.length === 0) {
+    return coordinate;
+  }
+
+  let shift = 0;
+  gapIntervals.forEach((gap) => {
+    const start = Number(gap?.start);
+    const end = Number(gap?.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+    const gapSize = end - start;
+    if (coordinate >= end - BORDER_ZONE_INTERVAL_EPSILON_PX) {
+      shift += gapSize;
+      return;
+    }
+    if (coordinate > start + BORDER_ZONE_INTERVAL_EPSILON_PX) {
+      shift += coordinate - start;
+    }
+  });
+
+  return coordinate - shift;
+};
+
+const hasVerticalAdjacencyAcrossInterval = (panelRects, intervalStart, intervalEnd) => {
+  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.9);
+  const leftPanels = panelRects.filter((panel) => (
+    Math.abs((panel.x + panel.width) - intervalStart) <= edgeEpsilon
+  ));
+  const rightPanels = panelRects.filter((panel) => (
+    Math.abs(panel.x - intervalEnd) <= edgeEpsilon
+  ));
+  if (leftPanels.length === 0 || rightPanels.length === 0) return false;
+
+  return leftPanels.some((leftPanel) => rightPanels.some((rightPanel) => (
+    getIntervalOverlap(
+      leftPanel.y,
+      leftPanel.y + leftPanel.height,
+      rightPanel.y,
+      rightPanel.y + rightPanel.height,
+    ) > BORDER_ZONE_INTERVAL_EPSILON_PX
+  )));
+};
+
+const hasHorizontalAdjacencyAcrossInterval = (panelRects, intervalStart, intervalEnd) => {
+  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.9);
+  const topPanels = panelRects.filter((panel) => (
+    Math.abs((panel.y + panel.height) - intervalStart) <= edgeEpsilon
+  ));
+  const bottomPanels = panelRects.filter((panel) => (
+    Math.abs(panel.y - intervalEnd) <= edgeEpsilon
+  ));
+  if (topPanels.length === 0 || bottomPanels.length === 0) return false;
+
+  return topPanels.some((topPanel) => bottomPanels.some((bottomPanel) => (
+    getIntervalOverlap(
+      topPanel.x,
+      topPanel.x + topPanel.width,
+      bottomPanel.x,
+      bottomPanel.x + bottomPanel.width,
+    ) > BORDER_ZONE_INTERVAL_EPSILON_PX
+  )));
+};
+
+const detectVerticalGapIntervals = (panelRects, xCoordinates, borderPixels) => {
+  const gaps = [];
+  for (let index = 0; index < xCoordinates.length - 1; index += 1) {
+    const start = xCoordinates[index];
+    const end = xCoordinates[index + 1];
+    const length = end - start;
+    if (!isBoundaryGapLength(length, borderPixels)) continue;
+    if (!hasVerticalAdjacencyAcrossInterval(panelRects, start, end)) continue;
+    gaps.push({ start, end });
+  }
+  return gaps;
+};
+
+const detectHorizontalGapIntervals = (panelRects, yCoordinates, borderPixels) => {
+  const gaps = [];
+  for (let index = 0; index < yCoordinates.length - 1; index += 1) {
+    const start = yCoordinates[index];
+    const end = yCoordinates[index + 1];
+    const length = end - start;
+    if (!isBoundaryGapLength(length, borderPixels)) continue;
+    if (!hasHorizontalAdjacencyAcrossInterval(panelRects, start, end)) continue;
+    gaps.push({ start, end });
+  }
+  return gaps;
+};
+
+const buildCustomLayoutConfigFromRects = (
+  panelRects,
+  containerWidth,
+  containerHeight,
+  borderPixels,
+  panelCount,
+) => {
+  if (!Array.isArray(panelRects) || panelRects.length === 0) return null;
+  if (!Number.isFinite(containerWidth) || containerWidth <= 0) return null;
+  if (!Number.isFinite(containerHeight) || containerHeight <= 0) return null;
+
+  const interiorLeft = Math.max(0, Number(borderPixels) || 0);
+  const interiorTop = Math.max(0, Number(borderPixels) || 0);
+  const interiorRight = Math.max(interiorLeft + 1, containerWidth - interiorLeft);
+  const interiorBottom = Math.max(interiorTop + 1, containerHeight - interiorTop);
+  const usablePanels = panelRects.slice(0, Math.max(1, panelCount || 1));
+
+  const normalizedRects = usablePanels
+    .map((panel, fallbackIndex) => {
+      const rawX = Number(panel?.x);
+      const rawY = Number(panel?.y);
+      const rawWidth = Number(panel?.width);
+      const rawHeight = Number(panel?.height);
+      if (!Number.isFinite(rawX) || !Number.isFinite(rawY) || !Number.isFinite(rawWidth) || !Number.isFinite(rawHeight)) {
+        return null;
+      }
+      const x = clamp(rawX, interiorLeft, interiorRight);
+      const y = clamp(rawY, interiorTop, interiorBottom);
+      const right = clamp(rawX + rawWidth, interiorLeft, interiorRight);
+      const bottom = clamp(rawY + rawHeight, interiorTop, interiorBottom);
+      const width = right - x;
+      const height = bottom - y;
+      if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) {
+        return null;
+      }
+      return {
+        x,
+        y,
+        width,
+        height,
+        panelId: panel?.panelId || `panel-${fallbackIndex + 1}`,
+        orderIndex: getPanelOrderIndex(panel, fallbackIndex),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.orderIndex - b.orderIndex);
+
+  if (normalizedRects.length === 0) return null;
+
+  const rawXCoordinates = uniqueSortedCoordinates(
+    [
+      interiorLeft,
+      interiorRight,
+      ...normalizedRects.flatMap((panel) => [panel.x, panel.x + panel.width]),
+    ],
+    0.8,
+  );
+  const rawYCoordinates = uniqueSortedCoordinates(
+    [
+      interiorTop,
+      interiorBottom,
+      ...normalizedRects.flatMap((panel) => [panel.y, panel.y + panel.height]),
+    ],
+    0.8,
+  );
+
+  if (rawXCoordinates.length < 2 || rawYCoordinates.length < 2) return null;
+
+  const verticalGapIntervals = detectVerticalGapIntervals(normalizedRects, rawXCoordinates, borderPixels);
+  const horizontalGapIntervals = detectHorizontalGapIntervals(normalizedRects, rawYCoordinates, borderPixels);
+
+  const logicalInteriorLeft = compressCoordinateByGapIntervals(interiorLeft, verticalGapIntervals);
+  const logicalInteriorRight = compressCoordinateByGapIntervals(interiorRight, verticalGapIntervals);
+  const logicalInteriorTop = compressCoordinateByGapIntervals(interiorTop, horizontalGapIntervals);
+  const logicalInteriorBottom = compressCoordinateByGapIntervals(interiorBottom, horizontalGapIntervals);
+
+  const logicalRects = normalizedRects
+    .map((panel) => {
+      const left = compressCoordinateByGapIntervals(panel.x, verticalGapIntervals);
+      const right = compressCoordinateByGapIntervals(panel.x + panel.width, verticalGapIntervals);
+      const top = compressCoordinateByGapIntervals(panel.y, horizontalGapIntervals);
+      const bottom = compressCoordinateByGapIntervals(panel.y + panel.height, horizontalGapIntervals);
+      const width = right - left;
+      const height = bottom - top;
+      if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) {
+        return null;
+      }
+      return {
+        ...panel,
+        x: left,
+        y: top,
+        width,
+        height,
+      };
+    })
+    .filter(Boolean);
+
+  if (logicalRects.length !== normalizedRects.length) return null;
+
+  const xCoordinates = uniqueSortedCoordinates(
+    [
+      logicalInteriorLeft,
+      logicalInteriorRight,
+      ...logicalRects.flatMap((panel) => [panel.x, panel.x + panel.width]),
+    ],
+    0.6,
+  );
+  const yCoordinates = uniqueSortedCoordinates(
+    [
+      logicalInteriorTop,
+      logicalInteriorBottom,
+      ...logicalRects.flatMap((panel) => [panel.y, panel.y + panel.height]),
+    ],
+    0.6,
+  );
+
+  if (xCoordinates.length < 2 || yCoordinates.length < 2) return null;
+
+  const columnWidths = [];
+  for (let i = 0; i < xCoordinates.length - 1; i += 1) {
+    const width = xCoordinates[i + 1] - xCoordinates[i];
+    if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
+    columnWidths.push(width);
+  }
+  const rowHeights = [];
+  for (let i = 0; i < yCoordinates.length - 1; i += 1) {
+    const height = yCoordinates[i + 1] - yCoordinates[i];
+    if (height <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
+    rowHeights.push(height);
+  }
+
+  const rowCount = rowHeights.length;
+  const columnCount = columnWidths.length;
+  const areaMatrix = Array.from({ length: rowCount }, () => Array(columnCount).fill('.'));
+  const areaNames = [];
+  let isValidLayout = true;
+
+  logicalRects.forEach((panel, index) => {
+    if (!isValidLayout) return;
+    const areaName = `p${index + 1}`;
+    const startCol = findCoordinateIndex(xCoordinates, panel.x);
+    const endCol = findCoordinateIndex(xCoordinates, panel.x + panel.width);
+    const startRow = findCoordinateIndex(yCoordinates, panel.y);
+    const endRow = findCoordinateIndex(yCoordinates, panel.y + panel.height);
+    if (startCol < 0 || endCol < 0 || startRow < 0 || endRow < 0) {
+      isValidLayout = false;
+      return;
+    }
+    if (endCol <= startCol || endRow <= startRow) {
+      isValidLayout = false;
+      return;
+    }
+
+    for (let row = startRow; row < endRow; row += 1) {
+      for (let col = startCol; col < endCol; col += 1) {
+        const currentArea = areaMatrix[row][col];
+        if (currentArea !== '.' && currentArea !== areaName) {
+          isValidLayout = false;
+          break;
+        }
+        areaMatrix[row][col] = areaName;
+      }
+      if (!isValidLayout) break;
+    }
+    if (!isValidLayout) return;
+    areaNames.push(areaName);
+  });
+
+  if (!isValidLayout || areaNames.length !== logicalRects.length) return null;
+
+  const hasEmptyGridCell = areaMatrix.some((row) => row.some((cell) => cell === '.'));
+  if (hasEmptyGridCell) return null;
+
+  const minColumnWidth = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, Math.min(...columnWidths));
+  const minRowHeight = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, Math.min(...rowHeights));
+  const columnUnits = columnWidths.map((width) => formatFrUnit(width / minColumnWidth));
+  const rowUnits = rowHeights.map((height) => formatFrUnit(height / minRowHeight));
+
+  return {
+    gridTemplateColumns: columnUnits.map((unit) => `${unit}fr`).join(' '),
+    gridTemplateRows: rowUnits.map((unit) => `${unit}fr`).join(' '),
+    gridTemplateAreas: areaMatrix.map((row) => `"${row.join(' ')}"`).join(' '),
+    areas: areaNames,
+  };
 };
 
 /**
@@ -800,36 +1214,64 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
         interiorTop,
         interiorBottom,
       );
-      const visibleIntervals = subtractIntervals(interiorTop, interiorBottom, occludedIntervals);
-      const visibleSegment = getLongestInterval(visibleIntervals, interiorTop, interiorBottom);
-      const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
-      const verticalHitHeight = Math.min(
-        interiorHeight,
-        Math.max(
-          baseVerticalHitHeight,
-          clamp(
-            visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
-            BORDER_ZONE_MIN_HIT_LENGTH_PX,
-            BORDER_ZONE_MAX_HIT_LENGTH_PX,
+      const visibleIntervals = subtractIntervals(interiorTop, interiorBottom, occludedIntervals)
+        .filter((interval) => (interval.end - interval.start) > BORDER_ZONE_INTERVAL_EPSILON_PX);
+
+      visibleIntervals.forEach((visibleSegment, segmentIndex) => {
+        const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
+        const maxHitHeightForSegment = Math.max(
+          BORDER_ZONE_MIN_HIT_SIZE_PX,
+          visibleLength + (hitPadding * 2),
+        );
+        const verticalHitHeight = Math.min(
+          interiorHeight,
+          maxHitHeightForSegment,
+          Math.max(
+            baseVerticalHitHeight,
+            clamp(
+              visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
+              BORDER_ZONE_MIN_HIT_LENGTH_PX,
+              BORDER_ZONE_MAX_HIT_LENGTH_PX,
+            ),
           ),
-        ),
-      );
-      const centerY = (visibleSegment.start + visibleSegment.end) / 2;
-      const centerX = boundaryStartX + (borderPixels / 2);
-      
-      zones.push({
-        type: 'vertical',
-        index: i,
-        x: centerX - verticalHitWidth / 2,
-        y: centerY - (verticalHitHeight / 2),
-        width: verticalHitWidth,
-        height: verticalHitHeight,
-        centerX,
-        centerY,
-        handleWidth: handleShort,
-        handleHeight: handleLong,
-        cursor: 'col-resize',
-        id: `vertical-${i}` // Add ID for debugging
+        );
+        const centerY = (visibleSegment.start + visibleSegment.end) / 2;
+        const centerX = boundaryStartX + (borderPixels / 2);
+        const y = clamp(
+          centerY - (verticalHitHeight / 2),
+          interiorTop,
+          Math.max(interiorTop, interiorBottom - verticalHitHeight),
+        );
+        const { leftPanelIds, rightPanelIds } = resolveVerticalSegmentAdjacency(
+          panelRects,
+          boundaryStartX,
+          boundaryEndX,
+          visibleSegment.start,
+          visibleSegment.end,
+        );
+        if (leftPanelIds.length === 0 || rightPanelIds.length === 0) return;
+
+        zones.push({
+          type: 'vertical',
+          index: i,
+          segmentIndex,
+          x: centerX - verticalHitWidth / 2,
+          y,
+          width: verticalHitWidth,
+          height: verticalHitHeight,
+          centerX,
+          centerY,
+          handleWidth: handleShort,
+          handleHeight: handleLong,
+          cursor: 'col-resize',
+          id: buildBoundarySegmentZoneId('vertical', i, segmentIndex),
+          boundaryStart: boundaryStartX,
+          boundaryEnd: boundaryEndX,
+          segmentStart: visibleSegment.start,
+          segmentEnd: visibleSegment.end,
+          leftPanelIds,
+          rightPanelIds,
+        });
       });
       
       currentX += borderPixels;
@@ -853,36 +1295,64 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
         interiorLeft,
         interiorRight,
       );
-      const visibleIntervals = subtractIntervals(interiorLeft, interiorRight, occludedIntervals);
-      const visibleSegment = getLongestInterval(visibleIntervals, interiorLeft, interiorRight);
-      const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
-      const horizontalHitWidth = Math.min(
-        interiorWidth,
-        Math.max(
-          baseHorizontalHitWidth,
-          clamp(
-            visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
-            BORDER_ZONE_MIN_HIT_LENGTH_PX,
-            BORDER_ZONE_MAX_HIT_LENGTH_PX,
+      const visibleIntervals = subtractIntervals(interiorLeft, interiorRight, occludedIntervals)
+        .filter((interval) => (interval.end - interval.start) > BORDER_ZONE_INTERVAL_EPSILON_PX);
+
+      visibleIntervals.forEach((visibleSegment, segmentIndex) => {
+        const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
+        const maxHitWidthForSegment = Math.max(
+          BORDER_ZONE_MIN_HIT_SIZE_PX,
+          visibleLength + (hitPadding * 2),
+        );
+        const horizontalHitWidth = Math.min(
+          interiorWidth,
+          maxHitWidthForSegment,
+          Math.max(
+            baseHorizontalHitWidth,
+            clamp(
+              visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
+              BORDER_ZONE_MIN_HIT_LENGTH_PX,
+              BORDER_ZONE_MAX_HIT_LENGTH_PX,
+            ),
           ),
-        ),
-      );
-      const centerX = (visibleSegment.start + visibleSegment.end) / 2;
-      const centerY = boundaryStartY + (borderPixels / 2);
-      
-      zones.push({
-        type: 'horizontal',
-        index: i,
-        x: centerX - (horizontalHitWidth / 2),
-        y: centerY - horizontalHitHeight / 2,
-        width: horizontalHitWidth,
-        height: horizontalHitHeight,
-        centerX,
-        centerY,
-        handleWidth: handleLong,
-        handleHeight: handleShort,
-        cursor: 'row-resize',
-        id: `horizontal-${i}` // Add ID for debugging
+        );
+        const centerX = (visibleSegment.start + visibleSegment.end) / 2;
+        const centerY = boundaryStartY + (borderPixels / 2);
+        const x = clamp(
+          centerX - (horizontalHitWidth / 2),
+          interiorLeft,
+          Math.max(interiorLeft, interiorRight - horizontalHitWidth),
+        );
+        const { topPanelIds, bottomPanelIds } = resolveHorizontalSegmentAdjacency(
+          panelRects,
+          boundaryStartY,
+          boundaryEndY,
+          visibleSegment.start,
+          visibleSegment.end,
+        );
+        if (topPanelIds.length === 0 || bottomPanelIds.length === 0) return;
+
+        zones.push({
+          type: 'horizontal',
+          index: i,
+          segmentIndex,
+          x,
+          y: centerY - horizontalHitHeight / 2,
+          width: horizontalHitWidth,
+          height: horizontalHitHeight,
+          centerX,
+          centerY,
+          handleWidth: handleLong,
+          handleHeight: handleShort,
+          cursor: 'row-resize',
+          id: buildBoundarySegmentZoneId('horizontal', i, segmentIndex),
+          boundaryStart: boundaryStartY,
+          boundaryEnd: boundaryEndY,
+          segmentStart: visibleSegment.start,
+          segmentEnd: visibleSegment.end,
+          topPanelIds,
+          bottomPanelIds,
+        });
       });
       
       currentY += borderPixels;
@@ -1758,126 +2228,125 @@ const CanvasCollagePreview = ({
 
   // Border dragging helper functions
   const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
-    if (!layoutConfig) {
+    if (!layoutConfig || !borderZone) return;
+
+    const imageAreaHeight = (
+      Number.isFinite(topCaptionLayout?.imageAreaHeight) && topCaptionLayout.imageAreaHeight > 0
+    )
+      ? topCaptionLayout.imageAreaHeight
+      : (componentWidth / Math.max(0.01, Number(aspectRatioValue) || 1));
+    if (!Number.isFinite(imageAreaHeight) || imageAreaHeight <= 0) return;
+
+    const currentRects = parseGridToRects(
+      layoutConfig,
+      componentWidth,
+      imageAreaHeight,
+      panelCount,
+      borderPixels,
+    );
+    if (!Array.isArray(currentRects) || currentRects.length === 0) return;
+
+    const rectsById = currentRects.reduce((acc, rect) => {
+      acc[rect.panelId] = { ...rect };
+      return acc;
+    }, {});
+    const minPanelWidthPx = Math.max(24, componentWidth * 0.06);
+    const minPanelHeightPx = Math.max(24, imageAreaHeight * 0.06);
+    let changed = false;
+
+    if (borderZone.type === 'vertical') {
+      const leftPanelIds = getUniquePanelIds(borderZone.leftPanelIds).filter((panelId) => rectsById[panelId]);
+      const rightPanelIds = getUniquePanelIds(borderZone.rightPanelIds).filter((panelId) => rectsById[panelId]);
+      if (leftPanelIds.length === 0 || rightPanelIds.length === 0) return;
+
+      let minAllowedDelta = Number.NEGATIVE_INFINITY;
+      let maxAllowedDelta = Number.POSITIVE_INFINITY;
+      leftPanelIds.forEach((panelId) => {
+        minAllowedDelta = Math.max(minAllowedDelta, minPanelWidthPx - rectsById[panelId].width);
+      });
+      rightPanelIds.forEach((panelId) => {
+        maxAllowedDelta = Math.min(maxAllowedDelta, rectsById[panelId].width - minPanelWidthPx);
+      });
+      if (minAllowedDelta > maxAllowedDelta) return;
+
+      const appliedDelta = clamp(deltaX, minAllowedDelta, maxAllowedDelta);
+      if (Math.abs(appliedDelta) < 0.01) return;
+
+      leftPanelIds.forEach((panelId) => {
+        rectsById[panelId].width += appliedDelta;
+      });
+      rightPanelIds.forEach((panelId) => {
+        rectsById[panelId].x += appliedDelta;
+        rectsById[panelId].width -= appliedDelta;
+      });
+      changed = true;
+    } else if (borderZone.type === 'horizontal') {
+      const topPanelIds = getUniquePanelIds(borderZone.topPanelIds).filter((panelId) => rectsById[panelId]);
+      const bottomPanelIds = getUniquePanelIds(borderZone.bottomPanelIds).filter((panelId) => rectsById[panelId]);
+      if (topPanelIds.length === 0 || bottomPanelIds.length === 0) return;
+
+      let minAllowedDelta = Number.NEGATIVE_INFINITY;
+      let maxAllowedDelta = Number.POSITIVE_INFINITY;
+      topPanelIds.forEach((panelId) => {
+        minAllowedDelta = Math.max(minAllowedDelta, minPanelHeightPx - rectsById[panelId].height);
+      });
+      bottomPanelIds.forEach((panelId) => {
+        maxAllowedDelta = Math.min(maxAllowedDelta, rectsById[panelId].height - minPanelHeightPx);
+      });
+      if (minAllowedDelta > maxAllowedDelta) return;
+
+      const appliedDelta = clamp(deltaY, minAllowedDelta, maxAllowedDelta);
+      if (Math.abs(appliedDelta) < 0.01) return;
+
+      topPanelIds.forEach((panelId) => {
+        rectsById[panelId].height += appliedDelta;
+      });
+      bottomPanelIds.forEach((panelId) => {
+        rectsById[panelId].y += appliedDelta;
+        rectsById[panelId].height -= appliedDelta;
+      });
+      changed = true;
+    }
+
+    if (!changed) return;
+
+    const nextRects = currentRects.map((panel) => {
+      const updated = rectsById[panel.panelId];
+      if (!updated) return panel;
+      return {
+        ...panel,
+        ...updated,
+      };
+    });
+
+    const newLayoutConfig = buildCustomLayoutConfigFromRects(
+      nextRects,
+      componentWidth,
+      imageAreaHeight,
+      borderPixels,
+      panelCount,
+    );
+    if (!newLayoutConfig) return;
+
+    if (
+      customLayoutConfig
+      && customLayoutConfig.gridTemplateColumns === newLayoutConfig.gridTemplateColumns
+      && customLayoutConfig.gridTemplateRows === newLayoutConfig.gridTemplateRows
+      && customLayoutConfig.gridTemplateAreas === newLayoutConfig.gridTemplateAreas
+    ) {
       return;
     }
-    
-    // Parse current grid configuration
-    let columnSizes = [1];
-    let rowSizes = [1];
-    
-    if (layoutConfig.gridTemplateColumns) {
-      if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
-        const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
-        if (repeatMatch) {
-          const count = parseInt(repeatMatch[1], 10);
-          columnSizes = Array(count).fill(1);
-        }
-      } else {
-        const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
-        if (frMatches) {
-          columnSizes = frMatches.map(match => {
-            const value = match.replace('fr', '');
-            return value === '' ? 1 : parseFloat(value);
-          });
-        }
-      }
-    }
-    
-    if (layoutConfig.gridTemplateRows) {
-      if (layoutConfig.gridTemplateRows.includes('repeat(')) {
-        const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
-        if (repeatMatch) {
-          const count = parseInt(repeatMatch[1], 10);
-          rowSizes = Array(count).fill(1);
-        }
-      } else {
-        const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
-        if (frMatches) {
-          rowSizes = frMatches.map(match => {
-            const value = match.replace('fr', '');
-            return value === '' ? 1 : parseFloat(value);
-          });
-        }
-      }
-    }
-    
-    // Calculate available space for adjustment
-    const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
-    const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
-    const availableWidth = componentWidth - (borderPixels * 2) - horizontalGaps;
-    const availableHeight = componentHeight - (borderPixels * 2) - verticalGaps;
-    
-    const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
-    const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
-    
-    const columnFrUnit = availableWidth / totalColumnFr;
-    const rowFrUnit = availableHeight / totalRowFr;
-    
-    const newColumnSizes = [...columnSizes];
-    const newRowSizes = [...rowSizes];
-    let changed = false;
-    
-    if (borderZone.type === 'vertical') {
-      // Adjust column sizes
-      const leftIndex = borderZone.index;
-      const rightIndex = borderZone.index + 1;
-      
-      if (leftIndex < newColumnSizes.length && rightIndex < newColumnSizes.length) {
-        // Convert pixel delta to fractional unit delta
-        const frDelta = deltaX / columnFrUnit;
-        
-        // More generous minimum size constraint (5% of average size)
-        const minSize = totalColumnFr / columnSizes.length * 0.05;
-        
-        // Calculate new sizes
-        const newLeftSize = Math.max(minSize, newColumnSizes[leftIndex] + frDelta);
-        const newRightSize = Math.max(minSize, newColumnSizes[rightIndex] - frDelta);
-        
-        // Only apply if both sizes are above minimum
-        if (newLeftSize >= minSize && newRightSize >= minSize) {
-          newColumnSizes[leftIndex] = newLeftSize;
-          newColumnSizes[rightIndex] = newRightSize;
-          changed = true;
-        }
-      }
-    } else if (borderZone.type === 'horizontal') {
-      // Adjust row sizes
-      const topIndex = borderZone.index;
-      const bottomIndex = borderZone.index + 1;
-      
-      if (topIndex < newRowSizes.length && bottomIndex < newRowSizes.length) {
-        // Convert pixel delta to fractional unit delta
-        const frDelta = deltaY / rowFrUnit;
-        
-        // More generous minimum size constraint (5% of average size)
-        const minSize = totalRowFr / rowSizes.length * 0.05;
-        
-        // Calculate new sizes
-        const newTopSize = Math.max(minSize, newRowSizes[topIndex] + frDelta);
-        const newBottomSize = Math.max(minSize, newRowSizes[bottomIndex] - frDelta);
-        
-        // Only apply if both sizes are above minimum
-        if (newTopSize >= minSize && newBottomSize >= minSize) {
-          newRowSizes[topIndex] = newTopSize;
-          newRowSizes[bottomIndex] = newBottomSize;
-          changed = true;
-        }
-      }
-    }
-    
-    // Only update if something actually changed
-    if (changed) {
-      // Create new layout config with updated sizes
-      const newLayoutConfig = {
-        ...layoutConfig,
-        gridTemplateColumns: newColumnSizes.map(size => `${size}fr`).join(' '),
-        gridTemplateRows: newRowSizes.map(size => `${size}fr`).join(' ')
-      };
-      
-      setCustomLayoutConfig(newLayoutConfig);
-    }
-  }, [layoutConfig, borderPixels, componentWidth, componentHeight]);
+
+    setCustomLayoutConfig(newLayoutConfig);
+  }, [
+    layoutConfig,
+    borderPixels,
+    componentWidth,
+    panelCount,
+    topCaptionLayout?.imageAreaHeight,
+    aspectRatioValue,
+    customLayoutConfig,
+  ]);
 
   const findBorderZone = useCallback((x, y) => {
     const found = borderZones.find(zone => 
