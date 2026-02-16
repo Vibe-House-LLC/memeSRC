@@ -123,7 +123,7 @@ const TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT = 90;
 const TEXT_LAYER_MIN_BOX_WIDTH_PERCENT = 20;
 const TEXT_LAYER_MAX_BOX_WIDTH_PERCENT = 100;
 const TEXT_LAYER_MIN_BOX_WIDTH_PX = 36;
-const TEXT_LAYER_CONTROL_PADDING_PX = 16;
+const TEXT_LAYER_CONTROL_PADDING_PX = 10;
 const TEXT_LAYER_HANDLE_OVERHANG_RATIO = 0.55;
 const TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO = 0.02;
 const TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX = 4;
@@ -131,9 +131,14 @@ const TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX = 10;
 const ROTATION_ZERO_SNAP_THRESHOLD_DEG = 2;
 const TOUCH_TAP_MAX_MOVEMENT_PX = 10;
 const TOUCH_TAP_MAX_DURATION_MS = 500;
-const BORDER_ZONE_MIN_HIT_SIZE_PX = 16;
+const BORDER_ZONE_MIN_HIT_SIZE_PX = 22;
 const BORDER_ZONE_HANDLE_LENGTH_PX = 30;
 const BORDER_ZONE_HANDLE_THICKNESS_PX = 10;
+const BORDER_ZONE_INTERVAL_EPSILON_PX = 0.25;
+const BORDER_ZONE_HIT_LENGTH_RATIO = 0.7;
+const BORDER_ZONE_MIN_HIT_LENGTH_PX = 56;
+const BORDER_ZONE_MAX_HIT_LENGTH_PX = 140;
+const BORDER_ZONE_SHOW_HIT_AREA_DEBUG = false;
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -490,10 +495,113 @@ const parseGridTemplateAreas = (gridTemplateAreas) => {
   return areas;
 };
 
+const mergeIntervals = (intervals, minValue, maxValue) => {
+  if (!Array.isArray(intervals) || intervals.length === 0) return [];
+
+  const clipped = intervals
+    .map((interval) => {
+      const start = Number(interval?.start);
+      const end = Number(interval?.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+      const clippedStart = Math.max(minValue, start);
+      const clippedEnd = Math.min(maxValue, end);
+      if (clippedEnd <= clippedStart) return null;
+      return { start: clippedStart, end: clippedEnd };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+
+  if (clipped.length === 0) return [];
+
+  return clipped.reduce((merged, interval) => {
+    if (merged.length === 0) {
+      return [interval];
+    }
+    const previous = merged[merged.length - 1];
+    if (interval.start <= previous.end + BORDER_ZONE_INTERVAL_EPSILON_PX) {
+      previous.end = Math.max(previous.end, interval.end);
+      return merged;
+    }
+    merged.push(interval);
+    return merged;
+  }, []);
+};
+
+const subtractIntervals = (minValue, maxValue, occludedIntervals) => {
+  if (maxValue <= minValue) return [];
+  if (!Array.isArray(occludedIntervals) || occludedIntervals.length === 0) {
+    return [{ start: minValue, end: maxValue }];
+  }
+
+  const visible = [];
+  let cursor = minValue;
+
+  occludedIntervals.forEach((interval) => {
+    if (interval.start > cursor + BORDER_ZONE_INTERVAL_EPSILON_PX) {
+      visible.push({ start: cursor, end: interval.start });
+    }
+    cursor = Math.max(cursor, interval.end);
+  });
+
+  if (cursor < maxValue - BORDER_ZONE_INTERVAL_EPSILON_PX) {
+    visible.push({ start: cursor, end: maxValue });
+  }
+
+  return visible;
+};
+
+const getLongestInterval = (intervals, fallbackStart, fallbackEnd) => {
+  if (!Array.isArray(intervals) || intervals.length === 0) {
+    return { start: fallbackStart, end: fallbackEnd };
+  }
+
+  return intervals.reduce((longest, interval) => {
+    const intervalLength = interval.end - interval.start;
+    const longestLength = longest.end - longest.start;
+    return intervalLength > longestLength ? interval : longest;
+  }, intervals[0]);
+};
+
+const panelSpansVerticalBoundary = (panel, boundaryStartX, boundaryEndX) => {
+  const panelX = Number(panel?.x);
+  const panelWidth = Number(panel?.width);
+  if (!Number.isFinite(panelX) || !Number.isFinite(panelWidth) || panelWidth <= 0) return false;
+  const panelRight = panelX + panelWidth;
+  const stripWidth = boundaryEndX - boundaryStartX;
+
+  if (stripWidth > BORDER_ZONE_INTERVAL_EPSILON_PX) {
+    const overlapWidth = Math.min(panelRight, boundaryEndX) - Math.max(panelX, boundaryStartX);
+    return overlapWidth > BORDER_ZONE_INTERVAL_EPSILON_PX;
+  }
+
+  return (
+    panelX < (boundaryStartX - BORDER_ZONE_INTERVAL_EPSILON_PX)
+    && panelRight > (boundaryStartX + BORDER_ZONE_INTERVAL_EPSILON_PX)
+  );
+};
+
+const panelSpansHorizontalBoundary = (panel, boundaryStartY, boundaryEndY) => {
+  const panelY = Number(panel?.y);
+  const panelHeight = Number(panel?.height);
+  if (!Number.isFinite(panelY) || !Number.isFinite(panelHeight) || panelHeight <= 0) return false;
+  const panelBottom = panelY + panelHeight;
+  const stripHeight = boundaryEndY - boundaryStartY;
+
+  if (stripHeight > BORDER_ZONE_INTERVAL_EPSILON_PX) {
+    const overlapHeight = Math.min(panelBottom, boundaryEndY) - Math.max(panelY, boundaryStartY);
+    return overlapHeight > BORDER_ZONE_INTERVAL_EPSILON_PX;
+  }
+
+  return (
+    panelY < (boundaryStartY - BORDER_ZONE_INTERVAL_EPSILON_PX)
+    && panelBottom > (boundaryStartY + BORDER_ZONE_INTERVAL_EPSILON_PX)
+  );
+};
+
 /**
  * Helper function to detect draggable border zones
  */
-const detectBorderZones = (layoutConfig, containerWidth, containerHeight, borderPixels) => {
+const detectBorderZones = (layoutConfig, containerWidth, containerHeight, borderPixels, panelRects = []) => {
   if (!layoutConfig) return [];
   
   const zones = [];
@@ -504,11 +612,15 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
   const interiorHeight = Math.max(1, containerHeight - (interiorInset * 2));
   const handleLong = BORDER_ZONE_HANDLE_LENGTH_PX;
   const handleShort = BORDER_ZONE_HANDLE_THICKNESS_PX;
-  const hitPadding = 6;
+  const hitPadding = 8;
   const verticalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleShort + (hitPadding * 2));
-  const verticalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
-  const horizontalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
+  const baseVerticalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
+  const baseHorizontalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
   const horizontalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleShort + (hitPadding * 2));
+  const interiorTop = interiorY;
+  const interiorBottom = interiorY + interiorHeight;
+  const interiorLeft = interiorX;
+  const interiorRight = interiorX + interiorWidth;
   
   // Parse grid columns and rows to get track sizes
   let columnSizes = [1];
@@ -573,16 +685,44 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
     let currentX = borderPixels;
     for (let i = 0; i < columnSizes.length - 1; i += 1) {
       currentX += columnSizes[i] * columnFrUnit;
+      const boundaryStartX = currentX;
+      const boundaryEndX = currentX + borderPixels;
+      const occludedIntervals = mergeIntervals(
+        panelRects
+          .filter((panel) => panelSpansVerticalBoundary(panel, boundaryStartX, boundaryEndX))
+          .map((panel) => ({
+            start: panel.y,
+            end: panel.y + panel.height,
+          })),
+        interiorTop,
+        interiorBottom,
+      );
+      const visibleIntervals = subtractIntervals(interiorTop, interiorBottom, occludedIntervals);
+      const visibleSegment = getLongestInterval(visibleIntervals, interiorTop, interiorBottom);
+      const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
+      const verticalHitHeight = Math.min(
+        interiorHeight,
+        Math.max(
+          baseVerticalHitHeight,
+          clamp(
+            visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
+            BORDER_ZONE_MIN_HIT_LENGTH_PX,
+            BORDER_ZONE_MAX_HIT_LENGTH_PX,
+          ),
+        ),
+      );
+      const centerY = (visibleSegment.start + visibleSegment.end) / 2;
+      const centerX = boundaryStartX + (borderPixels / 2);
       
       zones.push({
         type: 'vertical',
         index: i,
-        x: currentX - verticalHitWidth / 2,
-        y: interiorY + (interiorHeight / 2) - (verticalHitHeight / 2),
+        x: centerX - verticalHitWidth / 2,
+        y: centerY - (verticalHitHeight / 2),
         width: verticalHitWidth,
         height: verticalHitHeight,
-        centerX: currentX,
-        centerY: interiorY + (interiorHeight / 2),
+        centerX,
+        centerY,
         handleWidth: handleShort,
         handleHeight: handleLong,
         cursor: 'col-resize',
@@ -598,16 +738,44 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
     let currentY = borderPixels;
     for (let i = 0; i < rowSizes.length - 1; i += 1) {
       currentY += rowSizes[i] * rowFrUnit;
+      const boundaryStartY = currentY;
+      const boundaryEndY = currentY + borderPixels;
+      const occludedIntervals = mergeIntervals(
+        panelRects
+          .filter((panel) => panelSpansHorizontalBoundary(panel, boundaryStartY, boundaryEndY))
+          .map((panel) => ({
+            start: panel.x,
+            end: panel.x + panel.width,
+          })),
+        interiorLeft,
+        interiorRight,
+      );
+      const visibleIntervals = subtractIntervals(interiorLeft, interiorRight, occludedIntervals);
+      const visibleSegment = getLongestInterval(visibleIntervals, interiorLeft, interiorRight);
+      const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
+      const horizontalHitWidth = Math.min(
+        interiorWidth,
+        Math.max(
+          baseHorizontalHitWidth,
+          clamp(
+            visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
+            BORDER_ZONE_MIN_HIT_LENGTH_PX,
+            BORDER_ZONE_MAX_HIT_LENGTH_PX,
+          ),
+        ),
+      );
+      const centerX = (visibleSegment.start + visibleSegment.end) / 2;
+      const centerY = boundaryStartY + (borderPixels / 2);
       
       zones.push({
         type: 'horizontal',
         index: i,
-        x: interiorX + (interiorWidth / 2) - (horizontalHitWidth / 2),
-        y: currentY - horizontalHitHeight / 2,
+        x: centerX - (horizontalHitWidth / 2),
+        y: centerY - horizontalHitHeight / 2,
         width: horizontalHitWidth,
         height: horizontalHitHeight,
-        centerX: interiorX + (interiorWidth / 2),
-        centerY: currentY,
+        centerX,
+        centerY,
         handleWidth: handleLong,
         handleHeight: handleShort,
         cursor: 'row-resize',
@@ -1014,8 +1182,10 @@ const CanvasCollagePreview = ({
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
   const [isDraggingBorder, setIsDraggingBorder] = useState(false);
-  const [draggedBorder, setDraggedBorder] = useState(null);
-  const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
+  const [, setBorderDragStart] = useState({ x: 0, y: 0 });
+  const isDraggingBorderRef = useRef(false);
+  const draggedBorderRef = useRef(null);
+  const borderDragStartRef = useRef({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [selectedBorderZoneId, setSelectedBorderZoneId] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
@@ -1618,6 +1788,55 @@ const CanvasCollagePreview = ({
     return zone.id || `${zone.type}-${zone.index}`;
   }, []);
 
+  const startBorderDragFromClient = useCallback((zone, zoneId, clientX, clientY) => {
+    if (!zone || !containerRef.current) return false;
+    const rect = containerRef.current.getBoundingClientRect();
+    const startPoint = {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+    const resolvedZoneId = zoneId || getBorderZoneId(zone);
+    isDraggingBorderRef.current = true;
+    draggedBorderRef.current = zone;
+    borderDragStartRef.current = startPoint;
+    setSelectedBorderZoneId(resolvedZoneId);
+    setIsDraggingBorder(true);
+    setBorderDragStart(startPoint);
+    return true;
+  }, [getBorderZoneId]);
+
+  const updateBorderDragFromClient = useCallback((clientX, clientY) => {
+    if (!containerRef.current || !isDraggingBorderRef.current || !draggedBorderRef.current) {
+      return false;
+    }
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const previousPoint = borderDragStartRef.current || { x, y };
+    const deltaX = x - previousPoint.x;
+    const deltaY = y - previousPoint.y;
+
+    if (Math.abs(deltaX) < 0.01 && Math.abs(deltaY) < 0.01) {
+      return true;
+    }
+
+    updateLayoutWithBorderDrag(draggedBorderRef.current, deltaX, deltaY);
+    const nextPoint = { x, y };
+    borderDragStartRef.current = nextPoint;
+    setBorderDragStart(nextPoint);
+    return true;
+  }, [updateLayoutWithBorderDrag]);
+
+  const stopBorderDrag = useCallback((clearSelection = true) => {
+    const hadBorderDrag = isDraggingBorderRef.current || Boolean(draggedBorderRef.current);
+    isDraggingBorderRef.current = false;
+    draggedBorderRef.current = null;
+    setIsDraggingBorder(false);
+    if (clearSelection && hadBorderDrag) {
+      setSelectedBorderZoneId(null);
+    }
+  }, []);
+
   // Load only images currently mapped to panels (avoid decoding/holding unused images)
   useEffect(() => {
     const loadImage = (src, key) => new Promise((resolve) => {
@@ -2144,7 +2363,7 @@ const CanvasCollagePreview = ({
           ));
           
           // Update border zones for dragging
-          const zones = detectBorderZones(layoutConfig, width, imageAreaHeight, borderPixels).map((zone) => ({
+          const zones = detectBorderZones(layoutConfig, width, imageAreaHeight, borderPixels, baseRects).map((zone) => ({
             ...zone,
             y: zone.y + imageOffsetY,
             centerY: Number.isFinite(zone.centerY) ? zone.centerY + imageOffsetY : zone.centerY,
@@ -2717,9 +2936,11 @@ const CanvasCollagePreview = ({
     const textAnchorY = getTextAnchorYFromPosition(panel, textPositionY);
     const textBlockY = textAnchorY - actualTextHeight;
 
-    const controlWidth = Math.max(22, textBoxWidth + (controlPadding * 2));
+    const visualTextWidth = Math.max(1, actualTextWidth);
+    const visualTextLeft = getTextBlockLeft(textAlign, textAnchorX, visualTextWidth);
+    const controlWidth = Math.max(22, visualTextWidth + (controlPadding * 2));
     const controlHeight = Math.max(22, actualTextHeight + (controlPadding * 2));
-    const controlX = textBlockLeft - controlPadding;
+    const controlX = visualTextLeft - controlPadding;
     const controlY = textBlockY - controlPadding;
 
     let activationAreaWidth = controlWidth;
@@ -3531,47 +3752,29 @@ const CanvasCollagePreview = ({
   // Global mouse/touch handlers for border dragging
   useEffect(() => {
     const handleGlobalMouseMove = (e) => {
-      if (isDraggingBorder && draggedBorder && containerRef.current) {
+      if (isDraggingBorderRef.current) {
         e.preventDefault();
-        const rect = containerRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const deltaX = x - borderDragStart.x;
-        const deltaY = y - borderDragStart.y;
-        
-        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-        setBorderDragStart({ x, y });
+        updateBorderDragFromClient(e.clientX, e.clientY);
       }
     };
 
     const handleGlobalTouchMove = (e) => {
-      if (isDraggingBorder && draggedBorder && containerRef.current && e.touches.length === 1) {
+      if (isDraggingBorderRef.current && e.touches.length === 1) {
         e.preventDefault();
-        const rect = containerRef.current.getBoundingClientRect();
         const touch = e.touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        const deltaX = x - borderDragStart.x;
-        const deltaY = y - borderDragStart.y;
-        
-        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-        setBorderDragStart({ x, y });
+        updateBorderDragFromClient(touch.clientX, touch.clientY);
       }
     };
 
     const handleGlobalMouseUp = () => {
-      if (isDraggingBorder) {
-        setIsDraggingBorder(false);
-        setDraggedBorder(null);
-        setSelectedBorderZoneId(null);
+      if (isDraggingBorderRef.current) {
+        stopBorderDrag(true);
       }
     };
 
     const handleGlobalTouchEnd = () => {
-      if (isDraggingBorder) {
-        setIsDraggingBorder(false);
-        setDraggedBorder(null);
-        setSelectedBorderZoneId(null);
+      if (isDraggingBorderRef.current) {
+        stopBorderDrag(true);
       }
     };
 
@@ -3580,6 +3783,7 @@ const CanvasCollagePreview = ({
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
       document.addEventListener('touchend', handleGlobalTouchEnd);
+      document.addEventListener('touchcancel', handleGlobalTouchEnd);
     }
 
     return () => {
@@ -3587,8 +3791,9 @@ const CanvasCollagePreview = ({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('touchmove', handleGlobalTouchMove);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
+      document.removeEventListener('touchcancel', handleGlobalTouchEnd);
     };
-  }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+  }, [isDraggingBorder, updateBorderDragFromClient, stopBorderDrag]);
 
   // Cleanup hover timeout on unmount
   useEffect(() => () => {
@@ -3620,12 +3825,8 @@ const CanvasCollagePreview = ({
     const y = e.clientY - rect.top;
 
     // Handle border dragging
-    if (isDraggingBorder && draggedBorder) {
-      const deltaX = x - borderDragStart.x;
-      const deltaY = y - borderDragStart.y;
-      
-      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-      setBorderDragStart({ x, y });
+    if (isDraggingBorderRef.current && draggedBorderRef.current) {
+      updateBorderDragFromClient(e.clientX, e.clientY);
       return;
     }
 
@@ -3829,7 +4030,7 @@ const CanvasCollagePreview = ({
         setDragStart({ x, y });
       }
     }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag, hoveredBorder, textEditingPanel, isPointInTopCaptionArea]);
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, updateBorderDragFromClient, hoveredBorder, textEditingPanel, isPointInTopCaptionArea]);
 
   // Function to dismiss transform mode for all panels
   const dismissTransformMode = useCallback(() => {
@@ -3982,11 +4183,8 @@ const CanvasCollagePreview = ({
     
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
       const borderZoneId = getBorderZoneId(borderZone);
-      setSelectedBorderZoneId(borderZoneId);
       e.preventDefault();
-      setIsDraggingBorder(true);
-      setDraggedBorder(borderZone);
-      setBorderDragStart({ x, y });
+      startBorderDragFromClient(borderZone, borderZoneId, e.clientX, e.clientY);
       return;
     }
     if (selectedBorderZoneId !== null) {
@@ -4082,7 +4280,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, handleActionMenuOpen, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId, startBorderDragFromClient]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -4090,14 +4288,12 @@ const CanvasCollagePreview = ({
       longPressTimerRef.current = null;
     }
     longPressActiveRef.current = false;
-    const wasDraggingBorder = isDraggingBorder;
+    const wasDraggingBorder = isDraggingBorderRef.current || isDraggingBorder;
     setIsDragging(false);
-    setIsDraggingBorder(false);
-    setDraggedBorder(null);
     if (wasDraggingBorder) {
-      setSelectedBorderZoneId(null);
+      stopBorderDrag(true);
     }
-  }, [isDraggingBorder]);
+  }, [isDraggingBorder, stopBorderDrag]);
 
   const handleMouseLeave = useCallback(() => {
     // Clear any pending hover timeout
@@ -4345,12 +4541,9 @@ const CanvasCollagePreview = ({
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
         const borderZoneId = getBorderZoneId(borderZone);
         // Start border dragging directly from the handle.
-        setSelectedBorderZoneId(borderZoneId);
         e.preventDefault();
         e.stopPropagation();
-        setIsDraggingBorder(true);
-        setDraggedBorder(borderZone);
-        setBorderDragStart({ x, y });
+        startBorderDragFromClient(borderZone, borderZoneId, touch.clientX, touch.clientY);
         return;
       }
       if (selectedBorderZoneId !== null) {
@@ -4518,7 +4711,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId, startBorderDragFromClient]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -4565,19 +4758,12 @@ const CanvasCollagePreview = ({
     }
 
     // Handle border dragging
-    if (isDraggingBorder && draggedBorder && touches.length === 1) {
+    if (isDraggingBorderRef.current && draggedBorderRef.current && touches.length === 1) {
       e.preventDefault();
       e.stopPropagation();
       
       const touch = touches[0];
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      
-      const deltaX = x - borderDragStart.x;
-      const deltaY = y - borderDragStart.y;
-      
-      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-      setBorderDragStart({ x, y });
+      updateBorderDragFromClient(touch.clientX, touch.clientY);
       return;
     }
     
@@ -4750,7 +4936,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, updateBorderDragFromClient]);
 
   const handleTouchEnd = useCallback((e) => {
     // Clear any pending long-press timer
@@ -4758,15 +4944,13 @@ const CanvasCollagePreview = ({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-    const wasDraggingBorder = isDraggingBorder;
+    const wasDraggingBorder = isDraggingBorderRef.current || isDraggingBorder;
     setIsDragging(false);
-    setIsDraggingBorder(false);
-    setDraggedBorder(null);
+    if (wasDraggingBorder) {
+      stopBorderDrag(true);
+    }
     setTouchStartDistance(null);
     setTouchStartScale(1);
-    if (wasDraggingBorder) {
-      setSelectedBorderZoneId(null);
-    }
 
     // If a long-press fired, suppress tap actions
     if (longPressActiveRef.current) {
@@ -4839,7 +5023,7 @@ const CanvasCollagePreview = ({
     
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen, isDraggingBorder]);
+  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen, isDraggingBorder, stopBorderDrag]);
 
   // Cancel reorder mode
   const cancelReorderMode = useCallback(() => {
@@ -6142,6 +6326,8 @@ const CanvasCollagePreview = ({
        !isReorderMode &&
        borderZones.map((zone) => {
          const zoneId = getBorderZoneId(zone);
+         const isSelectedZone = selectedBorderZoneId === zoneId;
+         const isHoveredZone = getBorderZoneId(hoveredBorder) === zoneId;
          const handleWidth = Number.isFinite(zone.handleWidth)
            ? zone.handleWidth
            : (zone.type === 'vertical' ? BORDER_ZONE_HANDLE_THICKNESS_PX : BORDER_ZONE_HANDLE_LENGTH_PX);
@@ -6154,27 +6340,31 @@ const CanvasCollagePreview = ({
              onMouseDown={(e) => {
                e.stopPropagation();
                e.preventDefault();
-               setSelectedBorderZoneId(zoneId);
-               setIsDraggingBorder(true);
-               setDraggedBorder(zone);
-               const rect = containerRef.current.getBoundingClientRect();
-               setBorderDragStart({
-                 x: e.clientX - rect.left,
-                 y: e.clientY - rect.top
-               });
+               startBorderDragFromClient(zone, zoneId, e.clientX, e.clientY);
              }}
              onTouchStart={(e) => {
                e.stopPropagation();
                e.preventDefault();
-               setSelectedBorderZoneId(zoneId);
-               setIsDraggingBorder(true);
-               setDraggedBorder(zone);
-               const rect = containerRef.current.getBoundingClientRect();
+               const touch = e.touches?.[0];
+               if (!touch) return;
+               startBorderDragFromClient(zone, zoneId, touch.clientX, touch.clientY);
+             }}
+             onTouchMove={(e) => {
+               if (!isDraggingBorderRef.current || e.touches.length !== 1) return;
+               e.stopPropagation();
+               e.preventDefault();
                const touch = e.touches[0];
-               setBorderDragStart({
-                 x: touch.clientX - rect.left,
-                 y: touch.clientY - rect.top
-               });
+               updateBorderDragFromClient(touch.clientX, touch.clientY);
+             }}
+             onTouchEnd={(e) => {
+               if (!isDraggingBorderRef.current) return;
+               e.stopPropagation();
+               stopBorderDrag(true);
+             }}
+             onTouchCancel={(e) => {
+               if (!isDraggingBorderRef.current) return;
+               e.stopPropagation();
+               stopBorderDrag(true);
              }}
              sx={{
                position: 'absolute',
@@ -6183,8 +6373,19 @@ const CanvasCollagePreview = ({
                width: zone.width,
                height: zone.height,
                cursor: zone.cursor,
-               backgroundColor: 'transparent',
-               zIndex: 10, // Above canvas and overlays, below text editor
+               backgroundColor: BORDER_ZONE_SHOW_HIT_AREA_DEBUG
+                 ? (isSelectedZone
+                   ? 'rgba(33,150,243,0.24)'
+                   : (isHoveredZone ? 'rgba(33,150,243,0.18)' : 'rgba(33,150,243,0.12)'))
+                 : 'transparent',
+               border: BORDER_ZONE_SHOW_HIT_AREA_DEBUG
+                 ? (isSelectedZone
+                   ? '1px solid rgba(33,150,243,0.55)'
+                   : '1px dashed rgba(33,150,243,0.35)')
+                 : 'none',
+               borderRadius: 999,
+               boxSizing: 'border-box',
+               zIndex: 40, // Keep border handles above text layer hitboxes
                pointerEvents: 'auto',
                touchAction: 'none',
                userSelect: 'none', // Prevent text selection
