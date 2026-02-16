@@ -24,6 +24,108 @@ const snapAngleToZeroDeg = (value) => {
   return Math.abs(normalized) <= ROTATION_ZERO_SNAP_THRESHOLD_DEG ? 0 : normalized;
 };
 
+const isPointInAxisAlignedRect = (x, y, rectX, rectY, width, height) => (
+  x >= rectX
+  && x <= rectX + width
+  && y >= rectY
+  && y <= rectY + height
+);
+
+const isPointInRotatedRect = (x, y, rect, angleDeg = 0, centerX, centerY) => {
+  const rectX = Number(rect?.x);
+  const rectY = Number(rect?.y);
+  const rectWidth = Number(rect?.width);
+  const rectHeight = Number(rect?.height);
+  if (!Number.isFinite(rectX) || !Number.isFinite(rectY) || !Number.isFinite(rectWidth) || !Number.isFinite(rectHeight)) {
+    return false;
+  }
+  if (rectWidth <= 0 || rectHeight <= 0) return false;
+
+  const normalizedAngle = normalizeAngleDeg(angleDeg);
+  if (Math.abs(normalizedAngle) <= 0.01) {
+    return isPointInAxisAlignedRect(x, y, rectX, rectY, rectWidth, rectHeight);
+  }
+
+  const pivotX = Number.isFinite(centerX) ? Number(centerX) : rectX + (rectWidth / 2);
+  const pivotY = Number.isFinite(centerY) ? Number(centerY) : rectY + (rectHeight / 2);
+  const radians = (-normalizedAngle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = x - pivotX;
+  const dy = y - pivotY;
+  const unrotatedX = pivotX + (dx * cos) - (dy * sin);
+  const unrotatedY = pivotY + (dx * sin) + (dy * cos);
+  return isPointInAxisAlignedRect(unrotatedX, unrotatedY, rectX, rectY, rectWidth, rectHeight);
+};
+
+const getRotatedRectAabb = (rect, angleDeg = 0, centerX, centerY) => {
+  const rectX = Number(rect?.x);
+  const rectY = Number(rect?.y);
+  const rectWidth = Number(rect?.width);
+  const rectHeight = Number(rect?.height);
+  if (!Number.isFinite(rectX) || !Number.isFinite(rectY) || !Number.isFinite(rectWidth) || !Number.isFinite(rectHeight)) {
+    return null;
+  }
+  if (rectWidth <= 0 || rectHeight <= 0) return null;
+
+  const normalizedAngle = normalizeAngleDeg(angleDeg);
+  if (Math.abs(normalizedAngle) <= 0.01) {
+    return {
+      x: rectX,
+      y: rectY,
+      width: rectWidth,
+      height: rectHeight,
+    };
+  }
+
+  const pivotX = Number.isFinite(centerX) ? Number(centerX) : rectX + (rectWidth / 2);
+  const pivotY = Number.isFinite(centerY) ? Number(centerY) : rectY + (rectHeight / 2);
+  const radians = (normalizedAngle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const corners = [
+    { x: rectX, y: rectY },
+    { x: rectX + rectWidth, y: rectY },
+    { x: rectX + rectWidth, y: rectY + rectHeight },
+    { x: rectX, y: rectY + rectHeight },
+  ];
+  const rotatedCorners = corners.map((corner) => {
+    const dx = corner.x - pivotX;
+    const dy = corner.y - pivotY;
+    return {
+      x: pivotX + dx * cos - dy * sin,
+      y: pivotY + dx * sin + dy * cos,
+    };
+  });
+  const minX = Math.min(...rotatedCorners.map((corner) => corner.x));
+  const maxX = Math.max(...rotatedCorners.map((corner) => corner.x));
+  const minY = Math.min(...rotatedCorners.map((corner) => corner.y));
+  const maxY = Math.max(...rotatedCorners.map((corner) => corner.y));
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+};
+
+const isPointInTextAreaBounds = (x, y, bounds) => {
+  if (!bounds) return false;
+  return isPointInRotatedRect(
+    x,
+    y,
+    {
+      x: bounds.controlX,
+      y: bounds.controlY,
+      width: bounds.controlWidth,
+      height: bounds.controlHeight,
+    },
+    bounds.textRotation || 0,
+    bounds.controlCenterX,
+    bounds.controlCenterY,
+  );
+};
+
 
 
 /**
@@ -1023,6 +1125,7 @@ const CanvasCollagePreview = ({
   const pendingTextLayerPointerRef = useRef(null);
   const textLayerRafRef = useRef(null);
   const textLayerGestureRef = useRef({ moved: false, editorHiddenDuringMove: false });
+  const textLayerDismissSuppressUntilRef = useRef(0);
   // Trigger redraws once custom fonts are ready (especially after loading a saved project)
   const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
 
@@ -2953,7 +3056,6 @@ const CanvasCollagePreview = ({
     const actualTextHeight = actualLines * lineHeight;
 
     const textAnchorX = getTextAnchorXFromPosition(panel, textPositionX);
-    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, textBoxWidth);
     const textAnchorY = getTextAnchorYFromPosition(panel, textPositionY);
     const textBlockY = textAnchorY - actualTextHeight;
 
@@ -2963,56 +3065,14 @@ const CanvasCollagePreview = ({
     const controlHeight = Math.max(22, actualTextHeight + (controlPadding * 2));
     const controlX = visualTextLeft - controlPadding;
     const controlY = textBlockY - controlPadding;
-
-    let activationAreaWidth = controlWidth;
-    let activationAreaHeight = controlHeight;
-    let activationAreaX = controlX;
-    let activationAreaY = controlY;
-
-    if (textRotation !== 0) {
-      const textCenterX = textBlockLeft + (textBoxWidth / 2);
-      const textCenterY = textAnchorY - actualTextHeight / 2;
-      const radians = (textRotation * Math.PI) / 180;
-      const cos = Math.cos(radians);
-      const sin = Math.sin(radians);
-
-      const corners = [
-        { x: controlX, y: controlY },
-        { x: controlX + controlWidth, y: controlY },
-        { x: controlX + controlWidth, y: controlY + controlHeight },
-        { x: controlX, y: controlY + controlHeight }
-      ];
-
-      const rotatedCorners = corners.map(corner => {
-        const dx = corner.x - textCenterX;
-        const dy = corner.y - textCenterY;
-        return {
-          x: textCenterX + dx * cos - dy * sin,
-          y: textCenterY + dx * sin + dy * cos
-        };
-      });
-      
-      const minX = Math.min(...rotatedCorners.map(c => c.x));
-      const maxX = Math.max(...rotatedCorners.map(c => c.x));
-      const minY = Math.min(...rotatedCorners.map(c => c.y));
-      const maxY = Math.max(...rotatedCorners.map(c => c.y));
-
-      activationAreaX = minX;
-      activationAreaY = minY;
-      activationAreaWidth = maxX - minX;
-      activationAreaHeight = maxY - minY;
-    }
-
-    const boundedWidth = Math.min(activationAreaWidth, panel.width);
-    const boundedHeight = Math.min(activationAreaHeight, panel.height);
-    const boundedX = Math.max(panel.x, Math.min(panel.x + panel.width - boundedWidth, activationAreaX));
-    const boundedY = Math.max(panel.y, Math.min(panel.y + panel.height - boundedHeight, activationAreaY));
+    const controlCenterX = controlX + (controlWidth / 2);
+    const controlCenterY = controlY + (controlHeight / 2);
 
     return {
-      x: boundedX,
-      y: boundedY,
-      width: boundedWidth,
-      height: boundedHeight,
+      x: controlX,
+      y: controlY,
+      width: controlWidth,
+      height: controlHeight,
       actualTextY: textAnchorY,
       actualTextHeight,
       actualTextWidth,
@@ -3028,6 +3088,8 @@ const CanvasCollagePreview = ({
       controlY,
       controlWidth,
       controlHeight,
+      controlCenterX,
+      controlCenterY,
     };
   }, [
     lastUsedTextSettings,
@@ -3344,6 +3406,15 @@ const CanvasCollagePreview = ({
     clearOverlayTouchTapTracker();
   }, [clearOverlayTouchTapTracker]);
 
+  const handleTextBackdropClick = useCallback((event) => {
+    if (Date.now() < (textLayerDismissSuppressUntilRef.current || 0) || textLayerInteraction) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      return;
+    }
+    handleTextClose();
+  }, [handleTextClose, textLayerInteraction]);
+
 
 
 
@@ -3485,6 +3556,7 @@ const CanvasCollagePreview = ({
 
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    textLayerDismissSuppressUntilRef.current = Date.now() + 280;
     try {
       if (event?.currentTarget && typeof event.currentTarget.setPointerCapture === 'function' && event.pointerId !== undefined) {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -3628,6 +3700,7 @@ const CanvasCollagePreview = ({
         window.cancelAnimationFrame(textLayerRafRef.current);
         textLayerRafRef.current = null;
       }
+      textLayerDismissSuppressUntilRef.current = Date.now() + 240;
       applyPointerSample();
       setTextLayerSnapGuide(null);
       const panelId = textLayerInteraction.panelId;
@@ -3888,10 +3961,7 @@ const CanvasCollagePreview = ({
         // Get precise text area bounds
         const textAreaBounds = getTextAreaBounds(panel, panelText);
         if (textAreaBounds) {
-          isOverTextArea = x >= textAreaBounds.x && 
-                          x <= textAreaBounds.x + textAreaBounds.width &&
-                          y >= textAreaBounds.y && 
-                          y <= textAreaBounds.y + textAreaBounds.height;
+          isOverTextArea = isPointInTextAreaBounds(x, y, textAreaBounds);
         }
       }
     }
@@ -4185,6 +4255,9 @@ const CanvasCollagePreview = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (activeTextLayerId) {
+      if (Date.now() < (textLayerDismissSuppressUntilRef.current || 0)) {
+        return;
+      }
       frameTapSuppressUntilRef.current = Date.now() + 260;
       clearActiveTextLayerSelection(e);
       return;
@@ -4258,10 +4331,7 @@ const CanvasCollagePreview = ({
         const panelText = panelTexts[clickedPanel.panelId] || {};
         const textAreaBounds = getTextAreaBounds(clickedPanel, panelText);
         if (textAreaBounds) {
-          isTextAreaClick = x >= textAreaBounds.x && 
-                           x <= textAreaBounds.x + textAreaBounds.width &&
-                           y >= textAreaBounds.y && 
-                           y <= textAreaBounds.y + textAreaBounds.height;
+          isTextAreaClick = isPointInTextAreaBounds(x, y, textAreaBounds);
         }
       }
       
@@ -4528,6 +4598,9 @@ const CanvasCollagePreview = ({
     
     if (touches.length === 1) {
       if (activeTextLayerId) {
+        if (Date.now() < (textLayerDismissSuppressUntilRef.current || 0)) {
+          return;
+        }
         touchStartInfo.current = null;
         frameTapSuppressUntilRef.current = Date.now() + 260;
         clearActiveTextLayerSelection(e, { suppressEvents: false });
@@ -4604,10 +4677,7 @@ const CanvasCollagePreview = ({
           const panelText = panelTexts[clickedPanel.panelId] || {};
           const textAreaBounds = getTextAreaBounds(clickedPanel, panelText);
           if (textAreaBounds) {
-            isTextAreaTouch = x >= textAreaBounds.x && 
-                             x <= textAreaBounds.x + textAreaBounds.width &&
-                             y >= textAreaBounds.y && 
-                             y <= textAreaBounds.y + textAreaBounds.height;
+            isTextAreaTouch = isPointInTextAreaBounds(x, y, textAreaBounds);
           }
         }
         
@@ -5551,11 +5621,29 @@ const CanvasCollagePreview = ({
     .filter(Boolean);
   const textLayerBoundsByPanelId = textLayers.reduce((next, layer) => {
     if (!layer?.panelId || !layer?.bounds) return next;
+    const controlRect = {
+      x: layer.bounds.controlX,
+      y: layer.bounds.controlY,
+      width: layer.bounds.controlWidth,
+      height: layer.bounds.controlHeight,
+    };
+    const rotatedControlAabb = getRotatedRectAabb(
+      controlRect,
+      layer.bounds.textRotation || 0,
+      layer.bounds.controlCenterX,
+      layer.bounds.controlCenterY,
+    );
+    const anchorRect = rotatedControlAabb || controlRect;
+    const handleSize = componentWidth < 560 ? 28 : 22;
+    const editorHandleClearance = Math.max(
+      (handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO) - 6,
+      4,
+    );
     next[layer.panelId] = {
-      x: layer.bounds.x,
-      y: layer.bounds.y,
-      width: layer.bounds.width,
-      height: layer.bounds.height,
+      x: anchorRect.x,
+      y: anchorRect.y,
+      width: anchorRect.width,
+      height: anchorRect.height + editorHandleClearance,
     };
     return next;
   }, {});
@@ -5825,18 +5913,20 @@ const CanvasCollagePreview = ({
                 onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'move')}
                 sx={{
                   position: 'absolute',
-                  left: layer.bounds.x,
-                  top: layer.bounds.y,
-                  width: layer.bounds.width,
-                  height: layer.bounds.height,
+                  left: layer.bounds.controlX,
+                  top: layer.bounds.controlY,
+                  width: layer.bounds.controlWidth,
+                  height: layer.bounds.controlHeight,
                   pointerEvents: 'auto',
                   cursor: textLayerInteraction?.panelId === layer.panelId
                     ? ((textLayerInteraction?.mode === 'move' || textLayerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
                     : (layer.isActive ? 'grab' : 'pointer'),
                   touchAction: layer.isActive ? 'none' : 'pan-y pinch-zoom',
-                  border: layer.isActive ? '1px solid rgba(33, 150, 243, 0.85)' : '1px solid transparent',
+                  border: '1px solid transparent',
                   borderRadius: 1,
                   backgroundColor: 'transparent',
+                  transformOrigin: 'center center',
+                  transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
                 }}
               />
             ))}
@@ -6288,7 +6378,7 @@ const CanvasCollagePreview = ({
       {/* Invisible backdrop for text editor - container-bound to avoid covering bottom bars */}
       {textEditingPanel !== null && (
         <Box
-          onClick={handleTextClose}
+          onClick={handleTextBackdropClick}
           sx={{
             position: 'absolute',
             top: 0,
