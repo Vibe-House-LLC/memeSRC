@@ -7,6 +7,12 @@ import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
+import {
+  applyBorderDragDelta,
+  buildStableBorderEdgeId,
+  detectBorderZonesFromPanelRects,
+  findBorderZoneByEdgeId,
+} from '../utils/borderZones';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const normalizeAngleDeg = (value) => {
@@ -242,6 +248,11 @@ const BORDER_ZONE_MIN_HIT_LENGTH_PX = 56;
 const BORDER_ZONE_MAX_HIT_LENGTH_PX = 140;
 const BORDER_ZONE_SHOW_HIT_AREA_DEBUG = false;
 const BORDER_DRAG_ACTION_SUPPRESS_MS = 420;
+const LAYOUT_COORD_QUANTUM_PX = 0.001;
+const BORDER_DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
+const borderDebugLog = (...args) => { if (BORDER_DEBUG_MODE) console.log('[CollageBorder]', ...args); };
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -316,7 +327,6 @@ const areBorderZonesEqual = (prevZones, nextZones, epsilon = 0.2) => {
     const next = nextZones[i];
     if ((prev?.id || '') !== (next?.id || '')) return false;
     if ((prev?.type || '') !== (next?.type || '')) return false;
-    if ((prev?.index ?? -1) !== (next?.index ?? -1)) return false;
     if (!areNumbersClose(prev?.x, next?.x, epsilon)) return false;
     if (!areNumbersClose(prev?.y, next?.y, epsilon)) return false;
     if (!areNumbersClose(prev?.width, next?.width, epsilon)) return false;
@@ -598,229 +608,14 @@ const parseGridTemplateAreas = (gridTemplateAreas) => {
   return areas;
 };
 
-const mergeIntervals = (intervals, minValue, maxValue) => {
-  if (!Array.isArray(intervals) || intervals.length === 0) return [];
-
-  const clipped = intervals
-    .map((interval) => {
-      const start = Number(interval?.start);
-      const end = Number(interval?.end);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
-      const clippedStart = Math.max(minValue, start);
-      const clippedEnd = Math.min(maxValue, end);
-      if (clippedEnd <= clippedStart) return null;
-      return { start: clippedStart, end: clippedEnd };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.start - b.start);
-
-  if (clipped.length === 0) return [];
-
-  return clipped.reduce((merged, interval) => {
-    if (merged.length === 0) {
-      return [interval];
-    }
-    const previous = merged[merged.length - 1];
-    if (interval.start <= previous.end + BORDER_ZONE_INTERVAL_EPSILON_PX) {
-      previous.end = Math.max(previous.end, interval.end);
-      return merged;
-    }
-    merged.push(interval);
-    return merged;
-  }, []);
+const quantizeLayoutCoord = (value) => {
+  if (!Number.isFinite(value)) return value;
+  return Math.round(value / LAYOUT_COORD_QUANTUM_PX) * LAYOUT_COORD_QUANTUM_PX;
 };
 
-const subtractIntervals = (minValue, maxValue, occludedIntervals) => {
-  if (maxValue <= minValue) return [];
-  if (!Array.isArray(occludedIntervals) || occludedIntervals.length === 0) {
-    return [{ start: minValue, end: maxValue }];
-  }
-
-  const visible = [];
-  let cursor = minValue;
-
-  occludedIntervals.forEach((interval) => {
-    if (interval.start > cursor + BORDER_ZONE_INTERVAL_EPSILON_PX) {
-      visible.push({ start: cursor, end: interval.start });
-    }
-    cursor = Math.max(cursor, interval.end);
-  });
-
-  if (cursor < maxValue - BORDER_ZONE_INTERVAL_EPSILON_PX) {
-    visible.push({ start: cursor, end: maxValue });
-  }
-
-  return visible;
-};
-
-const panelSpansVerticalBoundary = (panel, boundaryStartX, boundaryEndX) => {
-  const panelX = Number(panel?.x);
-  const panelWidth = Number(panel?.width);
-  if (!Number.isFinite(panelX) || !Number.isFinite(panelWidth) || panelWidth <= 0) return false;
-  const panelRight = panelX + panelWidth;
-  const stripWidth = boundaryEndX - boundaryStartX;
-
-  if (stripWidth > BORDER_ZONE_INTERVAL_EPSILON_PX) {
-    const overlapWidth = Math.min(panelRight, boundaryEndX) - Math.max(panelX, boundaryStartX);
-    return overlapWidth > BORDER_ZONE_INTERVAL_EPSILON_PX;
-  }
-
-  return (
-    panelX < (boundaryStartX - BORDER_ZONE_INTERVAL_EPSILON_PX)
-    && panelRight > (boundaryStartX + BORDER_ZONE_INTERVAL_EPSILON_PX)
-  );
-};
-
-const panelSpansHorizontalBoundary = (panel, boundaryStartY, boundaryEndY) => {
-  const panelY = Number(panel?.y);
-  const panelHeight = Number(panel?.height);
-  if (!Number.isFinite(panelY) || !Number.isFinite(panelHeight) || panelHeight <= 0) return false;
-  const panelBottom = panelY + panelHeight;
-  const stripHeight = boundaryEndY - boundaryStartY;
-
-  if (stripHeight > BORDER_ZONE_INTERVAL_EPSILON_PX) {
-    const overlapHeight = Math.min(panelBottom, boundaryEndY) - Math.max(panelY, boundaryStartY);
-    return overlapHeight > BORDER_ZONE_INTERVAL_EPSILON_PX;
-  }
-
-  return (
-    panelY < (boundaryStartY - BORDER_ZONE_INTERVAL_EPSILON_PX)
-    && panelBottom > (boundaryStartY + BORDER_ZONE_INTERVAL_EPSILON_PX)
-  );
-};
-
-const getIntervalOverlap = (startA, endA, startB, endB) => {
-  const start = Math.max(startA, startB);
-  const end = Math.min(endA, endB);
-  return Math.max(0, end - start);
-};
-
-const getUniquePanelIds = (panelIds = []) => Array.from(new Set(panelIds.filter(Boolean)));
-
-const resolveVerticalSegmentAdjacency = (panelRects, boundaryStartX, boundaryEndX, segmentStartY, segmentEndY) => {
-  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.8);
-  const leftPanelIds = [];
-  const rightPanelIds = [];
-
-  panelRects.forEach((panel) => {
-    const panelLeft = Number(panel?.x);
-    const panelWidth = Number(panel?.width);
-    const panelTop = Number(panel?.y);
-    const panelHeight = Number(panel?.height);
-    if (
-      !Number.isFinite(panelLeft)
-      || !Number.isFinite(panelWidth)
-      || !Number.isFinite(panelTop)
-      || !Number.isFinite(panelHeight)
-      || panelWidth <= 0
-      || panelHeight <= 0
-    ) {
-      return;
-    }
-
-    const panelRight = panelLeft + panelWidth;
-    const panelBottom = panelTop + panelHeight;
-    const overlap = getIntervalOverlap(panelTop, panelBottom, segmentStartY, segmentEndY);
-    if (overlap <= BORDER_ZONE_INTERVAL_EPSILON_PX) return;
-
-    if (Math.abs(panelRight - boundaryStartX) <= edgeEpsilon) {
-      leftPanelIds.push(panel.panelId);
-    }
-    if (Math.abs(panelLeft - boundaryEndX) <= edgeEpsilon) {
-      rightPanelIds.push(panel.panelId);
-    }
-  });
-
-  return {
-    leftPanelIds: getUniquePanelIds(leftPanelIds),
-    rightPanelIds: getUniquePanelIds(rightPanelIds),
-  };
-};
-
-const resolveHorizontalSegmentAdjacency = (panelRects, boundaryStartY, boundaryEndY, segmentStartX, segmentEndX) => {
-  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.8);
-  const topPanelIds = [];
-  const bottomPanelIds = [];
-
-  panelRects.forEach((panel) => {
-    const panelLeft = Number(panel?.x);
-    const panelWidth = Number(panel?.width);
-    const panelTop = Number(panel?.y);
-    const panelHeight = Number(panel?.height);
-    if (
-      !Number.isFinite(panelLeft)
-      || !Number.isFinite(panelWidth)
-      || !Number.isFinite(panelTop)
-      || !Number.isFinite(panelHeight)
-      || panelWidth <= 0
-      || panelHeight <= 0
-    ) {
-      return;
-    }
-
-    const panelRight = panelLeft + panelWidth;
-    const panelBottom = panelTop + panelHeight;
-    const overlap = getIntervalOverlap(panelLeft, panelRight, segmentStartX, segmentEndX);
-    if (overlap <= BORDER_ZONE_INTERVAL_EPSILON_PX) return;
-
-    if (Math.abs(panelBottom - boundaryStartY) <= edgeEpsilon) {
-      topPanelIds.push(panel.panelId);
-    }
-    if (Math.abs(panelTop - boundaryEndY) <= edgeEpsilon) {
-      bottomPanelIds.push(panel.panelId);
-    }
-  });
-
-  return {
-    topPanelIds: getUniquePanelIds(topPanelIds),
-    bottomPanelIds: getUniquePanelIds(bottomPanelIds),
-  };
-};
-
-const buildBoundarySegmentZoneId = (type, index, segmentIndex) => (
-  `${type}-${index}-segment-${segmentIndex}`
+const areQuantizedLayoutCoordsEqual = (a, b) => (
+  quantizeLayoutCoord(a) === quantizeLayoutCoord(b)
 );
-
-const uniqueSortedCoordinates = (values, epsilon = 0.5) => (
-  values
-    .filter((value) => Number.isFinite(value))
-    .sort((a, b) => a - b)
-    .reduce((unique, value) => {
-      if (unique.length === 0) {
-        unique.push(value);
-        return unique;
-      }
-      const previous = unique[unique.length - 1];
-      if (Math.abs(previous - value) <= epsilon) {
-        unique[unique.length - 1] = (previous + value) / 2;
-      } else {
-        unique.push(value);
-      }
-      return unique;
-    }, [])
-);
-
-const findCoordinateIndex = (coordinates, value, epsilon = 0.8) => {
-  if (!Array.isArray(coordinates) || coordinates.length === 0 || !Number.isFinite(value)) return -1;
-  let bestIndex = -1;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  coordinates.forEach((coordinate, index) => {
-    const distance = Math.abs(coordinate - value);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestIndex = index;
-    }
-  });
-  if (bestDistance > epsilon) return -1;
-  return bestIndex;
-};
-
-const formatFrUnit = (value) => {
-  if (!Number.isFinite(value) || value <= 0) return '1';
-  const rounded = Number(value.toFixed(5));
-  const safe = Math.max(0.001, rounded);
-  return String(safe).replace(/(?:\.0+|(\.\d*?)0+)$/, '$1');
-};
 
 const getPanelOrderIndex = (panel, fallbackIndex = 0) => {
   const explicitIndex = Number(panel?.index);
@@ -833,103 +628,10 @@ const getPanelOrderIndex = (panel, fallbackIndex = 0) => {
   return fallbackIndex;
 };
 
-const isBoundaryGapLength = (length, borderPixels) => {
-  const target = Number(borderPixels) || 0;
-  if (target <= BORDER_ZONE_INTERVAL_EPSILON_PX) return false;
-  const tolerance = Math.max(0.9, target * 0.35);
-  return Math.abs(length - target) <= tolerance;
-};
+const clampRectRatio = (value) => clamp(Number(value), 0, 1);
+const roundRectRatio = (value) => Number(clampRectRatio(value).toFixed(7));
 
-const compressCoordinateByGapIntervals = (coordinate, gapIntervals = []) => {
-  if (!Number.isFinite(coordinate) || !Array.isArray(gapIntervals) || gapIntervals.length === 0) {
-    return coordinate;
-  }
-
-  let shift = 0;
-  gapIntervals.forEach((gap) => {
-    const start = Number(gap?.start);
-    const end = Number(gap?.end);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
-    const gapSize = end - start;
-    if (coordinate >= end - BORDER_ZONE_INTERVAL_EPSILON_PX) {
-      shift += gapSize;
-      return;
-    }
-    if (coordinate > start + BORDER_ZONE_INTERVAL_EPSILON_PX) {
-      shift += coordinate - start;
-    }
-  });
-
-  return coordinate - shift;
-};
-
-const hasVerticalAdjacencyAcrossInterval = (panelRects, intervalStart, intervalEnd) => {
-  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.9);
-  const leftPanels = panelRects.filter((panel) => (
-    Math.abs((panel.x + panel.width) - intervalStart) <= edgeEpsilon
-  ));
-  const rightPanels = panelRects.filter((panel) => (
-    Math.abs(panel.x - intervalEnd) <= edgeEpsilon
-  ));
-  if (leftPanels.length === 0 || rightPanels.length === 0) return false;
-
-  return leftPanels.some((leftPanel) => rightPanels.some((rightPanel) => (
-    getIntervalOverlap(
-      leftPanel.y,
-      leftPanel.y + leftPanel.height,
-      rightPanel.y,
-      rightPanel.y + rightPanel.height,
-    ) > BORDER_ZONE_INTERVAL_EPSILON_PX
-  )));
-};
-
-const hasHorizontalAdjacencyAcrossInterval = (panelRects, intervalStart, intervalEnd) => {
-  const edgeEpsilon = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, 0.9);
-  const topPanels = panelRects.filter((panel) => (
-    Math.abs((panel.y + panel.height) - intervalStart) <= edgeEpsilon
-  ));
-  const bottomPanels = panelRects.filter((panel) => (
-    Math.abs(panel.y - intervalEnd) <= edgeEpsilon
-  ));
-  if (topPanels.length === 0 || bottomPanels.length === 0) return false;
-
-  return topPanels.some((topPanel) => bottomPanels.some((bottomPanel) => (
-    getIntervalOverlap(
-      topPanel.x,
-      topPanel.x + topPanel.width,
-      bottomPanel.x,
-      bottomPanel.x + bottomPanel.width,
-    ) > BORDER_ZONE_INTERVAL_EPSILON_PX
-  )));
-};
-
-const detectVerticalGapIntervals = (panelRects, xCoordinates, borderPixels) => {
-  const gaps = [];
-  for (let index = 0; index < xCoordinates.length - 1; index += 1) {
-    const start = xCoordinates[index];
-    const end = xCoordinates[index + 1];
-    const length = end - start;
-    if (!isBoundaryGapLength(length, borderPixels)) continue;
-    if (!hasVerticalAdjacencyAcrossInterval(panelRects, start, end)) continue;
-    gaps.push({ start, end });
-  }
-  return gaps;
-};
-
-const detectHorizontalGapIntervals = (panelRects, yCoordinates, borderPixels) => {
-  const gaps = [];
-  for (let index = 0; index < yCoordinates.length - 1; index += 1) {
-    const start = yCoordinates[index];
-    const end = yCoordinates[index + 1];
-    const length = end - start;
-    if (!isBoundaryGapLength(length, borderPixels)) continue;
-    if (!hasHorizontalAdjacencyAcrossInterval(panelRects, start, end)) continue;
-    gaps.push({ start, end });
-  }
-  return gaps;
-};
-
-const buildCustomLayoutConfigFromRects = (
+const buildPanelRectLayoutFromRects = (
   panelRects,
   containerWidth,
   containerHeight,
@@ -937,16 +639,18 @@ const buildCustomLayoutConfigFromRects = (
   panelCount,
 ) => {
   if (!Array.isArray(panelRects) || panelRects.length === 0) return null;
-  if (!Number.isFinite(containerWidth) || containerWidth <= 0) return null;
-  if (!Number.isFinite(containerHeight) || containerHeight <= 0) return null;
+  if (!Number.isFinite(containerWidth) || !Number.isFinite(containerHeight)) return null;
 
-  const interiorLeft = Math.max(0, Number(borderPixels) || 0);
-  const interiorTop = Math.max(0, Number(borderPixels) || 0);
-  const interiorRight = Math.max(interiorLeft + 1, containerWidth - interiorLeft);
-  const interiorBottom = Math.max(interiorTop + 1, containerHeight - interiorTop);
-  const usablePanels = panelRects.slice(0, Math.max(1, panelCount || 1));
+  const inset = Math.max(0, Number(borderPixels) || 0);
+  const interiorLeft = inset;
+  const interiorTop = inset;
+  const interiorRight = Math.max(interiorLeft + 1, containerWidth - inset);
+  const interiorBottom = Math.max(interiorTop + 1, containerHeight - inset);
+  const interiorWidth = Math.max(1, interiorRight - interiorLeft);
+  const interiorHeight = Math.max(1, interiorBottom - interiorTop);
 
-  const normalizedRects = usablePanels
+  const normalizedRects = panelRects
+    .slice(0, Math.max(1, panelCount || 1))
     .map((panel, fallbackIndex) => {
       const rawX = Number(panel?.x);
       const rawY = Number(panel?.y);
@@ -955,411 +659,69 @@ const buildCustomLayoutConfigFromRects = (
       if (!Number.isFinite(rawX) || !Number.isFinite(rawY) || !Number.isFinite(rawWidth) || !Number.isFinite(rawHeight)) {
         return null;
       }
-      const x = clamp(rawX, interiorLeft, interiorRight);
-      const y = clamp(rawY, interiorTop, interiorBottom);
+      const left = clamp(rawX, interiorLeft, interiorRight);
+      const top = clamp(rawY, interiorTop, interiorBottom);
       const right = clamp(rawX + rawWidth, interiorLeft, interiorRight);
       const bottom = clamp(rawY + rawHeight, interiorTop, interiorBottom);
-      const width = right - x;
-      const height = bottom - y;
-      if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) {
-        return null;
-      }
-      return {
-        x,
-        y,
-        width,
-        height,
-        panelId: panel?.panelId || `panel-${fallbackIndex + 1}`,
-        orderIndex: getPanelOrderIndex(panel, fallbackIndex),
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.orderIndex - b.orderIndex);
-
-  if (normalizedRects.length === 0) return null;
-
-  const rawXCoordinates = uniqueSortedCoordinates(
-    [
-      interiorLeft,
-      interiorRight,
-      ...normalizedRects.flatMap((panel) => [panel.x, panel.x + panel.width]),
-    ],
-    0.8,
-  );
-  const rawYCoordinates = uniqueSortedCoordinates(
-    [
-      interiorTop,
-      interiorBottom,
-      ...normalizedRects.flatMap((panel) => [panel.y, panel.y + panel.height]),
-    ],
-    0.8,
-  );
-
-  if (rawXCoordinates.length < 2 || rawYCoordinates.length < 2) return null;
-
-  const verticalGapIntervals = detectVerticalGapIntervals(normalizedRects, rawXCoordinates, borderPixels);
-  const horizontalGapIntervals = detectHorizontalGapIntervals(normalizedRects, rawYCoordinates, borderPixels);
-
-  const logicalInteriorLeft = compressCoordinateByGapIntervals(interiorLeft, verticalGapIntervals);
-  const logicalInteriorRight = compressCoordinateByGapIntervals(interiorRight, verticalGapIntervals);
-  const logicalInteriorTop = compressCoordinateByGapIntervals(interiorTop, horizontalGapIntervals);
-  const logicalInteriorBottom = compressCoordinateByGapIntervals(interiorBottom, horizontalGapIntervals);
-
-  const logicalRects = normalizedRects
-    .map((panel) => {
-      const left = compressCoordinateByGapIntervals(panel.x, verticalGapIntervals);
-      const right = compressCoordinateByGapIntervals(panel.x + panel.width, verticalGapIntervals);
-      const top = compressCoordinateByGapIntervals(panel.y, horizontalGapIntervals);
-      const bottom = compressCoordinateByGapIntervals(panel.y + panel.height, horizontalGapIntervals);
       const width = right - left;
       const height = bottom - top;
       if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) {
         return null;
       }
       return {
-        ...panel,
-        x: left,
-        y: top,
-        width,
-        height,
+        panelId: panel?.panelId || `panel-${fallbackIndex + 1}`,
+        index: getPanelOrderIndex(panel, fallbackIndex),
+        x: roundRectRatio((left - interiorLeft) / interiorWidth),
+        y: roundRectRatio((top - interiorTop) / interiorHeight),
+        width: roundRectRatio(width / interiorWidth),
+        height: roundRectRatio(height / interiorHeight),
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => a.index - b.index);
 
-  if (logicalRects.length !== normalizedRects.length) return null;
+  if (normalizedRects.length === 0) return null;
+  return { panelRects: normalizedRects };
+};
 
-  const xCoordinates = uniqueSortedCoordinates(
-    [
-      logicalInteriorLeft,
-      logicalInteriorRight,
-      ...logicalRects.flatMap((panel) => [panel.x, panel.x + panel.width]),
-    ],
-    0.6,
-  );
-  const yCoordinates = uniqueSortedCoordinates(
-    [
-      logicalInteriorTop,
-      logicalInteriorBottom,
-      ...logicalRects.flatMap((panel) => [panel.y, panel.y + panel.height]),
-    ],
-    0.6,
-  );
-
-  if (xCoordinates.length < 2 || yCoordinates.length < 2) return null;
-
-  const columnWidths = [];
-  for (let i = 0; i < xCoordinates.length - 1; i += 1) {
-    const width = xCoordinates[i + 1] - xCoordinates[i];
-    if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
-    columnWidths.push(width);
+const arePanelRectLayoutsEqual = (layoutA, layoutB) => {
+  const rectsA = Array.isArray(layoutA?.panelRects) ? layoutA.panelRects : [];
+  const rectsB = Array.isArray(layoutB?.panelRects) ? layoutB.panelRects : [];
+  if (rectsA.length !== rectsB.length) return false;
+  for (let i = 0; i < rectsA.length; i += 1) {
+    const a = rectsA[i];
+    const b = rectsB[i];
+    if ((a?.panelId || '') !== (b?.panelId || '')) return false;
+    if (Number(a?.index) !== Number(b?.index)) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.x), Number(b?.x))) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.y), Number(b?.y))) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.width), Number(b?.width))) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.height), Number(b?.height))) return false;
   }
-  const rowHeights = [];
-  for (let i = 0; i < yCoordinates.length - 1; i += 1) {
-    const height = yCoordinates[i + 1] - yCoordinates[i];
-    if (height <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
-    rowHeights.push(height);
-  }
-
-  const rowCount = rowHeights.length;
-  const columnCount = columnWidths.length;
-  const areaMatrix = Array.from({ length: rowCount }, () => Array(columnCount).fill('.'));
-  const areaNames = [];
-  let isValidLayout = true;
-
-  logicalRects.forEach((panel, index) => {
-    if (!isValidLayout) return;
-    const areaName = `p${index + 1}`;
-    const startCol = findCoordinateIndex(xCoordinates, panel.x);
-    const endCol = findCoordinateIndex(xCoordinates, panel.x + panel.width);
-    const startRow = findCoordinateIndex(yCoordinates, panel.y);
-    const endRow = findCoordinateIndex(yCoordinates, panel.y + panel.height);
-    if (startCol < 0 || endCol < 0 || startRow < 0 || endRow < 0) {
-      isValidLayout = false;
-      return;
-    }
-    if (endCol <= startCol || endRow <= startRow) {
-      isValidLayout = false;
-      return;
-    }
-
-    for (let row = startRow; row < endRow; row += 1) {
-      for (let col = startCol; col < endCol; col += 1) {
-        const currentArea = areaMatrix[row][col];
-        if (currentArea !== '.' && currentArea !== areaName) {
-          isValidLayout = false;
-          break;
-        }
-        areaMatrix[row][col] = areaName;
-      }
-      if (!isValidLayout) break;
-    }
-    if (!isValidLayout) return;
-    areaNames.push(areaName);
-  });
-
-  if (!isValidLayout || areaNames.length !== logicalRects.length) return null;
-
-  const hasEmptyGridCell = areaMatrix.some((row) => row.some((cell) => cell === '.'));
-  if (hasEmptyGridCell) return null;
-
-  const minColumnWidth = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, Math.min(...columnWidths));
-  const minRowHeight = Math.max(BORDER_ZONE_INTERVAL_EPSILON_PX, Math.min(...rowHeights));
-  const columnUnits = columnWidths.map((width) => formatFrUnit(width / minColumnWidth));
-  const rowUnits = rowHeights.map((height) => formatFrUnit(height / minRowHeight));
-
-  return {
-    gridTemplateColumns: columnUnits.map((unit) => `${unit}fr`).join(' '),
-    gridTemplateRows: rowUnits.map((unit) => `${unit}fr`).join(' '),
-    gridTemplateAreas: areaMatrix.map((row) => `"${row.join(' ')}"`).join(' '),
-    areas: areaNames,
-  };
+  return true;
 };
 
 /**
- * Helper function to detect draggable border zones
+ * Detect draggable border zones directly from panel geometry.
+ * This avoids coupling disjoint segments through global row/column tracks.
  */
-const detectBorderZones = (layoutConfig, containerWidth, containerHeight, borderPixels, panelRects = []) => {
-  if (!layoutConfig) return [];
-  
-  const zones = [];
-  const interiorInset = Math.max(0, Number(borderPixels) || 0);
-  const interiorX = interiorInset;
-  const interiorY = interiorInset;
-  const interiorWidth = Math.max(1, containerWidth - (interiorInset * 2));
-  const interiorHeight = Math.max(1, containerHeight - (interiorInset * 2));
-  const handleLong = BORDER_ZONE_HANDLE_LENGTH_PX;
-  const handleShort = BORDER_ZONE_HANDLE_THICKNESS_PX;
-  const hitPadding = 8;
-  const verticalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleShort + (hitPadding * 2));
-  const baseVerticalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
-  const baseHorizontalHitWidth = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleLong + (hitPadding * 2));
-  const horizontalHitHeight = Math.max(BORDER_ZONE_MIN_HIT_SIZE_PX, handleShort + (hitPadding * 2));
-  const interiorTop = interiorY;
-  const interiorBottom = interiorY + interiorHeight;
-  const interiorLeft = interiorX;
-  const interiorRight = interiorX + interiorWidth;
-  
-  // Parse grid columns and rows to get track sizes
-  let columnSizes = [1];
-  let rowSizes = [1];
-  
-  if (layoutConfig.gridTemplateColumns) {
-    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
-      const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
-      if (repeatMatch) {
-        const count = parseInt(repeatMatch[1], 10);
-        columnSizes = Array(count).fill(1);
-      }
-    } else {
-      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        columnSizes = frMatches.map(match => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-  
-  if (layoutConfig.gridTemplateRows) {
-    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
-      const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
-      if (repeatMatch) {
-        const count = parseInt(repeatMatch[1], 10);
-        rowSizes = Array(count).fill(1);
-      }
-    } else {
-      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        rowSizes = frMatches.map(match => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-  
-  // Only create zones if we have multiple columns or rows
-  if (columnSizes.length <= 1 && rowSizes.length <= 1) {
-    return [];
-  }
-  
-  // Calculate positions of grid lines
-  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
-  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
-  
-  const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
-  const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
-  
-  const availableWidth = containerWidth - (borderPixels * 2) - horizontalGaps;
-  const availableHeight = containerHeight - (borderPixels * 2) - verticalGaps;
-  
-  const columnFrUnit = availableWidth / totalColumnFr;
-  const rowFrUnit = availableHeight / totalRowFr;
-  
-  // Create vertical border zones (between columns) - only if we have multiple columns
-  if (columnSizes.length > 1) {
-    let currentX = borderPixels;
-    for (let i = 0; i < columnSizes.length - 1; i += 1) {
-      currentX += columnSizes[i] * columnFrUnit;
-      const boundaryStartX = currentX;
-      const boundaryEndX = currentX + borderPixels;
-      const occludedIntervals = mergeIntervals(
-        panelRects
-          .filter((panel) => panelSpansVerticalBoundary(panel, boundaryStartX, boundaryEndX))
-          .map((panel) => ({
-            start: panel.y,
-            end: panel.y + panel.height,
-          })),
-        interiorTop,
-        interiorBottom,
-      );
-      const visibleIntervals = subtractIntervals(interiorTop, interiorBottom, occludedIntervals)
-        .filter((interval) => (interval.end - interval.start) > BORDER_ZONE_INTERVAL_EPSILON_PX);
-
-      visibleIntervals.forEach((visibleSegment, segmentIndex) => {
-        const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
-        const maxHitHeightForSegment = Math.max(
-          BORDER_ZONE_MIN_HIT_SIZE_PX,
-          visibleLength + (hitPadding * 2),
-        );
-        const verticalHitHeight = Math.min(
-          interiorHeight,
-          maxHitHeightForSegment,
-          Math.max(
-            baseVerticalHitHeight,
-            clamp(
-              visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
-              BORDER_ZONE_MIN_HIT_LENGTH_PX,
-              BORDER_ZONE_MAX_HIT_LENGTH_PX,
-            ),
-          ),
-        );
-        const centerY = (visibleSegment.start + visibleSegment.end) / 2;
-        const centerX = boundaryStartX + (borderPixels / 2);
-        const y = clamp(
-          centerY - (verticalHitHeight / 2),
-          interiorTop,
-          Math.max(interiorTop, interiorBottom - verticalHitHeight),
-        );
-        const { leftPanelIds, rightPanelIds } = resolveVerticalSegmentAdjacency(
-          panelRects,
-          boundaryStartX,
-          boundaryEndX,
-          visibleSegment.start,
-          visibleSegment.end,
-        );
-        if (leftPanelIds.length === 0 || rightPanelIds.length === 0) return;
-
-        zones.push({
-          type: 'vertical',
-          index: i,
-          segmentIndex,
-          x: centerX - verticalHitWidth / 2,
-          y,
-          width: verticalHitWidth,
-          height: verticalHitHeight,
-          centerX,
-          centerY,
-          handleWidth: handleShort,
-          handleHeight: handleLong,
-          cursor: 'col-resize',
-          id: buildBoundarySegmentZoneId('vertical', i, segmentIndex),
-          boundaryStart: boundaryStartX,
-          boundaryEnd: boundaryEndX,
-          segmentStart: visibleSegment.start,
-          segmentEnd: visibleSegment.end,
-          leftPanelIds,
-          rightPanelIds,
-        });
-      });
-      
-      currentX += borderPixels;
-    }
-  }
-  
-  // Create horizontal border zones (between rows) - only if we have multiple rows
-  if (rowSizes.length > 1) {
-    let currentY = borderPixels;
-    for (let i = 0; i < rowSizes.length - 1; i += 1) {
-      currentY += rowSizes[i] * rowFrUnit;
-      const boundaryStartY = currentY;
-      const boundaryEndY = currentY + borderPixels;
-      const occludedIntervals = mergeIntervals(
-        panelRects
-          .filter((panel) => panelSpansHorizontalBoundary(panel, boundaryStartY, boundaryEndY))
-          .map((panel) => ({
-            start: panel.x,
-            end: panel.x + panel.width,
-          })),
-        interiorLeft,
-        interiorRight,
-      );
-      const visibleIntervals = subtractIntervals(interiorLeft, interiorRight, occludedIntervals)
-        .filter((interval) => (interval.end - interval.start) > BORDER_ZONE_INTERVAL_EPSILON_PX);
-
-      visibleIntervals.forEach((visibleSegment, segmentIndex) => {
-        const visibleLength = Math.max(1, visibleSegment.end - visibleSegment.start);
-        const maxHitWidthForSegment = Math.max(
-          BORDER_ZONE_MIN_HIT_SIZE_PX,
-          visibleLength + (hitPadding * 2),
-        );
-        const horizontalHitWidth = Math.min(
-          interiorWidth,
-          maxHitWidthForSegment,
-          Math.max(
-            baseHorizontalHitWidth,
-            clamp(
-              visibleLength * BORDER_ZONE_HIT_LENGTH_RATIO,
-              BORDER_ZONE_MIN_HIT_LENGTH_PX,
-              BORDER_ZONE_MAX_HIT_LENGTH_PX,
-            ),
-          ),
-        );
-        const centerX = (visibleSegment.start + visibleSegment.end) / 2;
-        const centerY = boundaryStartY + (borderPixels / 2);
-        const x = clamp(
-          centerX - (horizontalHitWidth / 2),
-          interiorLeft,
-          Math.max(interiorLeft, interiorRight - horizontalHitWidth),
-        );
-        const { topPanelIds, bottomPanelIds } = resolveHorizontalSegmentAdjacency(
-          panelRects,
-          boundaryStartY,
-          boundaryEndY,
-          visibleSegment.start,
-          visibleSegment.end,
-        );
-        if (topPanelIds.length === 0 || bottomPanelIds.length === 0) return;
-
-        zones.push({
-          type: 'horizontal',
-          index: i,
-          segmentIndex,
-          x,
-          y: centerY - horizontalHitHeight / 2,
-          width: horizontalHitWidth,
-          height: horizontalHitHeight,
-          centerX,
-          centerY,
-          handleWidth: handleLong,
-          handleHeight: handleShort,
-          cursor: 'row-resize',
-          id: buildBoundarySegmentZoneId('horizontal', i, segmentIndex),
-          boundaryStart: boundaryStartY,
-          boundaryEnd: boundaryEndY,
-          segmentStart: visibleSegment.start,
-          segmentEnd: visibleSegment.end,
-          topPanelIds,
-          bottomPanelIds,
-        });
-      });
-      
-      currentY += borderPixels;
-    }
-  }
-  
-  return zones;
+const detectBorderZones = (_layoutConfig, containerWidth, containerHeight, borderPixels, panelRects = []) => {
+  return detectBorderZonesFromPanelRects({
+    containerWidth,
+    containerHeight,
+    borderPixels,
+    panelRects,
+    options: {
+      minHitSizePx: BORDER_ZONE_MIN_HIT_SIZE_PX,
+      handleLengthPx: BORDER_ZONE_HANDLE_LENGTH_PX,
+      handleThicknessPx: BORDER_ZONE_HANDLE_THICKNESS_PX,
+      intervalEpsilonPx: BORDER_ZONE_INTERVAL_EPSILON_PX,
+      hitLengthRatio: BORDER_ZONE_HIT_LENGTH_RATIO,
+      minHitLengthPx: BORDER_ZONE_MIN_HIT_LENGTH_PX,
+      maxHitLengthPx: BORDER_ZONE_MAX_HIT_LENGTH_PX,
+      hitPaddingPx: 8,
+    },
+  });
 };
 
 /**
@@ -1367,6 +729,48 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
  */
 const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCount, borderPixels) => {
   const rects = [];
+
+  if (Array.isArray(layoutConfig?.panelRects) && layoutConfig.panelRects.length > 0) {
+    const inset = Math.max(0, Number(borderPixels) || 0);
+    const interiorLeft = inset;
+    const interiorTop = inset;
+    const interiorRight = Math.max(interiorLeft + 1, containerWidth - inset);
+    const interiorBottom = Math.max(interiorTop + 1, containerHeight - inset);
+    const interiorWidth = Math.max(1, interiorRight - interiorLeft);
+    const interiorHeight = Math.max(1, interiorBottom - interiorTop);
+
+    const explicitRects = layoutConfig.panelRects
+      .slice(0, Math.max(1, panelCount || 1))
+      .map((panelRect, fallbackIndex) => {
+        const panelId = panelRect?.panelId || `panel-${fallbackIndex + 1}`;
+        const index = getPanelOrderIndex(panelRect, fallbackIndex);
+        const xRatio = clampRectRatio(panelRect?.x);
+        const yRatio = clampRectRatio(panelRect?.y);
+        const widthRatio = clampRectRatio(panelRect?.width);
+        const heightRatio = clampRectRatio(panelRect?.height);
+        const left = interiorLeft + (xRatio * interiorWidth);
+        const top = interiorTop + (yRatio * interiorHeight);
+        const right = clamp(interiorLeft + ((xRatio + widthRatio) * interiorWidth), interiorLeft, interiorRight);
+        const bottom = clamp(interiorTop + ((yRatio + heightRatio) * interiorHeight), interiorTop, interiorBottom);
+        const width = right - left;
+        const height = bottom - top;
+        if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
+        return {
+          x: left,
+          y: top,
+          width,
+          height,
+          panelId,
+          index,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.index - b.index);
+
+    if (explicitRects.length > 0) {
+      return explicitRects;
+    }
+  }
   
   // Calculate the available space (subtract borders)
   const totalPadding = borderPixels * 2;
@@ -1763,6 +1167,7 @@ const CanvasCollagePreview = ({
   const [hoveredBorder, setHoveredBorder] = useState(null);
   const [selectedBorderZoneId, setSelectedBorderZoneId] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
+  const activeBorderDragLayoutRef = useRef(null);
   const [topCaptionLayout, setTopCaptionLayout] = useState({
     enabled: false,
     captionHeight: 0,
@@ -1797,6 +1202,7 @@ const CanvasCollagePreview = ({
     try {
       if (!layout || typeof layout !== 'object') return false;
       const needed = Math.max(1, count || 1);
+      if (Array.isArray(layout.panelRects)) return layout.panelRects.length >= needed;
       if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
       if (Array.isArray(layout.items)) return layout.items.length >= needed;
       const cols = countGridTracks(layout.gridTemplateColumns);
@@ -2221,14 +1627,19 @@ const CanvasCollagePreview = ({
         gridTemplateAreas: customLayoutConfig.gridTemplateAreas ?? base.gridTemplateAreas,
         areas: customLayoutConfig.areas ?? base.areas,
         items: customLayoutConfig.items ?? base.items,
+        panelRects: Array.isArray(customLayoutConfig.panelRects) ? customLayoutConfig.panelRects : base.panelRects,
       };
+    }
+    if (!base && customLayoutConfig && Array.isArray(customLayoutConfig.panelRects)) {
+      return { panelRects: customLayoutConfig.panelRects };
     }
     return base;
   }, [selectedTemplate, panelCount, customLayoutConfig]);
 
-  // Border dragging helper functions
-  const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
-    if (!layoutConfig || !borderZone) return;
+  useEffect(() => {
+    if (selectedTemplate?.id !== 'vertical-asymmetric-5') return;
+    if (Array.isArray(customLayoutConfig?.panelRects) && customLayoutConfig.panelRects.length > 0) return;
+    if (!layoutConfig) return;
 
     const imageAreaHeight = (
       Number.isFinite(topCaptionLayout?.imageAreaHeight) && topCaptionLayout.imageAreaHeight > 0
@@ -2237,107 +1648,143 @@ const CanvasCollagePreview = ({
       : (componentWidth / Math.max(0.01, Number(aspectRatioValue) || 1));
     if (!Number.isFinite(imageAreaHeight) || imageAreaHeight <= 0) return;
 
-    const currentRects = parseGridToRects(
+    const baseRects = parseGridToRects(
       layoutConfig,
       componentWidth,
       imageAreaHeight,
       panelCount,
       borderPixels,
     );
-    if (!Array.isArray(currentRects) || currentRects.length === 0) return;
+    if (!Array.isArray(baseRects) || baseRects.length === 0) return;
 
-    const rectsById = currentRects.reduce((acc, rect) => {
-      acc[rect.panelId] = { ...rect };
-      return acc;
-    }, {});
-    const minPanelWidthPx = Math.max(24, componentWidth * 0.06);
-    const minPanelHeightPx = Math.max(24, imageAreaHeight * 0.06);
-    let changed = false;
-
-    if (borderZone.type === 'vertical') {
-      const leftPanelIds = getUniquePanelIds(borderZone.leftPanelIds).filter((panelId) => rectsById[panelId]);
-      const rightPanelIds = getUniquePanelIds(borderZone.rightPanelIds).filter((panelId) => rectsById[panelId]);
-      if (leftPanelIds.length === 0 || rightPanelIds.length === 0) return;
-
-      let minAllowedDelta = Number.NEGATIVE_INFINITY;
-      let maxAllowedDelta = Number.POSITIVE_INFINITY;
-      leftPanelIds.forEach((panelId) => {
-        minAllowedDelta = Math.max(minAllowedDelta, minPanelWidthPx - rectsById[panelId].width);
-      });
-      rightPanelIds.forEach((panelId) => {
-        maxAllowedDelta = Math.min(maxAllowedDelta, rectsById[panelId].width - minPanelWidthPx);
-      });
-      if (minAllowedDelta > maxAllowedDelta) return;
-
-      const appliedDelta = clamp(deltaX, minAllowedDelta, maxAllowedDelta);
-      if (Math.abs(appliedDelta) < 0.01) return;
-
-      leftPanelIds.forEach((panelId) => {
-        rectsById[panelId].width += appliedDelta;
-      });
-      rightPanelIds.forEach((panelId) => {
-        rectsById[panelId].x += appliedDelta;
-        rectsById[panelId].width -= appliedDelta;
-      });
-      changed = true;
-    } else if (borderZone.type === 'horizontal') {
-      const topPanelIds = getUniquePanelIds(borderZone.topPanelIds).filter((panelId) => rectsById[panelId]);
-      const bottomPanelIds = getUniquePanelIds(borderZone.bottomPanelIds).filter((panelId) => rectsById[panelId]);
-      if (topPanelIds.length === 0 || bottomPanelIds.length === 0) return;
-
-      let minAllowedDelta = Number.NEGATIVE_INFINITY;
-      let maxAllowedDelta = Number.POSITIVE_INFINITY;
-      topPanelIds.forEach((panelId) => {
-        minAllowedDelta = Math.max(minAllowedDelta, minPanelHeightPx - rectsById[panelId].height);
-      });
-      bottomPanelIds.forEach((panelId) => {
-        maxAllowedDelta = Math.min(maxAllowedDelta, rectsById[panelId].height - minPanelHeightPx);
-      });
-      if (minAllowedDelta > maxAllowedDelta) return;
-
-      const appliedDelta = clamp(deltaY, minAllowedDelta, maxAllowedDelta);
-      if (Math.abs(appliedDelta) < 0.01) return;
-
-      topPanelIds.forEach((panelId) => {
-        rectsById[panelId].height += appliedDelta;
-      });
-      bottomPanelIds.forEach((panelId) => {
-        rectsById[panelId].y += appliedDelta;
-        rectsById[panelId].height -= appliedDelta;
-      });
-      changed = true;
-    }
-
-    if (!changed) return;
-
-    const nextRects = currentRects.map((panel) => {
-      const updated = rectsById[panel.panelId];
-      if (!updated) return panel;
-      return {
-        ...panel,
-        ...updated,
-      };
-    });
-
-    const newLayoutConfig = buildCustomLayoutConfigFromRects(
-      nextRects,
+    const seededLayout = buildPanelRectLayoutFromRects(
+      baseRects,
       componentWidth,
       imageAreaHeight,
       borderPixels,
       panelCount,
     );
-    if (!newLayoutConfig) return;
+    if (!seededLayout) return;
 
-    if (
-      customLayoutConfig
-      && customLayoutConfig.gridTemplateColumns === newLayoutConfig.gridTemplateColumns
-      && customLayoutConfig.gridTemplateRows === newLayoutConfig.gridTemplateRows
-      && customLayoutConfig.gridTemplateAreas === newLayoutConfig.gridTemplateAreas
-    ) {
-      return;
+    setCustomLayoutConfig((previousLayout) => {
+      if (Array.isArray(previousLayout?.panelRects) && previousLayout.panelRects.length > 0) {
+        return previousLayout;
+      }
+      if (BORDER_DEBUG_MODE) {
+        borderDebugLog('seed-layout', {
+          templateId: selectedTemplate?.id,
+          panelCount,
+          panelRects: seededLayout.panelRects,
+        });
+      }
+      return seededLayout;
+    });
+  }, [
+    selectedTemplate?.id,
+    customLayoutConfig?.panelRects,
+    layoutConfig,
+    componentWidth,
+    topCaptionLayout?.imageAreaHeight,
+    aspectRatioValue,
+    panelCount,
+    borderPixels,
+  ]);
+
+  // Border dragging helper functions
+  const updateLayoutWithBorderDrag = useCallback((dragState, deltaX, deltaY) => {
+    const activeLayoutConfig = activeBorderDragLayoutRef.current || layoutConfig;
+    if (!activeLayoutConfig || !dragState) return false;
+
+    const draggedZoneId = dragState?.zoneId || dragState?.edgeId || null;
+    const fallbackZone = dragState?.zone || dragState?.borderZone || dragState;
+
+    const imageAreaHeight = (
+      Number.isFinite(topCaptionLayout?.imageAreaHeight) && topCaptionLayout.imageAreaHeight > 0
+    )
+      ? topCaptionLayout.imageAreaHeight
+      : (componentWidth / Math.max(0.01, Number(aspectRatioValue) || 1));
+    if (!Number.isFinite(imageAreaHeight) || imageAreaHeight <= 0) return false;
+
+    const currentRects = parseGridToRects(
+      activeLayoutConfig,
+      componentWidth,
+      imageAreaHeight,
+      panelCount,
+      borderPixels,
+    );
+    if (!Array.isArray(currentRects) || currentRects.length === 0) return false;
+
+    const currentBorderZones = detectBorderZones(
+      activeLayoutConfig,
+      componentWidth,
+      imageAreaHeight,
+      borderPixels,
+      currentRects,
+    );
+    const activeBorderZone = (
+      (draggedZoneId ? findBorderZoneByEdgeId(currentBorderZones, draggedZoneId) : null)
+      || fallbackZone
+    );
+    if (!activeBorderZone) return false;
+
+    const minPanelWidthPx = Math.max(24, componentWidth * 0.06);
+    const minPanelHeightPx = Math.max(24, imageAreaHeight * 0.06);
+    const dragResult = applyBorderDragDelta({
+      panelRects: currentRects,
+      borderZone: activeBorderZone,
+      deltaX,
+      deltaY,
+      minPanelWidthPx,
+      minPanelHeightPx,
+    });
+    if (BORDER_DEBUG_MODE) {
+      borderDebugLog('drag-step', {
+        zoneId: draggedZoneId || activeBorderZone.id,
+        orientation: activeBorderZone.type,
+        boundaryStart: activeBorderZone.boundaryStart,
+        boundaryEnd: activeBorderZone.boundaryEnd,
+        segmentStart: activeBorderZone.segmentStart,
+        segmentEnd: activeBorderZone.segmentEnd,
+        adjacentPanels: activeBorderZone.type === 'vertical'
+          ? { left: activeBorderZone.leftPanelIds || [], right: activeBorderZone.rightPanelIds || [] }
+          : { top: activeBorderZone.topPanelIds || [], bottom: activeBorderZone.bottomPanelIds || [] },
+        pointerDelta: { x: deltaX, y: deltaY },
+        appliedDelta: { x: dragResult.appliedDeltaX, y: dragResult.appliedDeltaY },
+        outcome: dragResult.outcome,
+      });
+    }
+    if (dragResult.outcome === 'invalid') return false;
+    if (!dragResult.changed) return true;
+
+    const newLayoutConfig = buildPanelRectLayoutFromRects(
+      dragResult.nextPanelRects,
+      componentWidth,
+      imageAreaHeight,
+      borderPixels,
+      panelCount,
+    );
+    if (!newLayoutConfig) return false;
+
+    const unchangedExplicitLayout = (
+      Array.isArray(activeLayoutConfig?.panelRects)
+      && arePanelRectLayoutsEqual(activeLayoutConfig, newLayoutConfig)
+    );
+    if (unchangedExplicitLayout) {
+      if (BORDER_DEBUG_MODE) {
+        borderDebugLog('drag-step-noop-layout', {
+          zoneId: draggedZoneId || activeBorderZone.id,
+          pointerDelta: { x: deltaX, y: deltaY },
+          appliedDelta: { x: dragResult.appliedDeltaX, y: dragResult.appliedDeltaY },
+        });
+      }
+      return false;
     }
 
+    // Keep a synchronous layout copy during drag so rapid pointer events
+    // don't re-apply deltas against stale React state.
+    activeBorderDragLayoutRef.current = newLayoutConfig;
     setCustomLayoutConfig(newLayoutConfig);
+    return true;
   }, [
     layoutConfig,
     borderPixels,
@@ -2345,7 +1792,6 @@ const CanvasCollagePreview = ({
     panelCount,
     topCaptionLayout?.imageAreaHeight,
     aspectRatioValue,
-    customLayoutConfig,
   ]);
 
   const findBorderZone = useCallback((x, y) => {
@@ -2358,7 +1804,12 @@ const CanvasCollagePreview = ({
 
   const getBorderZoneId = useCallback((zone) => {
     if (!zone) return null;
-    return zone.id || `${zone.type}-${zone.index}`;
+    if (zone.id) return zone.id;
+    if (zone.edgeId) return zone.edgeId;
+    if (zone.type === 'vertical') {
+      return buildStableBorderEdgeId('vertical', zone.leftPanelIds || [], zone.rightPanelIds || []);
+    }
+    return buildStableBorderEdgeId('horizontal', zone.topPanelIds || [], zone.bottomPanelIds || []);
   }, []);
 
   const startBorderDragFromClient = useCallback((zone, zoneId, clientX, clientY) => {
@@ -2379,14 +1830,31 @@ const CanvasCollagePreview = ({
       Date.now() + BORDER_DRAG_ACTION_SUPPRESS_MS,
     );
     const resolvedZoneId = zoneId || getBorderZoneId(zone);
+    activeBorderDragLayoutRef.current = layoutConfig;
     isDraggingBorderRef.current = true;
-    draggedBorderRef.current = zone;
+    draggedBorderRef.current = {
+      zoneId: resolvedZoneId,
+      zone,
+    };
     borderDragStartRef.current = startPoint;
     setSelectedBorderZoneId(resolvedZoneId);
     setIsDraggingBorder(true);
     setBorderDragStart(startPoint);
+    if (BORDER_DEBUG_MODE) {
+      borderDebugLog('drag-start', {
+        zoneId: resolvedZoneId,
+        orientation: zone.type,
+        boundaryStart: zone.boundaryStart,
+        boundaryEnd: zone.boundaryEnd,
+        segmentStart: zone.segmentStart,
+        segmentEnd: zone.segmentEnd,
+        adjacentPanels: zone.type === 'vertical'
+          ? { left: zone.leftPanelIds || [], right: zone.rightPanelIds || [] }
+          : { top: zone.topPanelIds || [], bottom: zone.bottomPanelIds || [] },
+      });
+    }
     return true;
-  }, [getBorderZoneId]);
+  }, [getBorderZoneId, layoutConfig]);
 
   const updateBorderDragFromClient = useCallback((clientX, clientY) => {
     if (!containerRef.current || !isDraggingBorderRef.current || !draggedBorderRef.current) {
@@ -2403,7 +1871,12 @@ const CanvasCollagePreview = ({
       return true;
     }
 
-    updateLayoutWithBorderDrag(draggedBorderRef.current, deltaX, deltaY);
+    const layoutDidUpdate = updateLayoutWithBorderDrag(draggedBorderRef.current, deltaX, deltaY);
+    // Keep accumulating pointer delta when movement is temporarily coalesced
+    // (e.g., split borders align onto one track). This avoids "stuck" drags.
+    if (!layoutDidUpdate) {
+      return true;
+    }
     const nextPoint = { x, y };
     borderDragStartRef.current = nextPoint;
     setBorderDragStart(nextPoint);
@@ -2411,9 +1884,11 @@ const CanvasCollagePreview = ({
   }, [updateLayoutWithBorderDrag]);
 
   const stopBorderDrag = useCallback((clearSelection = true) => {
+    const activeDrag = draggedBorderRef.current;
     const hadBorderDrag = isDraggingBorderRef.current || Boolean(draggedBorderRef.current);
     isDraggingBorderRef.current = false;
     draggedBorderRef.current = null;
+    activeBorderDragLayoutRef.current = null;
     touchStartInfo.current = null;
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -2427,6 +1902,11 @@ const CanvasCollagePreview = ({
     setIsDraggingBorder(false);
     if (clearSelection && hadBorderDrag) {
       setSelectedBorderZoneId(null);
+    }
+    if (BORDER_DEBUG_MODE && hadBorderDrag) {
+      borderDebugLog('drag-stop', {
+        zoneId: activeDrag?.zoneId || activeDrag?.zone?.id || null,
+      });
     }
   }, []);
 
@@ -2961,6 +2441,22 @@ const CanvasCollagePreview = ({
             y: zone.y + imageOffsetY,
             centerY: Number.isFinite(zone.centerY) ? zone.centerY + imageOffsetY : zone.centerY,
           }));
+          if (BORDER_DEBUG_MODE) {
+            zones.forEach((zone) => {
+              borderDebugLog('zone', {
+                zoneId: zone.id,
+                edgeId: zone.edgeId || zone.id,
+                orientation: zone.type,
+                boundaryStart: zone.boundaryStart,
+                boundaryEnd: zone.boundaryEnd,
+                segmentStart: zone.segmentStart,
+                segmentEnd: zone.segmentEnd,
+                adjacentPanels: zone.type === 'vertical'
+                  ? { left: zone.leftPanelIds || [], right: zone.rightPanelIds || [] }
+                  : { top: zone.topPanelIds || [], bottom: zone.bottomPanelIds || [] },
+              });
+            });
+          }
           setBorderZones((prevZones) => (
             areBorderZonesEqual(prevZones, zones) ? prevZones : zones
           ));

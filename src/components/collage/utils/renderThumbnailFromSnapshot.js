@@ -45,6 +45,9 @@ const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
     if (!customLayout || typeof customLayout !== 'object') return false;
+    if (Array.isArray(customLayout.panelRects)) {
+      return customLayout.panelRects.length >= Math.max(1, panelCount || 1);
+    }
     // Prefer explicit areas length when present
     if (Array.isArray(customLayout.areas)) {
       return customLayout.areas.length >= Math.max(1, panelCount || 1);
@@ -63,7 +66,11 @@ function isCustomLayoutCompatible(customLayout, panelCount) {
 // Create layout config by id, optionally using a persisted custom layout
 function createLayoutConfigById(templateId, panelCount, customLayout) {
   // Only apply a persisted custom layout if it can support the requested panel count
-  if (customLayout && (customLayout.gridTemplateColumns || customLayout.gridTemplateRows)) {
+  if (customLayout && (
+    customLayout.gridTemplateColumns
+    || customLayout.gridTemplateRows
+    || Array.isArray(customLayout.panelRects)
+  )) {
     try {
       if (isCustomLayoutCompatible(customLayout, panelCount)) {
         return customLayout;
@@ -132,8 +139,58 @@ function parseGridTemplateAreas(gridTemplateAreas) {
   return areas;
 }
 
+function getPanelOrderIndex(panelRect, fallbackIndex = 0) {
+  const explicitIndex = Number(panelRect?.index);
+  if (Number.isFinite(explicitIndex)) return explicitIndex;
+  const panelId = String(panelRect?.panelId || '');
+  const idMatch = panelId.match(/^panel-(\d+)$/);
+  if (idMatch) {
+    return Math.max(0, parseInt(idMatch[1], 10) - 1);
+  }
+  return fallbackIndex;
+}
+
+function clampRectRatio(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(1, numeric));
+}
+
 // Convert layoutConfig to panel rectangles, honoring borders and template areas (mirrors preview logic)
 function parseGridToRects(layoutConfig, componentWidth, componentHeight, panelCount, borderPixels) {
+  if (Array.isArray(layoutConfig?.panelRects) && layoutConfig.panelRects.length > 0) {
+    const inset = Math.max(0, Number(borderPixels) || 0);
+    const interiorLeft = inset;
+    const interiorTop = inset;
+    const interiorRight = Math.max(interiorLeft + 1, componentWidth - inset);
+    const interiorBottom = Math.max(interiorTop + 1, componentHeight - inset);
+    const interiorWidth = Math.max(1, interiorRight - interiorLeft);
+    const interiorHeight = Math.max(1, interiorBottom - interiorTop);
+
+    const rects = layoutConfig.panelRects
+      .slice(0, Math.max(1, panelCount || 1))
+      .map((panelRect, fallbackIndex) => {
+        const panelId = panelRect?.panelId || `panel-${fallbackIndex + 1}`;
+        const index = getPanelOrderIndex(panelRect, fallbackIndex);
+        const xRatio = clampRectRatio(panelRect?.x);
+        const yRatio = clampRectRatio(panelRect?.y);
+        const widthRatio = clampRectRatio(panelRect?.width);
+        const heightRatio = clampRectRatio(panelRect?.height);
+        const x = interiorLeft + (xRatio * interiorWidth);
+        const y = interiorTop + (yRatio * interiorHeight);
+        const right = Math.max(x, Math.min(interiorRight, interiorLeft + ((xRatio + widthRatio) * interiorWidth)));
+        const bottom = Math.max(y, Math.min(interiorBottom, interiorTop + ((yRatio + heightRatio) * interiorHeight)));
+        const width = right - x;
+        const height = bottom - y;
+        if (width <= 0.25 || height <= 0.25) return null;
+        return { x, y, width, height, panelId, index };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.index - b.index);
+
+    if (rects.length > 0) return rects;
+  }
+
   // Determine columns/rows and their fractional sizes
   let columns = 1;
   let rows = 1;

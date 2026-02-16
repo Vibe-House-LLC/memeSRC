@@ -71,6 +71,7 @@ function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
     if (!customLayout || typeof customLayout !== 'object') return false;
     const needed = Math.max(1, panelCount || 1);
+    if (Array.isArray(customLayout.panelRects)) return customLayout.panelRects.length >= needed;
     if (Array.isArray(customLayout.areas)) return customLayout.areas.length >= needed;
     if (Array.isArray(customLayout.items)) return customLayout.items.length >= needed;
     const cols = countGridTracks(customLayout.gridTemplateColumns);
