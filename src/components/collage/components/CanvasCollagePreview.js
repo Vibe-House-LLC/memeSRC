@@ -139,6 +139,7 @@ const BORDER_ZONE_HIT_LENGTH_RATIO = 0.7;
 const BORDER_ZONE_MIN_HIT_LENGTH_PX = 56;
 const BORDER_ZONE_MAX_HIT_LENGTH_PX = 140;
 const BORDER_ZONE_SHOW_HIT_AREA_DEBUG = false;
+const BORDER_DRAG_ACTION_SUPPRESS_MS = 420;
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -1795,6 +1796,16 @@ const CanvasCollagePreview = ({
       x: clientX - rect.left,
       y: clientY - rect.top,
     };
+    touchStartInfo.current = null;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressActiveRef.current = false;
+    frameTapSuppressUntilRef.current = Math.max(
+      frameTapSuppressUntilRef.current || 0,
+      Date.now() + BORDER_DRAG_ACTION_SUPPRESS_MS,
+    );
     const resolvedZoneId = zoneId || getBorderZoneId(zone);
     isDraggingBorderRef.current = true;
     draggedBorderRef.current = zone;
@@ -1831,6 +1842,16 @@ const CanvasCollagePreview = ({
     const hadBorderDrag = isDraggingBorderRef.current || Boolean(draggedBorderRef.current);
     isDraggingBorderRef.current = false;
     draggedBorderRef.current = null;
+    touchStartInfo.current = null;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressActiveRef.current = false;
+    frameTapSuppressUntilRef.current = Math.max(
+      frameTapSuppressUntilRef.current || 0,
+      Date.now() + BORDER_DRAG_ACTION_SUPPRESS_MS,
+    );
     setIsDraggingBorder(false);
     if (clearSelection && hadBorderDrag) {
       setSelectedBorderZoneId(null);
@@ -4127,6 +4148,7 @@ const CanvasCollagePreview = ({
 
   // Open/close the action menu (placed before handlers that depend on it)
   const handleActionMenuOpen = useCallback((event, panelId) => {
+    if (isDraggingBorderRef.current) return;
     // Respect optional suppression window; guard against unexpected errors
     const suppressed = (() => {
       try {
@@ -6358,11 +6380,13 @@ const CanvasCollagePreview = ({
              }}
              onTouchEnd={(e) => {
                if (!isDraggingBorderRef.current) return;
+               e.preventDefault();
                e.stopPropagation();
                stopBorderDrag(true);
              }}
              onTouchCancel={(e) => {
                if (!isDraggingBorderRef.current) return;
+               e.preventDefault();
                e.stopPropagation();
                stopBorderDrag(true);
              }}
