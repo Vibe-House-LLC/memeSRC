@@ -3091,7 +3091,16 @@ const CanvasCollagePreview = ({
 
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
-  }, []);
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    setTextLayerSnapGuide(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
+    }
+    clearOverlayTouchTapTracker();
+  }, [clearOverlayTouchTapTracker]);
 
 
 
@@ -3101,6 +3110,7 @@ const CanvasCollagePreview = ({
     const { suppressEvents = true } = options;
     if (suppressEvents && event && typeof event.preventDefault === 'function') event.preventDefault();
     if (suppressEvents && event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    setTextEditingPanel(null);
     setActiveTextLayerId(null);
     setTextLayerInteraction(null);
     setTextLayerSnapGuide(null);
@@ -3109,7 +3119,8 @@ const CanvasCollagePreview = ({
       window.cancelAnimationFrame(textLayerRafRef.current);
       textLayerRafRef.current = null;
     }
-  }, []);
+    clearOverlayTouchTapTracker();
+  }, [clearOverlayTouchTapTracker]);
 
   const getTextLayerUpdateFromPointer = useCallback((interaction, clientX, clientY) => {
     if (!interaction) return null;
