@@ -2414,6 +2414,11 @@ const CanvasCollagePreview = ({
       requestPointerApply();
     };
 
+    const handleTouchMoveDuringStickerInteraction = (event) => {
+      if (!event?.cancelable) return;
+      event.preventDefault();
+    };
+
     const handlePointerEnd = () => {
       if (stickerRafRef.current !== null) {
         window.cancelAnimationFrame(stickerRafRef.current);
@@ -2427,11 +2432,13 @@ const CanvasCollagePreview = ({
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerEnd);
     window.addEventListener('pointercancel', handlePointerEnd);
+    window.addEventListener('touchmove', handleTouchMoveDuringStickerInteraction, { passive: false });
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('touchmove', handleTouchMoveDuringStickerInteraction);
       if (stickerRafRef.current !== null) {
         window.cancelAnimationFrame(stickerRafRef.current);
         stickerRafRef.current = null;
@@ -5796,7 +5803,9 @@ const CanvasCollagePreview = ({
                   cursor: stickerInteraction?.stickerId === sticker.id
                     ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
                     : (activeStickerId === sticker.id ? 'grab' : 'pointer'),
-                  touchAction: activeStickerId === sticker.id ? 'none' : 'pan-y pinch-zoom',
+                  touchAction: (activeStickerId === sticker.id || stickerInteraction?.stickerId === sticker.id)
+                    ? 'none'
+                    : 'pan-y pinch-zoom',
                   transformOrigin: 'center center',
                   transform: `rotate(${rect.angleDeg || 0}deg)`,
                 }}
