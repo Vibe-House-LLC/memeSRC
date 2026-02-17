@@ -10,6 +10,10 @@ import { parseFormattedText } from '../../../utils/inlineFormatting';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
+const isFloatingTextLayerId = (panelId) => (
+  typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
+);
 const TOP_CAPTION_DEFAULTS = {
   fontSize: 42,
   fontWeight: 700,
@@ -636,7 +640,133 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     ctx.restore();
   }
 
-  // Draw panels: images and captions (to mirror final export)
+  const drawTextLayerInRect = (panelRect, panelText) => {
+    if (!panelRect || !panelText || typeof panelText !== 'object') return;
+    const x = Number(panelRect.x);
+    const y = Number(panelRect.y);
+    const w = Number(panelRect.width);
+    const h = Number(panelRect.height);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h) || w <= 1 || h <= 1) return;
+
+    const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+    const { cleanText } = parseFormattedText(String(rawCaption));
+    if (!cleanText || !cleanText.trim()) return;
+
+    ctx.save();
+    // Clip to layer bounds
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+
+    // Determine base font size: explicit or auto-fit similar to preview
+    let baseFontSize = panelText.fontSize || 26;
+    if (!panelText.fontSize) {
+      // Auto-calc: try decreasing sizes until it fits 40% of layer height
+      const textPadding = 10;
+      const maxTextWidth = w - textPadding * 2;
+      const maxTextHeight = h * 0.4;
+      const reasonableMax = Math.min(48, Math.max(16, h * 0.15));
+      const probe = document.createElement('canvas').getContext('2d');
+      if (probe) {
+        for (let size = reasonableMax; size >= 8; size -= 2) {
+          probe.font = `700 ${size}px Arial`;
+          const words = String(cleanText).split(' ');
+          const lines = [];
+          let currentLine = '';
+          words.forEach((word) => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (probe.measureText(testLine).width <= maxTextWidth) {
+              currentLine = testLine;
+            } else {
+              if (currentLine) lines.push(currentLine);
+              currentLine = word;
+            }
+          });
+          if (currentLine) lines.push(currentLine);
+          const lineHeight = size * 1.2;
+          const total = lines.length * lineHeight;
+          if (total <= maxTextHeight) {
+            baseFontSize = Math.max(size, 12);
+            break;
+          }
+        }
+      }
+    }
+
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = panelText.fontWeight || 400;
+    const fontStyle = panelText.fontStyle || 'normal';
+    const fontFamily = panelText.fontFamily || 'Arial';
+    const textColor = panelText.color || '#ffffff';
+    const strokeWidth = panelText.strokeWidth ?? 2;
+    const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
+    const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
+    const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
+    const textAlign = normalizeTextAlign(panelText.textAlign || 'center');
+
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = strokeWidth;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.shadowBlur = 3;
+
+    const textPadding = 10;
+    const maxTextWidth = w - textPadding * 2;
+    const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
+    const lineHeight = fontSize * 1.2;
+    const lines = wrapText(ctx, String(cleanText), maxTextWidth);
+    const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+    const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
+    const totalTextHeight = lines.length * lineHeight;
+
+    let textAnchorY;
+    if (textPositionY <= 0) {
+      const defaultBottom = y + (h * 0.95);
+      const extendedBottom = y + h + (h * 0.1);
+      const t = Math.abs(textPositionY) / 100;
+      textAnchorY = defaultBottom + t * (extendedBottom - defaultBottom);
+    } else {
+      const defaultBottom = y + (h * 0.95);
+      const frameTop = y;
+      const t = textPositionY / 100;
+      textAnchorY = defaultBottom + t * (frameTop - defaultBottom);
+    }
+
+    const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
+
+    if (textRotation !== 0) {
+      ctx.save();
+      const textCenterX = textBlockCenterX;
+      const textCenterY = textAnchorY - totalTextHeight / 2;
+      ctx.translate(textCenterX, textCenterY);
+      ctx.rotate((textRotation * Math.PI) / 180);
+      ctx.translate(-textCenterX, -textCenterY);
+    }
+
+    lines.forEach((line, idx) => {
+      const lineY = startY + idx * lineHeight;
+      const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
+      const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
+      if (strokeWidth > 0) ctx.strokeText(line, drawX, lineY);
+      ctx.fillText(line, drawX, lineY);
+    });
+
+    if (textRotation !== 0) {
+      ctx.restore();
+    }
+
+    ctx.restore();
+  };
+
+  // Draw panels: images and panel-bound captions (to mirror final export)
   rects.forEach(({ x, y, width: w, height: h, panelId }) => {
     const imageIndex = snap.panelImageMapping?.[panelId];
     const hasImage = typeof imageIndex === 'number' && loaded[imageIndex];
@@ -666,122 +796,25 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
         ctx.restore();
       }
-    }
-
-    const rawCaption = panelText.rawContent ?? panelText.content ?? '';
-    const { cleanText } = parseFormattedText(String(rawCaption));
-
-    // Draw actual text (if present), matching export logic
-    if (hasImage && cleanText && cleanText.trim()) {
-      ctx.save();
-      // Clip to frame bounds
-      ctx.beginPath();
-      ctx.rect(x, y, w, h);
-      ctx.clip();
-
-      // Determine base font size: explicit or auto-fit similar to preview
-      let baseFontSize = panelText.fontSize || 26;
-      if (!panelText.fontSize) {
-        // Auto-calc: try decreasing sizes until it fits 40% of panel height
-        const textPadding = 10;
-        const maxTextWidth = w - textPadding * 2;
-        const maxTextHeight = h * 0.4;
-        const reasonableMax = Math.min(48, Math.max(16, h * 0.15));
-        const probe = document.createElement('canvas').getContext('2d');
-        for (let size = reasonableMax; size >= 8; size -= 2) {
-          probe.font = `700 ${size}px Arial`;
-          const words = String(cleanText).split(' ');
-          const lines = [];
-          let currentLine = '';
-          words.forEach((word) => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            if (probe.measureText(testLine).width <= maxTextWidth) {
-              currentLine = testLine;
-            } else {
-              if (currentLine) lines.push(currentLine);
-              currentLine = word;
-            }
-          });
-          if (currentLine) lines.push(currentLine);
-          const lineHeight = size * 1.2;
-          const total = lines.length * lineHeight;
-          if (total <= maxTextHeight) { baseFontSize = Math.max(size, 12); break; }
-        }
-      }
-
-      const fontSize = baseFontSize * textScaleFactor;
-      const fontWeight = panelText.fontWeight || 400;
-      const fontStyle = panelText.fontStyle || 'normal';
-      const fontFamily = panelText.fontFamily || 'Arial';
-      const textColor = panelText.color || '#ffffff';
-      const strokeWidth = panelText.strokeWidth ?? 2;
-      const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
-      const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
-      const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
-      const textAlign = normalizeTextAlign(panelText.textAlign || 'center');
-
-      ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-      ctx.fillStyle = textColor;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = strokeWidth;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
-      ctx.shadowBlur = 3;
-
-      const textPadding = 10;
-      const maxTextWidth = w - textPadding * 2;
-      const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
-      const lineHeight = fontSize * 1.2;
-      const lines = wrapText(ctx, String(cleanText), maxTextWidth);
-      const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
-      const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
-      const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
-      const totalTextHeight = lines.length * lineHeight;
-
-      let textAnchorY;
-      if (textPositionY <= 0) {
-        const defaultBottom = y + (h * 0.95);
-        const extendedBottom = y + h + (h * 0.1);
-        const t = Math.abs(textPositionY) / 100;
-        textAnchorY = defaultBottom + t * (extendedBottom - defaultBottom);
-      } else {
-        const defaultBottom = y + (h * 0.95);
-        const frameTop = y;
-        const t = textPositionY / 100;
-        textAnchorY = defaultBottom + t * (frameTop - defaultBottom);
-      }
-
-      const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
-
-      if (textRotation !== 0) {
-        ctx.save();
-        const textCenterX = textBlockCenterX;
-        const textCenterY = textAnchorY - totalTextHeight / 2;
-        ctx.translate(textCenterX, textCenterY);
-        ctx.rotate((textRotation * Math.PI) / 180);
-        ctx.translate(-textCenterX, -textCenterY);
-      }
-
-      lines.forEach((line, idx) => {
-        const lineY = startY + idx * lineHeight;
-        const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
-        const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
-        if (strokeWidth > 0) ctx.strokeText(line, drawX, lineY);
-        ctx.fillText(line, drawX, lineY);
-      });
-
-      if (textRotation !== 0) {
-        ctx.restore();
-      }
-
-      ctx.restore();
+      drawTextLayerInRect({ x, y, width: w, height: h }, panelText);
     }
   });
+
+  // Draw floating text layers anchored to the full collage area (below top caption).
+  const floatingTextLayers = (snap.panelTexts && typeof snap.panelTexts === 'object')
+    ? Object.entries(snap.panelTexts).filter(([panelId]) => isFloatingTextLayerId(panelId))
+    : [];
+  if (floatingTextLayers.length > 0) {
+    const floatingRect = {
+      x: 0,
+      y: topCaptionHeight,
+      width,
+      height: imageAreaHeight,
+    };
+    floatingTextLayers.forEach(([, panelText]) => {
+      drawTextLayerInRect(floatingRect, panelText);
+    });
+  }
 
   // Draw global sticker overlays (top-most, across the full collage canvas)
   const stickerRefs = Array.isArray(snap.stickers) ? snap.stickers : [];
