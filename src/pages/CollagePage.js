@@ -98,6 +98,7 @@ const MAX_IMAGES = 5;
 const DEFAULT_CUSTOM_ASPECT_RATIO = 1;
 const DEFAULT_PANEL_TRANSFORM = { scale: 1, positionX: 0, positionY: 0 };
 const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const FLOATING_TEXT_LAYER_PREFIX = '__text-layer__-';
 const MOBILE_SETTINGS_PREVIEW_MIN_HEIGHT = 96;
 
 // Navigation blocking removed - only browser tab close warning remains via useBeforeUnload
@@ -2055,7 +2056,7 @@ export default function CollagePage() {
     return Array.from({ length: Math.max(1, panelCount || 1) }, (_, index) => `panel-${index + 1}`);
   }, [selectedTemplate, panelCount]);
 
-  const handleAddTextRequested = useCallback((textType = 'subtitle') => {
+  const handleAddTextRequested = useCallback((textType = 'text-layer') => {
     const hasRealImage = getPanelIdsInOrder().some((panelId) => {
       const mappedImageIndex = panelImageMapping?.[panelId];
       if (typeof mappedImageIndex !== 'number' || mappedImageIndex < 0) return false;
@@ -2111,29 +2112,26 @@ export default function CollagePage() {
       return;
     }
 
-    const orderedPanelIds = getPanelIdsInOrder();
-    if (!orderedPanelIds.length) return;
-
-    const targetPanelId = orderedPanelIds.find((panelId) => {
-      const mappedImageIndex = panelImageMapping?.[panelId];
-      if (typeof mappedImageIndex !== 'number' || mappedImageIndex < 0) return false;
-      const candidateImage = selectedImages?.[mappedImageIndex];
-      if (!candidateImage) return false;
-      return !isStartFromScratchPlaceholder(candidateImage);
-    });
-
-    if (!targetPanelId) {
-      setSnackbar({
-        open: true,
-        message: 'Add an image to a panel first, then add text.',
-        severity: 'info',
-      });
-      return;
+    if (textType === 'text-layer' || textType === 'subtitle') {
+      const layerId = `${FLOATING_TEXT_LAYER_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const defaultFontSize = Number(lastUsedTextSettings?.fontSize);
+      updatePanelText(layerId, {
+        content: '',
+        rawContent: '',
+        fontFamily: lastUsedTextSettings?.fontFamily || 'Arial',
+        fontWeight: lastUsedTextSettings?.fontWeight ?? 700,
+        fontStyle: lastUsedTextSettings?.fontStyle || 'normal',
+        fontSize: Number.isFinite(defaultFontSize) ? Math.max(14, defaultFontSize) : 28,
+        color: lastUsedTextSettings?.color || '#ffffff',
+        strokeWidth: lastUsedTextSettings?.strokeWidth ?? 2,
+        textAlign: 'center',
+        textBoxWidthPercent: 75,
+        textPositionX: 0,
+        textPositionY: 50,
+      }, { replace: true });
+      queuePanelTextAutoOpen(layerId);
     }
-
-    const targetPanelIndex = parsePanelIndexFromId(targetPanelId);
-    queuePanelTextAutoOpen(targetPanelId, targetPanelIndex);
-  }, [getPanelIdsInOrder, panelImageMapping, panelTexts, queuePanelTextAutoOpen, selectedImages, updatePanelText]);
+  }, [getPanelIdsInOrder, lastUsedTextSettings, panelImageMapping, panelTexts, queuePanelTextAutoOpen, selectedImages, updatePanelText]);
 
   const handleAddPanelRequested = useCallback((position = 'end') => {
     if (isHydratingProject || isCreatingCollage) return;
@@ -2600,9 +2598,9 @@ export default function CollagePage() {
     handleAddTextRequested('top-caption');
   }, [closeHeaderAddMenu, handleAddTextRequested]);
 
-  const handleHeaderAddSubtitle = useCallback(() => {
+  const handleHeaderAddTextLayer = useCallback(() => {
     closeHeaderAddMenu();
-    handleAddTextRequested('subtitle');
+    handleAddTextRequested('text-layer');
   }, [closeHeaderAddMenu, handleAddTextRequested]);
 
   const handleHeaderAddSticker = useCallback(() => {
@@ -3063,9 +3061,9 @@ export default function CollagePage() {
                 <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Add Top Caption" />
               </MenuItem>
-              <MenuItem onClick={handleHeaderAddSubtitle}>
+              <MenuItem onClick={handleHeaderAddTextLayer}>
                 <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Add Subtitle Text" />
+                <ListItemText primary="Text Layer" />
               </MenuItem>
               <MenuItem onClick={handleHeaderAddSticker} disabled={!canManageStickers}>
                 <ListItemIcon><StyleRounded fontSize="small" /></ListItemIcon>

@@ -205,10 +205,10 @@ const CollageImagesStep = ({
       onAddTextRequest('top-caption');
     }
   };
-  const handleAddSubtitleText = () => {
+  const handleAddTextLayer = () => {
     closeAddMenu();
     if (canAddText) {
-      onAddTextRequest('subtitle');
+      onAddTextRequest('text-layer');
     }
   };
   const handleAddSticker = () => {
@@ -394,9 +394,9 @@ const CollageImagesStep = ({
             <ListItemIcon><TextFieldsRoundedIcon fontSize="small" /></ListItemIcon>
             <ListItemText primary="Add Top Caption" />
           </MenuItem>
-          <MenuItem onClick={handleAddSubtitleText} disabled={!canAddText}>
+          <MenuItem onClick={handleAddTextLayer} disabled={!canAddText}>
             <ListItemIcon><TextFieldsRoundedIcon fontSize="small" /></ListItemIcon>
-            <ListItemText primary="Add Subtitle Text" />
+            <ListItemText primary="Text Layer" />
           </MenuItem>
           <MenuItem onClick={handleAddSticker} disabled={!canAddSticker}>
             <ListItemIcon><StyleRoundedIcon fontSize="small" /></ListItemIcon>

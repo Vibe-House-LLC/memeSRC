@@ -209,7 +209,12 @@ const getContrastingMonoStroke = (textColor) => {
 
 const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
 const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
+const isFloatingTextLayerId = (panelId) => (
+  typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
+);
 const TOP_CAPTION_PLACEHOLDER = 'Add Top Caption';
+const FLOATING_TEXT_LAYER_PLACEHOLDER = 'Add Text Layer';
 const TOP_CAPTION_DEFAULTS = {
   fontSize: 42,
   fontWeight: 700,
@@ -1396,6 +1401,30 @@ const CanvasCollagePreview = ({
       rect,
     };
   }, [panelTexts, isGeneratingCollage, lastUsedTextSettings?.fontSize, borderPixels, isSingleImageAutoCustomAspect]);
+
+  const floatingTextLayerIds = useMemo(() => {
+    if (!panelTexts || typeof panelTexts !== 'object') return [];
+    return Object.keys(panelTexts).filter((panelId) => isFloatingTextLayerId(panelId));
+  }, [panelTexts]);
+
+  const floatingTextLayerRect = useMemo(() => {
+    const width = Math.max(1, Number(componentWidth || 0));
+    const defaultHeight = Math.max(1, Number(componentHeight || 0));
+    const imageOffsetY = Number(topCaptionLayout?.imageOffsetY);
+    const imageAreaHeight = Number(topCaptionLayout?.imageAreaHeight);
+    const y = Number.isFinite(imageOffsetY) ? imageOffsetY : 0;
+    const height = Number.isFinite(imageAreaHeight) && imageAreaHeight > 0
+      ? Math.max(1, imageAreaHeight)
+      : defaultHeight;
+    return {
+      panelId: '__floating-text-layer-bounds__',
+      x: 0,
+      y,
+      width,
+      height,
+      index: -2,
+    };
+  }, [componentHeight, componentWidth, topCaptionLayout?.imageAreaHeight, topCaptionLayout?.imageOffsetY]);
 
   const drawTopCaptionLayer = useCallback((ctx, { includePlaceholder = true } = {}) => {
     if (!ctx || !topCaptionLayout?.enabled || !topCaptionLayout?.rect) return;
@@ -2708,6 +2737,14 @@ const CanvasCollagePreview = ({
       }
     });
 
+    if (floatingTextLayerIds.length > 0) {
+      floatingTextLayerIds.forEach((layerId) => {
+        const panelText = resolvePanelTextForCanvas(layerId);
+        if (!panelText || typeof panelText !== 'object') return;
+        captionEntries.push({ rect: floatingTextLayerRect, panelText });
+      });
+    }
+
     // Draw stickers between images and captions so captions stay on top.
     if (Array.isArray(stickers) && stickers.length > 0) {
       const stickerPreviewAlpha = anyPanelInTransformMode ? 0.28 : 1;
@@ -2974,6 +3011,8 @@ const CanvasCollagePreview = ({
     getStickerRectPx,
     drawTopCaptionLayer,
     resolvePanelTextForCanvas,
+    floatingTextLayerIds,
+    floatingTextLayerRect,
     getTextAnchorXFromPosition,
     getTextAnchorYFromPosition
   ]);
@@ -3724,12 +3763,16 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     if (!activeTextLayerId) return;
     const panelExists = panelRects.some((panel) => panel.panelId === activeTextLayerId);
-    if (!panelExists) {
+    const floatingLayerExists = (
+      isFloatingTextLayerId(activeTextLayerId) &&
+      Boolean(panelTexts?.[activeTextLayerId])
+    );
+    if (!panelExists && !floatingLayerExists) {
       setActiveTextLayerId(null);
       setTextLayerInteraction(null);
       setTextLayerSnapGuide(null);
     }
-  }, [activeTextLayerId, panelRects]);
+  }, [activeTextLayerId, panelRects, panelTexts]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -5297,6 +5340,14 @@ const CanvasCollagePreview = ({
           }
         });
 
+        if (floatingTextLayerIds.length > 0) {
+          floatingTextLayerIds.forEach((layerId) => {
+            const panelText = resolvePanelTextForCanvas(layerId);
+            if (!panelText || typeof panelText !== 'object') return;
+            captionEntries.push({ rect: floatingTextLayerRect, panelText });
+          });
+        }
+
         const drawStickerLayers = async () => {
           if (!Array.isArray(stickers) || stickers.length === 0) return;
 
@@ -5514,7 +5565,28 @@ const CanvasCollagePreview = ({
       } else {
         resolve(null);
       }
-    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor, getStickerRectPx, drawTopCaptionLayer]);
+    }), [
+      componentWidth,
+      componentHeight,
+      panelRects,
+      loadedImages,
+      loadedStickers,
+      stickers,
+      panelImageMapping,
+      panelTransforms,
+      borderPixels,
+      borderColor,
+      panelTexts,
+      lastUsedTextSettings,
+      theme.palette.mode,
+      calculateOptimalFontSize,
+      textScaleFactor,
+      getStickerRectPx,
+      drawTopCaptionLayer,
+      floatingTextLayerIds,
+      floatingTextLayerRect,
+      resolvePanelTextForCanvas,
+    ]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -5577,7 +5649,7 @@ const CanvasCollagePreview = ({
         })
         .filter(Boolean)
     : [];
-  const textLayers = panelRects
+  const panelTextLayers = panelRects
     .map((panel) => {
       const imageIndex = panelImageMapping[panel.panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
@@ -5593,6 +5665,22 @@ const CanvasCollagePreview = ({
       };
     })
     .filter(Boolean);
+  const floatingTextLayers = floatingTextLayerIds
+    .map((layerId) => {
+      const panelText = resolvePanelTextForCanvas(layerId);
+      if (!panelText || typeof panelText !== 'object') return null;
+      const bounds = getTextAreaBounds(floatingTextLayerRect, panelText);
+      if (!bounds) return null;
+      return {
+        panelId: layerId,
+        panel: floatingTextLayerRect,
+        bounds,
+        isActive: activeTextLayerId === layerId,
+        isFloating: true,
+      };
+    })
+    .filter(Boolean);
+  const textLayers = [...panelTextLayers, ...floatingTextLayers];
   const textLayerBoundsByPanelId = textLayers.reduce((next, layer) => {
     if (!layer?.panelId || !layer?.bounds) return next;
     const controlRect = {
@@ -6182,6 +6270,37 @@ const CanvasCollagePreview = ({
             
 
           </Box>
+        );
+      })}
+
+      {floatingTextLayers.map((layer) => {
+        if (!layer?.panelId || textEditingPanel !== layer.panelId) return null;
+        return (
+          <CaptionEditor
+            key={`floating-text-editor-${layer.panelId}`}
+            panelId={layer.panelId}
+            panelTexts={panelTexts}
+            lastUsedTextSettings={lastUsedTextSettings}
+            updatePanelText={updatePanelText}
+            panelRects={[
+              ...panelRects,
+              {
+                panelId: layer.panelId,
+                x: floatingTextLayerRect.x,
+                y: floatingTextLayerRect.y,
+                width: floatingTextLayerRect.width,
+                height: floatingTextLayerRect.height,
+                index: floatingTextLayerRect.index,
+              },
+            ]}
+            calculateOptimalFontSize={calculateOptimalFontSize}
+            textScaleFactor={textScaleFactor}
+            onClose={handleTextClose}
+            rect={textLayerBoundsByPanelId[layer.panelId] || floatingTextLayerRect}
+            componentWidth={componentWidth}
+            placeholder={FLOATING_TEXT_LAYER_PLACEHOLDER}
+            clearRemovesEntry
+          />
         );
       })}
 
