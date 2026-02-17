@@ -4,6 +4,7 @@ import Paper from './Paper';
 import Input from './Input';
 import Table from './Table';
 import Button from './Button';
+import Menu from './Menu';
 import Tooltip from './Tooltip';
 import Backdrop from './Backdrop';
 import Typography from './Typography';
@@ -19,6 +20,7 @@ export default function ComponentsOverrides(theme) {
     Input(theme),
     Paper(theme),
     Button(theme),
+    Menu(theme),
     Tooltip(theme),
     Backdrop(theme),
     Typography(theme),

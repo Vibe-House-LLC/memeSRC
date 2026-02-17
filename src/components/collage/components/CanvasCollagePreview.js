@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
@@ -7,6 +7,12 @@ import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
+import {
+  applyBorderDragDelta,
+  buildStableBorderEdgeId,
+  detectBorderZonesFromPanelRects,
+  findBorderZoneByEdgeId,
+} from '../utils/borderZones';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const normalizeAngleDeg = (value) => {
@@ -19,6 +25,112 @@ const normalizeAngleDeg = (value) => {
 const angleFromPointDeg = (centerX, centerY, pointX, pointY) => (
   Math.atan2(pointY - centerY, pointX - centerX) * (180 / Math.PI)
 );
+const snapAngleToZeroDeg = (value) => {
+  const normalized = normalizeAngleDeg(value);
+  return Math.abs(normalized) <= ROTATION_ZERO_SNAP_THRESHOLD_DEG ? 0 : normalized;
+};
+
+const isPointInAxisAlignedRect = (x, y, rectX, rectY, width, height) => (
+  x >= rectX
+  && x <= rectX + width
+  && y >= rectY
+  && y <= rectY + height
+);
+
+const isPointInRotatedRect = (x, y, rect, angleDeg = 0, centerX, centerY) => {
+  const rectX = Number(rect?.x);
+  const rectY = Number(rect?.y);
+  const rectWidth = Number(rect?.width);
+  const rectHeight = Number(rect?.height);
+  if (!Number.isFinite(rectX) || !Number.isFinite(rectY) || !Number.isFinite(rectWidth) || !Number.isFinite(rectHeight)) {
+    return false;
+  }
+  if (rectWidth <= 0 || rectHeight <= 0) return false;
+
+  const normalizedAngle = normalizeAngleDeg(angleDeg);
+  if (Math.abs(normalizedAngle) <= 0.01) {
+    return isPointInAxisAlignedRect(x, y, rectX, rectY, rectWidth, rectHeight);
+  }
+
+  const pivotX = Number.isFinite(centerX) ? Number(centerX) : rectX + (rectWidth / 2);
+  const pivotY = Number.isFinite(centerY) ? Number(centerY) : rectY + (rectHeight / 2);
+  const radians = (-normalizedAngle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = x - pivotX;
+  const dy = y - pivotY;
+  const unrotatedX = pivotX + (dx * cos) - (dy * sin);
+  const unrotatedY = pivotY + (dx * sin) + (dy * cos);
+  return isPointInAxisAlignedRect(unrotatedX, unrotatedY, rectX, rectY, rectWidth, rectHeight);
+};
+
+const getRotatedRectAabb = (rect, angleDeg = 0, centerX, centerY) => {
+  const rectX = Number(rect?.x);
+  const rectY = Number(rect?.y);
+  const rectWidth = Number(rect?.width);
+  const rectHeight = Number(rect?.height);
+  if (!Number.isFinite(rectX) || !Number.isFinite(rectY) || !Number.isFinite(rectWidth) || !Number.isFinite(rectHeight)) {
+    return null;
+  }
+  if (rectWidth <= 0 || rectHeight <= 0) return null;
+
+  const normalizedAngle = normalizeAngleDeg(angleDeg);
+  if (Math.abs(normalizedAngle) <= 0.01) {
+    return {
+      x: rectX,
+      y: rectY,
+      width: rectWidth,
+      height: rectHeight,
+    };
+  }
+
+  const pivotX = Number.isFinite(centerX) ? Number(centerX) : rectX + (rectWidth / 2);
+  const pivotY = Number.isFinite(centerY) ? Number(centerY) : rectY + (rectHeight / 2);
+  const radians = (normalizedAngle * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const corners = [
+    { x: rectX, y: rectY },
+    { x: rectX + rectWidth, y: rectY },
+    { x: rectX + rectWidth, y: rectY + rectHeight },
+    { x: rectX, y: rectY + rectHeight },
+  ];
+  const rotatedCorners = corners.map((corner) => {
+    const dx = corner.x - pivotX;
+    const dy = corner.y - pivotY;
+    return {
+      x: pivotX + dx * cos - dy * sin,
+      y: pivotY + dx * sin + dy * cos,
+    };
+  });
+  const minX = Math.min(...rotatedCorners.map((corner) => corner.x));
+  const maxX = Math.max(...rotatedCorners.map((corner) => corner.x));
+  const minY = Math.min(...rotatedCorners.map((corner) => corner.y));
+  const maxY = Math.max(...rotatedCorners.map((corner) => corner.y));
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+};
+
+const isPointInTextAreaBounds = (x, y, bounds) => {
+  if (!bounds) return false;
+  return isPointInRotatedRect(
+    x,
+    y,
+    {
+      x: bounds.controlX,
+      y: bounds.controlY,
+      width: bounds.controlWidth,
+      height: bounds.controlHeight,
+    },
+    bounds.textRotation || 0,
+    bounds.controlCenterX,
+    bounds.controlCenterY,
+  );
+};
 
 
 
@@ -96,6 +208,59 @@ const getContrastingMonoStroke = (textColor) => {
 };
 
 const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
+const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
+const isFloatingTextLayerId = (panelId) => (
+  typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
+);
+const TOP_CAPTION_PLACEHOLDER = 'Add Top Caption';
+const FLOATING_TEXT_LAYER_PLACEHOLDER = 'Add Text Layer';
+const TOP_CAPTION_DEFAULTS = {
+  fontSize: 42,
+  fontWeight: 700,
+  fontStyle: 'normal',
+  fontFamily: 'IMPACT',
+  color: '#111111',
+  strokeWidth: 0,
+  textAlign: 'left',
+  captionSpacingY: 0,
+  backgroundColor: '#ffffff',
+};
+const CAPTION_PLACEHOLDER_TEXT = 'Add Caption';
+const TEXT_PADDING_PX = 10;
+const TEXT_DEFAULT_BOTTOM_RATIO = 0.95;
+const TEXT_EXTENDED_BOTTOM_RATIO = 1.1;
+const TEXT_MIN_FONT_SIZE = 8;
+const TEXT_MAX_FONT_SIZE = 72;
+const TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT = 90;
+const TEXT_LAYER_MIN_BOX_WIDTH_PERCENT = 20;
+const TEXT_LAYER_MAX_BOX_WIDTH_PERCENT = 100;
+const TEXT_LAYER_MIN_BOX_WIDTH_PX = 36;
+const TEXT_LAYER_CONTROL_PADDING_PX = 10;
+const TEXT_LAYER_HANDLE_OVERHANG_RATIO = 0.55;
+const TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO = 0.02;
+const TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX = 4;
+const TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX = 10;
+const ROTATION_ZERO_SNAP_THRESHOLD_DEG = 2;
+const TOUCH_TAP_MAX_MOVEMENT_PX = 10;
+const TOUCH_TAP_MAX_DURATION_MS = 500;
+const BORDER_ZONE_MIN_HIT_SIZE_PX = 22;
+const BORDER_ZONE_HANDLE_LENGTH_PX = 30;
+const BORDER_ZONE_HANDLE_THICKNESS_PX = 10;
+const BORDER_ZONE_INTERVAL_EPSILON_PX = 0.25;
+const BORDER_ZONE_HIT_LENGTH_RATIO = 0.7;
+const BORDER_ZONE_MIN_HIT_LENGTH_PX = 56;
+const BORDER_ZONE_MAX_HIT_LENGTH_PX = 140;
+const BORDER_CENTER_SNAP_THRESHOLD_RATIO = 0.014;
+const BORDER_CENTER_SNAP_THRESHOLD_MIN_PX = 2;
+const BORDER_CENTER_SNAP_THRESHOLD_MAX_PX = 5;
+const BORDER_ZONE_SHOW_HIT_AREA_DEBUG = false;
+const BORDER_DRAG_ACTION_SUPPRESS_MS = 420;
+const LAYOUT_COORD_QUANTUM_PX = 0.001;
+const BORDER_DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
+  try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
+})();
+const borderDebugLog = (...args) => { if (BORDER_DEBUG_MODE) console.log('[CollageBorder]', ...args); };
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -103,6 +268,101 @@ const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === 'normal') return '400';
   if (fontWeight === 'bold') return '700';
   return String(fontWeight);
+};
+
+const normalizeTextAlignValue = (value) => {
+  if (value === 'left' || value === 'center' || value === 'right') return value;
+  return 'center';
+};
+
+const normalizeTextBoxWidthPercent = (value, fallback = TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return clamp(numeric, TEXT_LAYER_MIN_BOX_WIDTH_PERCENT, TEXT_LAYER_MAX_BOX_WIDTH_PERCENT);
+};
+
+const getTextBoxWidthPx = (panelWidth, textBoxWidthPercent) => {
+  const availableTextWidth = Math.max(24, Number(panelWidth || 0) - (TEXT_PADDING_PX * 2));
+  const minWidthPx = Math.min(TEXT_LAYER_MIN_BOX_WIDTH_PX, availableTextWidth);
+  const normalizedPercent = normalizeTextBoxWidthPercent(textBoxWidthPercent);
+  return clamp((availableTextWidth * normalizedPercent) / 100, minWidthPx, availableTextWidth);
+};
+
+const resolveTextBoxWidthPercent = (panelText, lastUsedTextSettings) => normalizeTextBoxWidthPercent(
+  panelText?.textBoxWidthPercent ?? lastUsedTextSettings?.textBoxWidthPercent,
+);
+
+const resolveTextBoxWidthPx = (panel, panelText, lastUsedTextSettings) => (
+  getTextBoxWidthPx(panel?.width, resolveTextBoxWidthPercent(panelText, lastUsedTextSettings))
+);
+
+const getLineStartX = (textAlign, anchorX, lineWidth) => {
+  const align = normalizeTextAlignValue(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - lineWidth;
+  return anchorX - (lineWidth / 2);
+};
+
+const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
+  const align = normalizeTextAlignValue(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - blockWidth;
+  return anchorX - (blockWidth / 2);
+};
+
+const areNumbersClose = (a, b, epsilon = 0.2) => Math.abs((a || 0) - (b || 0)) <= epsilon;
+
+const areRectsEqual = (prevRects, nextRects, epsilon = 0.2) => {
+  if (!Array.isArray(prevRects) || !Array.isArray(nextRects)) return false;
+  if (prevRects.length !== nextRects.length) return false;
+  for (let i = 0; i < prevRects.length; i += 1) {
+    const prev = prevRects[i];
+    const next = nextRects[i];
+    if ((prev?.panelId || '') !== (next?.panelId || '')) return false;
+    if (!areNumbersClose(prev?.x, next?.x, epsilon)) return false;
+    if (!areNumbersClose(prev?.y, next?.y, epsilon)) return false;
+    if (!areNumbersClose(prev?.width, next?.width, epsilon)) return false;
+    if (!areNumbersClose(prev?.height, next?.height, epsilon)) return false;
+  }
+  return true;
+};
+
+const areBorderZonesEqual = (prevZones, nextZones, epsilon = 0.2) => {
+  if (!Array.isArray(prevZones) || !Array.isArray(nextZones)) return false;
+  if (prevZones.length !== nextZones.length) return false;
+  for (let i = 0; i < prevZones.length; i += 1) {
+    const prev = prevZones[i];
+    const next = nextZones[i];
+    if ((prev?.id || '') !== (next?.id || '')) return false;
+    if ((prev?.type || '') !== (next?.type || '')) return false;
+    if (!areNumbersClose(prev?.x, next?.x, epsilon)) return false;
+    if (!areNumbersClose(prev?.y, next?.y, epsilon)) return false;
+    if (!areNumbersClose(prev?.width, next?.width, epsilon)) return false;
+    if (!areNumbersClose(prev?.height, next?.height, epsilon)) return false;
+    if (!areNumbersClose(prev?.centerX, next?.centerX, epsilon)) return false;
+    if (!areNumbersClose(prev?.centerY, next?.centerY, epsilon)) return false;
+    if (!areNumbersClose(prev?.handleWidth, next?.handleWidth, epsilon)) return false;
+    if (!areNumbersClose(prev?.handleHeight, next?.handleHeight, epsilon)) return false;
+  }
+  return true;
+};
+
+const areTopCaptionLayoutsEqual = (prevLayout, nextLayout, epsilon = 0.2) => {
+  if (!prevLayout || !nextLayout) return false;
+  if (Boolean(prevLayout.enabled) !== Boolean(nextLayout.enabled)) return false;
+  if (!areNumbersClose(prevLayout.captionHeight, nextLayout.captionHeight, epsilon)) return false;
+  if (!areNumbersClose(prevLayout.imageAreaHeight, nextLayout.imageAreaHeight, epsilon)) return false;
+  if (!areNumbersClose(prevLayout.totalHeight, nextLayout.totalHeight, epsilon)) return false;
+  if (!areNumbersClose(prevLayout.imageOffsetY, nextLayout.imageOffsetY, epsilon)) return false;
+  const prevRect = prevLayout.rect;
+  const nextRect = nextLayout.rect;
+  if (!prevRect && !nextRect) return true;
+  if (!prevRect || !nextRect) return false;
+  if (!areNumbersClose(prevRect.x, nextRect.x, epsilon)) return false;
+  if (!areNumbersClose(prevRect.y, nextRect.y, epsilon)) return false;
+  if (!areNumbersClose(prevRect.width, nextRect.width, epsilon)) return false;
+  if (!areNumbersClose(prevRect.height, nextRect.height, epsilon)) return false;
+  return true;
 };
 
 const resolveInlineSegmentStyle = (baseStyle, inlineStyle = {}) => ({
@@ -356,119 +616,120 @@ const parseGridTemplateAreas = (gridTemplateAreas) => {
   return areas;
 };
 
+const quantizeLayoutCoord = (value) => {
+  if (!Number.isFinite(value)) return value;
+  return Math.round(value / LAYOUT_COORD_QUANTUM_PX) * LAYOUT_COORD_QUANTUM_PX;
+};
+
+const areQuantizedLayoutCoordsEqual = (a, b) => (
+  quantizeLayoutCoord(a) === quantizeLayoutCoord(b)
+);
+
+const getPanelOrderIndex = (panel, fallbackIndex = 0) => {
+  const explicitIndex = Number(panel?.index);
+  if (Number.isFinite(explicitIndex)) return explicitIndex;
+  const panelId = String(panel?.panelId || '');
+  const idMatch = panelId.match(/^panel-(\d+)$/);
+  if (idMatch) {
+    return Math.max(0, parseInt(idMatch[1], 10) - 1);
+  }
+  return fallbackIndex;
+};
+
+const clampRectRatio = (value) => clamp(Number(value), 0, 1);
+const roundRectRatio = (value) => Number(clampRectRatio(value).toFixed(7));
+
+const buildPanelRectLayoutFromRects = (
+  panelRects,
+  containerWidth,
+  containerHeight,
+  borderPixels,
+  panelCount,
+) => {
+  if (!Array.isArray(panelRects) || panelRects.length === 0) return null;
+  if (!Number.isFinite(containerWidth) || !Number.isFinite(containerHeight)) return null;
+
+  const inset = Math.max(0, Number(borderPixels) || 0);
+  const interiorLeft = inset;
+  const interiorTop = inset;
+  const interiorRight = Math.max(interiorLeft + 1, containerWidth - inset);
+  const interiorBottom = Math.max(interiorTop + 1, containerHeight - inset);
+  const interiorWidth = Math.max(1, interiorRight - interiorLeft);
+  const interiorHeight = Math.max(1, interiorBottom - interiorTop);
+
+  const normalizedRects = panelRects
+    .slice(0, Math.max(1, panelCount || 1))
+    .map((panel, fallbackIndex) => {
+      const rawX = Number(panel?.x);
+      const rawY = Number(panel?.y);
+      const rawWidth = Number(panel?.width);
+      const rawHeight = Number(panel?.height);
+      if (!Number.isFinite(rawX) || !Number.isFinite(rawY) || !Number.isFinite(rawWidth) || !Number.isFinite(rawHeight)) {
+        return null;
+      }
+      const left = clamp(rawX, interiorLeft, interiorRight);
+      const top = clamp(rawY, interiorTop, interiorBottom);
+      const right = clamp(rawX + rawWidth, interiorLeft, interiorRight);
+      const bottom = clamp(rawY + rawHeight, interiorTop, interiorBottom);
+      const width = right - left;
+      const height = bottom - top;
+      if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) {
+        return null;
+      }
+      return {
+        panelId: panel?.panelId || `panel-${fallbackIndex + 1}`,
+        index: getPanelOrderIndex(panel, fallbackIndex),
+        x: roundRectRatio((left - interiorLeft) / interiorWidth),
+        y: roundRectRatio((top - interiorTop) / interiorHeight),
+        width: roundRectRatio(width / interiorWidth),
+        height: roundRectRatio(height / interiorHeight),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.index - b.index);
+
+  if (normalizedRects.length === 0) return null;
+  return { panelRects: normalizedRects };
+};
+
+const arePanelRectLayoutsEqual = (layoutA, layoutB) => {
+  const rectsA = Array.isArray(layoutA?.panelRects) ? layoutA.panelRects : [];
+  const rectsB = Array.isArray(layoutB?.panelRects) ? layoutB.panelRects : [];
+  if (rectsA.length !== rectsB.length) return false;
+  for (let i = 0; i < rectsA.length; i += 1) {
+    const a = rectsA[i];
+    const b = rectsB[i];
+    if ((a?.panelId || '') !== (b?.panelId || '')) return false;
+    if (Number(a?.index) !== Number(b?.index)) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.x), Number(b?.x))) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.y), Number(b?.y))) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.width), Number(b?.width))) return false;
+    if (!areQuantizedLayoutCoordsEqual(Number(a?.height), Number(b?.height))) return false;
+  }
+  return true;
+};
+
 /**
- * Helper function to detect draggable border zones
+ * Detect draggable border zones directly from panel geometry.
+ * This avoids coupling disjoint segments through global row/column tracks.
  */
-const detectBorderZones = (layoutConfig, containerWidth, containerHeight, borderPixels) => {
-  if (!layoutConfig) return [];
-  
-  const zones = [];
-  // Make threshold larger for mobile - minimum 16px hit area for better touch interaction
-  const threshold = Math.max(16, borderPixels * 2);
-  
-  // Parse grid columns and rows to get track sizes
-  let columnSizes = [1];
-  let rowSizes = [1];
-  
-  if (layoutConfig.gridTemplateColumns) {
-    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
-      const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
-      if (repeatMatch) {
-        const count = parseInt(repeatMatch[1], 10);
-        columnSizes = Array(count).fill(1);
-      }
-    } else {
-      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        columnSizes = frMatches.map(match => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-  
-  if (layoutConfig.gridTemplateRows) {
-    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
-      const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
-      if (repeatMatch) {
-        const count = parseInt(repeatMatch[1], 10);
-        rowSizes = Array(count).fill(1);
-      }
-    } else {
-      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        rowSizes = frMatches.map(match => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-  
-  // Only create zones if we have multiple columns or rows
-  if (columnSizes.length <= 1 && rowSizes.length <= 1) {
-    return [];
-  }
-  
-  // Calculate positions of grid lines
-  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
-  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
-  
-  const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
-  const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
-  
-  const availableWidth = containerWidth - (borderPixels * 2) - horizontalGaps;
-  const availableHeight = containerHeight - (borderPixels * 2) - verticalGaps;
-  
-  const columnFrUnit = availableWidth / totalColumnFr;
-  const rowFrUnit = availableHeight / totalRowFr;
-  
-  // Create vertical border zones (between columns) - only if we have multiple columns
-  if (columnSizes.length > 1) {
-    let currentX = borderPixels;
-    for (let i = 0; i < columnSizes.length - 1; i += 1) {
-      currentX += columnSizes[i] * columnFrUnit;
-      
-      zones.push({
-        type: 'vertical',
-        index: i,
-        x: currentX - threshold / 2,
-        y: 0,
-        width: threshold,
-        height: containerHeight,
-        centerX: currentX,
-        cursor: 'col-resize',
-        id: `vertical-${i}` // Add ID for debugging
-      });
-      
-      currentX += borderPixels;
-    }
-  }
-  
-  // Create horizontal border zones (between rows) - only if we have multiple rows
-  if (rowSizes.length > 1) {
-    let currentY = borderPixels;
-    for (let i = 0; i < rowSizes.length - 1; i += 1) {
-      currentY += rowSizes[i] * rowFrUnit;
-      
-      zones.push({
-        type: 'horizontal',
-        index: i,
-        x: 0,
-        y: currentY - threshold / 2,
-        width: containerWidth,
-        height: threshold,
-        centerY: currentY,
-        cursor: 'row-resize',
-        id: `horizontal-${i}` // Add ID for debugging
-      });
-      
-      currentY += borderPixels;
-    }
-  }
-  
-  return zones;
+const detectBorderZones = (_layoutConfig, containerWidth, containerHeight, borderPixels, panelRects = []) => {
+  return detectBorderZonesFromPanelRects({
+    containerWidth,
+    containerHeight,
+    borderPixels,
+    panelRects,
+    options: {
+      minHitSizePx: BORDER_ZONE_MIN_HIT_SIZE_PX,
+      handleLengthPx: BORDER_ZONE_HANDLE_LENGTH_PX,
+      handleThicknessPx: BORDER_ZONE_HANDLE_THICKNESS_PX,
+      intervalEpsilonPx: BORDER_ZONE_INTERVAL_EPSILON_PX,
+      hitLengthRatio: BORDER_ZONE_HIT_LENGTH_RATIO,
+      minHitLengthPx: BORDER_ZONE_MIN_HIT_LENGTH_PX,
+      maxHitLengthPx: BORDER_ZONE_MAX_HIT_LENGTH_PX,
+      hitPaddingPx: 8,
+    },
+  });
 };
 
 /**
@@ -476,6 +737,48 @@ const detectBorderZones = (layoutConfig, containerWidth, containerHeight, border
  */
 const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCount, borderPixels) => {
   const rects = [];
+
+  if (Array.isArray(layoutConfig?.panelRects) && layoutConfig.panelRects.length > 0) {
+    const inset = Math.max(0, Number(borderPixels) || 0);
+    const interiorLeft = inset;
+    const interiorTop = inset;
+    const interiorRight = Math.max(interiorLeft + 1, containerWidth - inset);
+    const interiorBottom = Math.max(interiorTop + 1, containerHeight - inset);
+    const interiorWidth = Math.max(1, interiorRight - interiorLeft);
+    const interiorHeight = Math.max(1, interiorBottom - interiorTop);
+
+    const explicitRects = layoutConfig.panelRects
+      .slice(0, Math.max(1, panelCount || 1))
+      .map((panelRect, fallbackIndex) => {
+        const panelId = panelRect?.panelId || `panel-${fallbackIndex + 1}`;
+        const index = getPanelOrderIndex(panelRect, fallbackIndex);
+        const xRatio = clampRectRatio(panelRect?.x);
+        const yRatio = clampRectRatio(panelRect?.y);
+        const widthRatio = clampRectRatio(panelRect?.width);
+        const heightRatio = clampRectRatio(panelRect?.height);
+        const left = interiorLeft + (xRatio * interiorWidth);
+        const top = interiorTop + (yRatio * interiorHeight);
+        const right = clamp(interiorLeft + ((xRatio + widthRatio) * interiorWidth), interiorLeft, interiorRight);
+        const bottom = clamp(interiorTop + ((yRatio + heightRatio) * interiorHeight), interiorTop, interiorBottom);
+        const width = right - left;
+        const height = bottom - top;
+        if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
+        return {
+          x: left,
+          y: top,
+          width,
+          height,
+          panelId,
+          index,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.index - b.index);
+
+    if (explicitRects.length > 0) {
+      return explicitRects;
+    }
+  }
   
   // Calculate the available space (subtract borders)
   const totalPadding = borderPixels * 2;
@@ -637,6 +940,7 @@ const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCo
 const CanvasCollagePreview = ({
   selectedTemplate,
   panelCount,
+  isSingleImageAutoCustomAspect = false,
   images = [],
   onPanelClick,
   onRemovePanel,
@@ -660,6 +964,12 @@ const CanvasCollagePreview = ({
   updatePanelText,
   lastUsedTextSettings = {},
   onCaptionEditorVisibleChange,
+  panelTextAutoOpenRequest,
+  onPanelTextAutoOpenHandled,
+  panelTransformAutoOpenRequest,
+  onPanelTransformAutoOpenHandled,
+  panelReorderAutoOpenRequest,
+  onPanelReorderAutoOpenHandled,
   isGeneratingCollage = false, // New prop to exclude placeholder text during export
   // Render tracking for upstream autosave/thumbnail logic
   renderSig,
@@ -683,11 +993,21 @@ const CanvasCollagePreview = ({
   const [activeStickerId, setActiveStickerId] = useState(null);
   const [stickerInteraction, setStickerInteraction] = useState(null);
   const [stickerDrafts, setStickerDrafts] = useState({});
+  const [activeTextLayerId, setActiveTextLayerId] = useState(null);
+  const [textLayerInteraction, setTextLayerInteraction] = useState(null);
+  const [textLayerSnapGuide, setTextLayerSnapGuide] = useState(null);
   const hasInitializedStickerIdsRef = useRef(false);
   const previousStickerIdsRef = useRef([]);
+  const handledTextAutoOpenRequestRef = useRef(null);
+  const handledTransformAutoOpenRequestRef = useRef(null);
+  const handledReorderAutoOpenRequestRef = useRef(null);
   const stickerDraftsRef = useRef({});
   const pendingStickerPointerRef = useRef(null);
   const stickerRafRef = useRef(null);
+  const pendingTextLayerPointerRef = useRef(null);
+  const textLayerRafRef = useRef(null);
+  const textLayerGestureRef = useRef({ moved: false, editorHiddenDuringMove: false });
+  const textLayerDismissSuppressUntilRef = useRef(0);
   // Trigger redraws once custom fonts are ready (especially after loading a saved project)
   const [fontsReadyVersion, setFontsReadyVersion] = useState(0);
 
@@ -747,6 +1067,7 @@ const CanvasCollagePreview = ({
   const lastInteractionTime = useRef(0);
   const hoverTimeoutRef = useRef(null);
   const touchStartInfo = useRef(null);
+  const overlayTouchTapTrackerRef = useRef(null);
   const defaultCaptionCacheRef = useRef({});
   const panelTextsRef = useRef(panelTexts);
 
@@ -754,6 +1075,73 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     panelTextsRef.current = panelTexts;
   }, [panelTexts]);
+
+  const clearOverlayTouchTapTracker = useCallback(() => {
+    const tracker = overlayTouchTapTrackerRef.current;
+    if (!tracker) return;
+    window.removeEventListener('pointermove', tracker.handlePointerMove);
+    window.removeEventListener('pointerup', tracker.handlePointerEnd);
+    window.removeEventListener('pointercancel', tracker.handlePointerCancel);
+    overlayTouchTapTrackerRef.current = null;
+  }, []);
+
+  const beginOverlayTouchTapTracking = useCallback((startEvent, onTap) => {
+    if (!startEvent || startEvent.pointerType !== 'touch' || typeof onTap !== 'function') return false;
+    clearOverlayTouchTapTracker();
+
+    const pointerId = startEvent.pointerId;
+    const startX = startEvent.clientX;
+    const startY = startEvent.clientY;
+    const startTime = Date.now();
+    const startScrollY = window.scrollY || window.pageYOffset || 0;
+
+    const hasExceededTapThreshold = (event) => {
+      const currentX = Number.isFinite(event?.clientX) ? event.clientX : startX;
+      const currentY = Number.isFinite(event?.clientY) ? event.clientY : startY;
+      const deltaX = Math.abs(currentX - startX);
+      const deltaY = Math.abs(currentY - startY);
+      const deltaScrollY = Math.abs((window.scrollY || window.pageYOffset || 0) - startScrollY);
+      return (
+        deltaX > TOUCH_TAP_MAX_MOVEMENT_PX
+        || deltaY > TOUCH_TAP_MAX_MOVEMENT_PX
+        || deltaScrollY > TOUCH_TAP_MAX_MOVEMENT_PX
+      );
+    };
+
+    const finalize = (event, canceled = false) => {
+      if (pointerId !== undefined && event?.pointerId !== undefined && event.pointerId !== pointerId) return;
+      const shouldCancelForMovement = hasExceededTapThreshold(event);
+      const duration = Date.now() - startTime;
+      const isQuickTap = duration <= TOUCH_TAP_MAX_DURATION_MS;
+      clearOverlayTouchTapTracker();
+      if (!canceled && !shouldCancelForMovement && isQuickTap) {
+        onTap(event);
+      }
+    };
+
+    const handlePointerMove = (event) => {
+      if (pointerId !== undefined && event?.pointerId !== undefined && event.pointerId !== pointerId) return;
+      if (hasExceededTapThreshold(event)) {
+        finalize(event, true);
+      }
+    };
+    const handlePointerEnd = (event) => finalize(event, false);
+    const handlePointerCancel = (event) => finalize(event, true);
+
+    overlayTouchTapTrackerRef.current = {
+      handlePointerMove,
+      handlePointerEnd,
+      handlePointerCancel,
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerCancel);
+    return true;
+  }, [clearOverlayTouchTapTracker]);
+
+  useEffect(() => () => {
+    clearOverlayTouchTapTracker();
+  }, [clearOverlayTouchTapTracker]);
 
   // Notify parent when caption editor visibility changes
   useEffect(() => {
@@ -780,10 +1168,22 @@ const CanvasCollagePreview = ({
   // Border dragging state
   const [borderZones, setBorderZones] = useState([]);
   const [isDraggingBorder, setIsDraggingBorder] = useState(false);
-  const [draggedBorder, setDraggedBorder] = useState(null);
-  const [borderDragStart, setBorderDragStart] = useState({ x: 0, y: 0 });
+  const [, setBorderDragStart] = useState({ x: 0, y: 0 });
+  const isDraggingBorderRef = useRef(false);
+  const draggedBorderRef = useRef(null);
+  const borderDragStartRef = useRef({ x: 0, y: 0 });
   const [hoveredBorder, setHoveredBorder] = useState(null);
+  const [selectedBorderZoneId, setSelectedBorderZoneId] = useState(null);
   const [customLayoutConfig, setCustomLayoutConfig] = useState(initialCustomLayout || null);
+  const activeBorderDragLayoutRef = useRef(null);
+  const [topCaptionLayout, setTopCaptionLayout] = useState({
+    enabled: false,
+    captionHeight: 0,
+    imageAreaHeight: null,
+    totalHeight: null,
+    imageOffsetY: 0,
+    rect: null,
+  });
 
   // If the layout key changes (template/panelCount/aspect), drop any prior custom grid.
   // When a persisted custom layout exists, only adopt it if it supports the current panel count.
@@ -810,6 +1210,7 @@ const CanvasCollagePreview = ({
     try {
       if (!layout || typeof layout !== 'object') return false;
       const needed = Math.max(1, count || 1);
+      if (Array.isArray(layout.panelRects)) return layout.panelRects.length >= needed;
       if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
       if (Array.isArray(layout.items)) return layout.items.length >= needed;
       const cols = countGridTracks(layout.gridTemplateColumns);
@@ -853,6 +1254,326 @@ const CanvasCollagePreview = ({
   
   // Calculate text scale factor based on current canvas size vs base size
   const textScaleFactor = useMemo(() => componentWidth / BASE_CANVAS_WIDTH, [componentWidth]);
+  const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
+  const getTextAnchorXFromPosition = useCallback((panel, textPositionX) => {
+    if (!panel) return 0;
+    const maxTextWidth = Math.max(1, panel.width - (TEXT_PADDING_PX * 2));
+    return panel.x + TEXT_PADDING_PX + ((textPositionX + 100) / 200) * maxTextWidth;
+  }, []);
+
+  const getTextPositionXFromAnchor = useCallback((panel, anchorX) => {
+    if (!panel) return 0;
+    const maxTextWidth = Math.max(1, panel.width - (TEXT_PADDING_PX * 2));
+    return clamp((((anchorX - (panel.x + TEXT_PADDING_PX)) / maxTextWidth) * 200) - 100, -100, 100);
+  }, []);
+
+  const getTextAnchorYFromPosition = useCallback((panel, textPositionY) => {
+    if (!panel) return 0;
+    const defaultBottom = panel.y + (panel.height * TEXT_DEFAULT_BOTTOM_RATIO);
+    if (textPositionY <= 0) {
+      const extendedBottom = panel.y + (panel.height * TEXT_EXTENDED_BOTTOM_RATIO);
+      const t = Math.abs(textPositionY) / 100;
+      return defaultBottom + t * (extendedBottom - defaultBottom);
+    }
+    return defaultBottom + ((textPositionY / 100) * (panel.y - defaultBottom));
+  }, []);
+
+  const getTextPositionYFromAnchor = useCallback((panel, anchorY) => {
+    if (!panel) return 0;
+    const defaultBottom = panel.y + (panel.height * TEXT_DEFAULT_BOTTOM_RATIO);
+    if (anchorY >= defaultBottom) {
+      const downSpan = Math.max(1, panel.height * (TEXT_EXTENDED_BOTTOM_RATIO - TEXT_DEFAULT_BOTTOM_RATIO));
+      return clamp(-((anchorY - defaultBottom) / downSpan) * 100, -100, 0);
+    }
+    const upSpan = Math.max(1, panel.height * TEXT_DEFAULT_BOTTOM_RATIO);
+    return clamp(((defaultBottom - anchorY) / upSpan) * 100, 0, 100);
+  }, []);
+
+  const resolvePanelTextForCanvas = useCallback((panelId) => (
+    (panelTexts && typeof panelTexts === 'object' && panelTexts[panelId]) ? panelTexts[panelId] : {}
+  ), [panelTexts]);
+
+  const resolveTopCaptionLayout = useCallback((canvasWidth, baseImageHeight) => {
+    const topCaptionConfig = panelTexts?.[TOP_CAPTION_PANEL_ID];
+    if (!topCaptionConfig || typeof topCaptionConfig !== 'object') {
+      return {
+        enabled: false,
+        captionHeight: 0,
+        imageAreaHeight: baseImageHeight,
+        totalHeight: baseImageHeight,
+        imageOffsetY: 0,
+        rect: null,
+      };
+    }
+
+    const rawCaption = topCaptionConfig.rawContent ?? topCaptionConfig.content ?? '';
+    const { cleanText, ranges } = parseFormattedText(String(rawCaption));
+    const hasActualText = Boolean(cleanText && cleanText.trim());
+    const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
+    if (!hasActualText && !shouldShowPlaceholder) {
+      return {
+        enabled: false,
+        captionHeight: 0,
+        imageAreaHeight: baseImageHeight,
+        totalHeight: baseImageHeight,
+        imageOffsetY: 0,
+        rect: null,
+      };
+    }
+
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    if (!measureCtx) {
+      return {
+        enabled: false,
+        captionHeight: 0,
+        imageAreaHeight: baseImageHeight,
+        totalHeight: baseImageHeight,
+        imageOffsetY: 0,
+        rect: null,
+      };
+    }
+    const baseFontSize = Number(topCaptionConfig.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : (Number(lastUsedTextSettings?.fontSize) > 0
+        ? Number(lastUsedTextSettings.fontSize)
+        : TOP_CAPTION_DEFAULTS.fontSize);
+    const fontSize = baseFontSize * (canvasWidth / BASE_CANVAS_WIDTH);
+    const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const captionSpacingY = Number.isFinite(Number(topCaptionConfig.captionSpacingY))
+      ? Math.max(0, Number(topCaptionConfig.captionSpacingY))
+      : TOP_CAPTION_DEFAULTS.captionSpacingY;
+    const scaledCaptionSpacingY = captionSpacingY * (canvasWidth / BASE_CANVAS_WIDTH);
+    const displayText = hasActualText ? cleanText : TOP_CAPTION_PLACEHOLDER;
+    const activeRanges = hasActualText ? ranges : [];
+    const baseInlineStyle = {
+      fontWeight,
+      fontStyle,
+      underline: false,
+    };
+
+    const horizontalPadding = Math.max(18, Math.round(canvasWidth * 0.045));
+    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42)) + scaledCaptionSpacingY;
+    const maxTextWidth = Math.max(48, canvasWidth - (horizontalPadding * 2) - (borderPixels * 2));
+
+    const wrappedLines = buildWrappedLines(
+      measureCtx,
+      displayText,
+      activeRanges,
+      maxTextWidth,
+      baseInlineStyle,
+      fontSize,
+      fontFamily,
+    );
+    const lineHeight = fontSize * 1.2;
+    const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
+    const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
+
+    const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
+    const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+    const expandCanvas = Boolean(isSingleImageAutoCustomAspect);
+    const captionHeight = expandCanvas
+      ? Math.max(56, requestedCaptionHeight)
+      : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+
+    const imageAreaHeight = expandCanvas
+      ? baseImageHeight
+      : Math.max(1, baseImageHeight - captionHeight);
+    const totalHeight = expandCanvas
+      ? baseImageHeight + captionHeight
+      : baseImageHeight;
+
+    const rect = {
+      x: borderPixels,
+      y: Math.max(0, borderPixels),
+      width: Math.max(1, canvasWidth - (borderPixels * 2)),
+      height: Math.max(1, captionHeight - borderPixels),
+    };
+
+    return {
+      enabled: true,
+      captionHeight,
+      imageAreaHeight,
+      totalHeight,
+      imageOffsetY: captionHeight,
+      rect,
+    };
+  }, [panelTexts, isGeneratingCollage, lastUsedTextSettings?.fontSize, borderPixels, isSingleImageAutoCustomAspect]);
+
+  const floatingTextLayerIds = useMemo(() => {
+    if (!panelTexts || typeof panelTexts !== 'object') return [];
+    return Object.keys(panelTexts).filter((panelId) => isFloatingTextLayerId(panelId));
+  }, [panelTexts]);
+
+  const floatingTextLayerRect = useMemo(() => {
+    const width = Math.max(1, Number(componentWidth || 0));
+    const defaultHeight = Math.max(1, Number(componentHeight || 0));
+    const imageOffsetY = Number(topCaptionLayout?.imageOffsetY);
+    const imageAreaHeight = Number(topCaptionLayout?.imageAreaHeight);
+    const y = Number.isFinite(imageOffsetY) ? imageOffsetY : 0;
+    const height = Number.isFinite(imageAreaHeight) && imageAreaHeight > 0
+      ? Math.max(1, imageAreaHeight)
+      : defaultHeight;
+    return {
+      panelId: '__floating-text-layer-bounds__',
+      x: 0,
+      y,
+      width,
+      height,
+      index: -2,
+    };
+  }, [componentHeight, componentWidth, topCaptionLayout?.imageAreaHeight, topCaptionLayout?.imageOffsetY]);
+
+  const drawTopCaptionLayer = useCallback((ctx, { includePlaceholder = true } = {}) => {
+    if (!ctx || !topCaptionLayout?.enabled || !topCaptionLayout?.rect) return;
+    const topCaptionConfig = panelTexts?.[TOP_CAPTION_PANEL_ID];
+    if (!topCaptionConfig || typeof topCaptionConfig !== 'object') return;
+
+    const rawCaption = topCaptionConfig.rawContent ?? topCaptionConfig.content ?? '';
+    const { cleanText, ranges } = parseFormattedText(String(rawCaption));
+    const hasActualText = Boolean(cleanText && cleanText.trim());
+    const shouldShowPlaceholder = !hasActualText && includePlaceholder;
+    if (!hasActualText && !shouldShowPlaceholder) return;
+
+    const rect = topCaptionLayout.rect;
+    const displayText = hasActualText ? cleanText : TOP_CAPTION_PLACEHOLDER;
+    const activeRanges = hasActualText ? ranges : [];
+
+    const baseFontSize = Number(topCaptionConfig.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : (Number(lastUsedTextSettings?.fontSize) > 0
+        ? Number(lastUsedTextSettings.fontSize)
+        : TOP_CAPTION_DEFAULTS.fontSize);
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const textAlign = normalizeTextAlignValue(topCaptionConfig.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
+    const baseTextColor = topCaptionConfig.color || TOP_CAPTION_DEFAULTS.color;
+    const normalizedTopCaptionBackground = typeof topCaptionConfig.backgroundColor === 'string'
+      ? topCaptionConfig.backgroundColor.trim().toLowerCase()
+      : '';
+    const hasExplicitTopCaptionBackground = (
+      topCaptionConfig.backgroundColorExplicit === true ||
+      (normalizedTopCaptionBackground.length > 0 && normalizedTopCaptionBackground !== '#ffffff')
+    );
+    const backgroundColor = hasExplicitTopCaptionBackground
+      ? topCaptionConfig.backgroundColor
+      : (borderColor || TOP_CAPTION_DEFAULTS.backgroundColor);
+    const requestedStrokeWidth = topCaptionConfig.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
+    const baseInlineStyle = {
+      fontWeight,
+      fontStyle,
+      underline: false,
+    };
+
+    const hPad = Math.max(16, rect.width * 0.04);
+    const maxTextWidth = Math.max(24, rect.width - (hPad * 2));
+
+    ctx.save();
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+    ctx.beginPath();
+    ctx.rect(rect.x, rect.y, rect.width, rect.height);
+    ctx.clip();
+
+    let textColor = baseTextColor;
+    let strokeColor = getContrastingMonoStroke(baseTextColor);
+    if (!hasActualText) {
+      const rgba = parseColorToRGBA(baseTextColor) || { r: 17, g: 17, b: 17, a: 1 };
+      textColor = rgbaString(rgba.r, rgba.g, rgba.b, 0.45);
+      const mono = parseColorToRGBA(strokeColor) || { r: 0, g: 0, b: 0, a: 1 };
+      strokeColor = rgbaString(mono.r, mono.g, mono.b, 0.28);
+    }
+
+    ctx.fillStyle = textColor;
+    ctx.strokeStyle = strokeColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    // Top caption intentionally has no drop shadow for clean meme-style text.
+    ctx.shadowColor = 'transparent';
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.shadowBlur = 0;
+
+    if (requestedStrokeWidth === 0) {
+      ctx.lineWidth = 0;
+    } else if (requestedStrokeWidth > 0) {
+      ctx.lineWidth = requestedStrokeWidth;
+    } else {
+      ctx.lineWidth = 0;
+    }
+
+    const lineHeight = fontSize * 1.2;
+    const wrappedLines = buildWrappedLines(
+      ctx,
+      displayText,
+      activeRanges,
+      maxTextWidth,
+      baseInlineStyle,
+      fontSize,
+      fontFamily,
+    );
+    const totalTextHeight = wrappedLines.length * lineHeight;
+    const startY = rect.y + ((rect.height - totalTextHeight) / 2) + (lineHeight / 2);
+    const maxLineWidth = wrappedLines.reduce((max, line) => Math.max(max, line.width), 0);
+    const textAnchorX = textAlign === 'left'
+      ? rect.x + hPad
+      : textAlign === 'right'
+        ? rect.x + rect.width - hPad
+        : rect.x + (rect.width / 2);
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+
+    wrappedLines.forEach((line, lineIndex) => {
+      const lineY = startY + lineIndex * lineHeight;
+      const lineX = getLineStartX(textAlign, textAnchorX, line.width);
+      const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
+      let cursorX = Number.isFinite(lineX) ? lineX : textBlockLeft;
+
+      segments.forEach((segment) => {
+        const segmentText = displayText.slice(segment.start, segment.end);
+        const resolvedStyle = segment.style;
+        ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
+        const segmentWidth = ctx.measureText(segmentText).width;
+
+        if (ctx.lineWidth > 0) {
+          ctx.strokeText(segmentText, cursorX, lineY);
+        }
+        ctx.fillText(segmentText, cursorX, lineY);
+
+        if (resolvedStyle.underline) {
+          ctx.save();
+          ctx.shadowColor = 'transparent';
+          ctx.strokeStyle = textColor;
+          ctx.lineWidth = Math.max(1, fontSize * 0.08);
+          const underlineY = lineY + fontSize * 0.35;
+          ctx.beginPath();
+          ctx.moveTo(cursorX, underlineY);
+          ctx.lineTo(cursorX + segmentWidth, underlineY);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        cursorX += segmentWidth;
+      });
+    });
+
+    ctx.restore();
+  }, [topCaptionLayout, panelTexts, lastUsedTextSettings?.fontSize, textScaleFactor, borderColor]);
+
+  const isPointInTopCaptionArea = useCallback((x, y) => {
+    if (!topCaptionLayout?.enabled || !topCaptionLayout?.rect) return false;
+    const rect = topCaptionLayout.rect;
+    return (
+      x >= rect.x &&
+      x <= rect.x + rect.width &&
+      y >= rect.y &&
+      y <= rect.y + rect.height
+    );
+  }, [topCaptionLayout]);
 
   // Track previous panel rect sizes to adjust transforms when frames resize (border drag)
   const prevPanelRectsRef = useRef({});
@@ -938,138 +1659,178 @@ const CanvasCollagePreview = ({
         gridTemplateAreas: customLayoutConfig.gridTemplateAreas ?? base.gridTemplateAreas,
         areas: customLayoutConfig.areas ?? base.areas,
         items: customLayoutConfig.items ?? base.items,
+        panelRects: Array.isArray(customLayoutConfig.panelRects) ? customLayoutConfig.panelRects : base.panelRects,
       };
+    }
+    if (!base && customLayoutConfig && Array.isArray(customLayoutConfig.panelRects)) {
+      return { panelRects: customLayoutConfig.panelRects };
     }
     return base;
   }, [selectedTemplate, panelCount, customLayoutConfig]);
 
-  // Calculate border pixels
-  const borderPixels = getBorderPixelSize(borderThickness, componentWidth);
+  useEffect(() => {
+    if (selectedTemplate?.id !== 'vertical-asymmetric-5') return;
+    if (Array.isArray(customLayoutConfig?.panelRects) && customLayoutConfig.panelRects.length > 0) return;
+    if (!layoutConfig) return;
 
+    const imageAreaHeight = (
+      Number.isFinite(topCaptionLayout?.imageAreaHeight) && topCaptionLayout.imageAreaHeight > 0
+    )
+      ? topCaptionLayout.imageAreaHeight
+      : (componentWidth / Math.max(0.01, Number(aspectRatioValue) || 1));
+    if (!Number.isFinite(imageAreaHeight) || imageAreaHeight <= 0) return;
 
+    const baseRects = parseGridToRects(
+      layoutConfig,
+      componentWidth,
+      imageAreaHeight,
+      panelCount,
+      borderPixels,
+    );
+    if (!Array.isArray(baseRects) || baseRects.length === 0) return;
+
+    const seededLayout = buildPanelRectLayoutFromRects(
+      baseRects,
+      componentWidth,
+      imageAreaHeight,
+      borderPixels,
+      panelCount,
+    );
+    if (!seededLayout) return;
+
+    setCustomLayoutConfig((previousLayout) => {
+      if (Array.isArray(previousLayout?.panelRects) && previousLayout.panelRects.length > 0) {
+        return previousLayout;
+      }
+      if (BORDER_DEBUG_MODE) {
+        borderDebugLog('seed-layout', {
+          templateId: selectedTemplate?.id,
+          panelCount,
+          panelRects: seededLayout.panelRects,
+        });
+      }
+      return seededLayout;
+    });
+  }, [
+    selectedTemplate?.id,
+    customLayoutConfig?.panelRects,
+    layoutConfig,
+    componentWidth,
+    topCaptionLayout?.imageAreaHeight,
+    aspectRatioValue,
+    panelCount,
+    borderPixels,
+  ]);
 
   // Border dragging helper functions
-  const updateLayoutWithBorderDrag = useCallback((borderZone, deltaX, deltaY) => {
-    if (!layoutConfig) {
-      return;
+  const updateLayoutWithBorderDrag = useCallback((dragState, deltaX, deltaY) => {
+    const activeLayoutConfig = activeBorderDragLayoutRef.current || layoutConfig;
+    if (!activeLayoutConfig || !dragState) return false;
+
+    const draggedZoneId = dragState?.zoneId || dragState?.edgeId || null;
+    const fallbackZone = dragState?.zone || dragState?.borderZone || dragState;
+
+    const imageAreaHeight = (
+      Number.isFinite(topCaptionLayout?.imageAreaHeight) && topCaptionLayout.imageAreaHeight > 0
+    )
+      ? topCaptionLayout.imageAreaHeight
+      : (componentWidth / Math.max(0.01, Number(aspectRatioValue) || 1));
+    if (!Number.isFinite(imageAreaHeight) || imageAreaHeight <= 0) return false;
+
+    const currentRects = parseGridToRects(
+      activeLayoutConfig,
+      componentWidth,
+      imageAreaHeight,
+      panelCount,
+      borderPixels,
+    );
+    if (!Array.isArray(currentRects) || currentRects.length === 0) return false;
+
+    const currentBorderZones = detectBorderZones(
+      activeLayoutConfig,
+      componentWidth,
+      imageAreaHeight,
+      borderPixels,
+      currentRects,
+    );
+    const activeBorderZone = (
+      (draggedZoneId ? findBorderZoneByEdgeId(currentBorderZones, draggedZoneId) : null)
+      || fallbackZone
+    );
+    if (!activeBorderZone) return false;
+
+    const minPanelWidthPx = Math.max(24, componentWidth * 0.06);
+    const minPanelHeightPx = Math.max(24, imageAreaHeight * 0.06);
+    const dragResult = applyBorderDragDelta({
+      panelRects: currentRects,
+      borderZone: activeBorderZone,
+      deltaX,
+      deltaY,
+      minPanelWidthPx,
+      minPanelHeightPx,
+      centerSnap: {
+        enabled: true,
+        thresholdRatio: BORDER_CENTER_SNAP_THRESHOLD_RATIO,
+        thresholdMinPx: BORDER_CENTER_SNAP_THRESHOLD_MIN_PX,
+        thresholdMaxPx: BORDER_CENTER_SNAP_THRESHOLD_MAX_PX,
+      },
+    });
+    if (BORDER_DEBUG_MODE) {
+      borderDebugLog('drag-step', {
+        zoneId: draggedZoneId || activeBorderZone.id,
+        orientation: activeBorderZone.type,
+        boundaryStart: activeBorderZone.boundaryStart,
+        boundaryEnd: activeBorderZone.boundaryEnd,
+        segmentStart: activeBorderZone.segmentStart,
+        segmentEnd: activeBorderZone.segmentEnd,
+        adjacentPanels: activeBorderZone.type === 'vertical'
+          ? { left: activeBorderZone.leftPanelIds || [], right: activeBorderZone.rightPanelIds || [] }
+          : { top: activeBorderZone.topPanelIds || [], bottom: activeBorderZone.bottomPanelIds || [] },
+        pointerDelta: { x: deltaX, y: deltaY },
+        appliedDelta: { x: dragResult.appliedDeltaX, y: dragResult.appliedDeltaY },
+        outcome: dragResult.outcome,
+      });
     }
-    
-    // Parse current grid configuration
-    let columnSizes = [1];
-    let rowSizes = [1];
-    
-    if (layoutConfig.gridTemplateColumns) {
-      if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
-        const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
-        if (repeatMatch) {
-          const count = parseInt(repeatMatch[1], 10);
-          columnSizes = Array(count).fill(1);
-        }
-      } else {
-        const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
-        if (frMatches) {
-          columnSizes = frMatches.map(match => {
-            const value = match.replace('fr', '');
-            return value === '' ? 1 : parseFloat(value);
-          });
-        }
+    if (dragResult.outcome === 'invalid') return false;
+    if (!dragResult.changed) return !dragResult.snappedToCenter;
+
+    const newLayoutConfig = buildPanelRectLayoutFromRects(
+      dragResult.nextPanelRects,
+      componentWidth,
+      imageAreaHeight,
+      borderPixels,
+      panelCount,
+    );
+    if (!newLayoutConfig) return false;
+
+    const unchangedExplicitLayout = (
+      Array.isArray(activeLayoutConfig?.panelRects)
+      && arePanelRectLayoutsEqual(activeLayoutConfig, newLayoutConfig)
+    );
+    if (unchangedExplicitLayout) {
+      if (BORDER_DEBUG_MODE) {
+        borderDebugLog('drag-step-noop-layout', {
+          zoneId: draggedZoneId || activeBorderZone.id,
+          pointerDelta: { x: deltaX, y: deltaY },
+          appliedDelta: { x: dragResult.appliedDeltaX, y: dragResult.appliedDeltaY },
+        });
       }
+      return false;
     }
-    
-    if (layoutConfig.gridTemplateRows) {
-      if (layoutConfig.gridTemplateRows.includes('repeat(')) {
-        const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
-        if (repeatMatch) {
-          const count = parseInt(repeatMatch[1], 10);
-          rowSizes = Array(count).fill(1);
-        }
-      } else {
-        const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
-        if (frMatches) {
-          rowSizes = frMatches.map(match => {
-            const value = match.replace('fr', '');
-            return value === '' ? 1 : parseFloat(value);
-          });
-        }
-      }
-    }
-    
-    // Calculate available space for adjustment
-    const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
-    const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
-    const availableWidth = componentWidth - (borderPixels * 2) - horizontalGaps;
-    const availableHeight = componentHeight - (borderPixels * 2) - verticalGaps;
-    
-    const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
-    const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
-    
-    const columnFrUnit = availableWidth / totalColumnFr;
-    const rowFrUnit = availableHeight / totalRowFr;
-    
-    const newColumnSizes = [...columnSizes];
-    const newRowSizes = [...rowSizes];
-    let changed = false;
-    
-    if (borderZone.type === 'vertical') {
-      // Adjust column sizes
-      const leftIndex = borderZone.index;
-      const rightIndex = borderZone.index + 1;
-      
-      if (leftIndex < newColumnSizes.length && rightIndex < newColumnSizes.length) {
-        // Convert pixel delta to fractional unit delta
-        const frDelta = deltaX / columnFrUnit;
-        
-        // More generous minimum size constraint (5% of average size)
-        const minSize = totalColumnFr / columnSizes.length * 0.05;
-        
-        // Calculate new sizes
-        const newLeftSize = Math.max(minSize, newColumnSizes[leftIndex] + frDelta);
-        const newRightSize = Math.max(minSize, newColumnSizes[rightIndex] - frDelta);
-        
-        // Only apply if both sizes are above minimum
-        if (newLeftSize >= minSize && newRightSize >= minSize) {
-          newColumnSizes[leftIndex] = newLeftSize;
-          newColumnSizes[rightIndex] = newRightSize;
-          changed = true;
-        }
-      }
-    } else if (borderZone.type === 'horizontal') {
-      // Adjust row sizes
-      const topIndex = borderZone.index;
-      const bottomIndex = borderZone.index + 1;
-      
-      if (topIndex < newRowSizes.length && bottomIndex < newRowSizes.length) {
-        // Convert pixel delta to fractional unit delta
-        const frDelta = deltaY / rowFrUnit;
-        
-        // More generous minimum size constraint (5% of average size)
-        const minSize = totalRowFr / rowSizes.length * 0.05;
-        
-        // Calculate new sizes
-        const newTopSize = Math.max(minSize, newRowSizes[topIndex] + frDelta);
-        const newBottomSize = Math.max(minSize, newRowSizes[bottomIndex] - frDelta);
-        
-        // Only apply if both sizes are above minimum
-        if (newTopSize >= minSize && newBottomSize >= minSize) {
-          newRowSizes[topIndex] = newTopSize;
-          newRowSizes[bottomIndex] = newBottomSize;
-          changed = true;
-        }
-      }
-    }
-    
-    // Only update if something actually changed
-    if (changed) {
-      // Create new layout config with updated sizes
-      const newLayoutConfig = {
-        ...layoutConfig,
-        gridTemplateColumns: newColumnSizes.map(size => `${size}fr`).join(' '),
-        gridTemplateRows: newRowSizes.map(size => `${size}fr`).join(' ')
-      };
-      
-      setCustomLayoutConfig(newLayoutConfig);
-    }
-  }, [layoutConfig, borderPixels, componentWidth, componentHeight]);
+
+    // Keep a synchronous layout copy during drag so rapid pointer events
+    // don't re-apply deltas against stale React state.
+    activeBorderDragLayoutRef.current = newLayoutConfig;
+    setCustomLayoutConfig(newLayoutConfig);
+    return true;
+  }, [
+    layoutConfig,
+    borderPixels,
+    componentWidth,
+    panelCount,
+    topCaptionLayout?.imageAreaHeight,
+    aspectRatioValue,
+  ]);
 
   const findBorderZone = useCallback((x, y) => {
     const found = borderZones.find(zone => 
@@ -1078,6 +1839,114 @@ const CanvasCollagePreview = ({
     );
     return found;
   }, [borderZones]);
+
+  const getBorderZoneId = useCallback((zone) => {
+    if (!zone) return null;
+    if (zone.id) return zone.id;
+    if (zone.edgeId) return zone.edgeId;
+    if (zone.type === 'vertical') {
+      return buildStableBorderEdgeId('vertical', zone.leftPanelIds || [], zone.rightPanelIds || []);
+    }
+    return buildStableBorderEdgeId('horizontal', zone.topPanelIds || [], zone.bottomPanelIds || []);
+  }, []);
+
+  const startBorderDragFromClient = useCallback((zone, zoneId, clientX, clientY) => {
+    if (!zone || !containerRef.current) return false;
+    const rect = containerRef.current.getBoundingClientRect();
+    const startPoint = {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+    touchStartInfo.current = null;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressActiveRef.current = false;
+    frameTapSuppressUntilRef.current = Math.max(
+      frameTapSuppressUntilRef.current || 0,
+      Date.now() + BORDER_DRAG_ACTION_SUPPRESS_MS,
+    );
+    const resolvedZoneId = zoneId || getBorderZoneId(zone);
+    activeBorderDragLayoutRef.current = layoutConfig;
+    isDraggingBorderRef.current = true;
+    draggedBorderRef.current = {
+      zoneId: resolvedZoneId,
+      zone,
+    };
+    borderDragStartRef.current = startPoint;
+    setSelectedBorderZoneId(resolvedZoneId);
+    setIsDraggingBorder(true);
+    setBorderDragStart(startPoint);
+    if (BORDER_DEBUG_MODE) {
+      borderDebugLog('drag-start', {
+        zoneId: resolvedZoneId,
+        orientation: zone.type,
+        boundaryStart: zone.boundaryStart,
+        boundaryEnd: zone.boundaryEnd,
+        segmentStart: zone.segmentStart,
+        segmentEnd: zone.segmentEnd,
+        adjacentPanels: zone.type === 'vertical'
+          ? { left: zone.leftPanelIds || [], right: zone.rightPanelIds || [] }
+          : { top: zone.topPanelIds || [], bottom: zone.bottomPanelIds || [] },
+      });
+    }
+    return true;
+  }, [getBorderZoneId, layoutConfig]);
+
+  const updateBorderDragFromClient = useCallback((clientX, clientY) => {
+    if (!containerRef.current || !isDraggingBorderRef.current || !draggedBorderRef.current) {
+      return false;
+    }
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const previousPoint = borderDragStartRef.current || { x, y };
+    const deltaX = x - previousPoint.x;
+    const deltaY = y - previousPoint.y;
+
+    if (Math.abs(deltaX) < 0.01 && Math.abs(deltaY) < 0.01) {
+      return true;
+    }
+
+    const layoutDidUpdate = updateLayoutWithBorderDrag(draggedBorderRef.current, deltaX, deltaY);
+    // Keep accumulating pointer delta when movement is temporarily coalesced
+    // (e.g., split borders align onto one track). This avoids "stuck" drags.
+    if (!layoutDidUpdate) {
+      return true;
+    }
+    const nextPoint = { x, y };
+    borderDragStartRef.current = nextPoint;
+    setBorderDragStart(nextPoint);
+    return true;
+  }, [updateLayoutWithBorderDrag]);
+
+  const stopBorderDrag = useCallback((clearSelection = true) => {
+    const activeDrag = draggedBorderRef.current;
+    const hadBorderDrag = isDraggingBorderRef.current || Boolean(draggedBorderRef.current);
+    isDraggingBorderRef.current = false;
+    draggedBorderRef.current = null;
+    activeBorderDragLayoutRef.current = null;
+    touchStartInfo.current = null;
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressActiveRef.current = false;
+    frameTapSuppressUntilRef.current = Math.max(
+      frameTapSuppressUntilRef.current || 0,
+      Date.now() + BORDER_DRAG_ACTION_SUPPRESS_MS,
+    );
+    setIsDraggingBorder(false);
+    if (clearSelection && hadBorderDrag) {
+      setSelectedBorderZoneId(null);
+    }
+    if (BORDER_DEBUG_MODE && hadBorderDrag) {
+      borderDebugLog('drag-stop', {
+        zoneId: activeDrag?.zoneId || activeDrag?.zone?.id || null,
+      });
+    }
+  }, []);
 
   // Load only images currently mapped to panels (avoid decoding/holding unused images)
   useEffect(() => {
@@ -1298,7 +2167,7 @@ const CanvasCollagePreview = ({
       // Top handle sits at -90deg relative to +X axis, so angle is ray + 90deg.
       const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
       return {
-        angleDeg: normalizeAngleDeg(pointerAngle + 90),
+        angleDeg: snapAngleToZeroDeg(pointerAngle + 90),
       };
     }
 
@@ -1331,7 +2200,39 @@ const CanvasCollagePreview = ({
 
   const handleStickerPointerDown = useCallback((event, sticker, mode = 'move') => {
     if (!sticker?.id || typeof updateSticker !== 'function') return;
+    if (Object.values(isTransformMode).some(Boolean)) return;
     if (event?.button !== undefined && event.button !== 0) return;
+    clearOverlayTouchTapTracker();
+    if (activeTextLayerId) {
+      setActiveTextLayerId(null);
+      setTextLayerInteraction(null);
+      pendingTextLayerPointerRef.current = null;
+      if (textLayerRafRef.current !== null) {
+        window.cancelAnimationFrame(textLayerRafRef.current);
+        textLayerRafRef.current = null;
+      }
+    }
+    const isMoveInteraction = mode === 'move';
+    const isAlreadySelected = activeStickerId === sticker.id;
+
+    // Require an intentional second interaction before moving a sticker.
+    if (isMoveInteraction && !isAlreadySelected) {
+      if (event?.pointerType === 'touch') {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        const started = beginOverlayTouchTapTracking(event, () => {
+          setActiveStickerId(sticker.id);
+          setStickerInteraction(null);
+          setSelectedBorderZoneId(null);
+        });
+        if (started) return;
+      }
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      setActiveStickerId(sticker.id);
+      setStickerInteraction(null);
+      setSelectedBorderZoneId(null);
+      return;
+    }
+
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
     try {
@@ -1353,6 +2254,7 @@ const CanvasCollagePreview = ({
     }
 
     setActiveStickerId(sticker.id);
+    setSelectedBorderZoneId(null);
     pendingStickerPointerRef.current = null;
     if (stickerRafRef.current !== null) {
       window.cancelAnimationFrame(stickerRafRef.current);
@@ -1376,10 +2278,21 @@ const CanvasCollagePreview = ({
       centerClientX,
       centerClientY,
     });
-  }, [getStickerRectPx, moveSticker, stickers, updateSticker]);
+  }, [
+    getStickerRectPx,
+    isTransformMode,
+    moveSticker,
+    stickers,
+    updateSticker,
+    activeStickerId,
+    activeTextLayerId,
+    beginOverlayTouchTapTracking,
+    clearOverlayTouchTapTracker,
+  ]);
 
   const handleStickerDelete = useCallback((event, stickerId) => {
     if (!stickerId || typeof removeSticker !== 'function') return;
+    if (Object.values(isTransformMode).some(Boolean)) return;
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
 
@@ -1397,11 +2310,12 @@ const CanvasCollagePreview = ({
       stickerRafRef.current = null;
     }
     removeSticker(stickerId);
-  }, [removeSticker]);
+  }, [isTransformMode, removeSticker]);
 
-  const clearActiveStickerSelection = useCallback((event) => {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+  const clearActiveStickerSelection = useCallback((event, options = {}) => {
+    const { suppressEvents = true } = options;
+    if (suppressEvents && event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (suppressEvents && event && typeof event.stopPropagation === 'function') event.stopPropagation();
     // Clear hover overlays immediately when dismissing a sticker selection.
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -1409,6 +2323,7 @@ const CanvasCollagePreview = ({
     }
     setHoveredPanel(null);
     setHoveredBorder(null);
+    setSelectedBorderZoneId(null);
     setActiveStickerId(null);
     setStickerInteraction(null);
     pendingStickerPointerRef.current = null;
@@ -1417,6 +2332,17 @@ const CanvasCollagePreview = ({
       stickerRafRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (!Object.values(isTransformMode).some(Boolean)) return;
+    setStickerInteraction(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+    setActiveStickerId(null);
+  }, [isTransformMode]);
 
   const handleStickerDone = useCallback((event) => {
     clearActiveStickerSelection(event);
@@ -1488,6 +2414,11 @@ const CanvasCollagePreview = ({
       requestPointerApply();
     };
 
+    const handleTouchMoveDuringStickerInteraction = (event) => {
+      if (!event?.cancelable) return;
+      event.preventDefault();
+    };
+
     const handlePointerEnd = () => {
       if (stickerRafRef.current !== null) {
         window.cancelAnimationFrame(stickerRafRef.current);
@@ -1501,11 +2432,13 @@ const CanvasCollagePreview = ({
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerEnd);
     window.addEventListener('pointercancel', handlePointerEnd);
+    window.addEventListener('touchmove', handleTouchMoveDuringStickerInteraction, { passive: false });
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('touchmove', handleTouchMoveDuringStickerInteraction);
       if (stickerRafRef.current !== null) {
         window.cancelAnimationFrame(stickerRafRef.current);
         stickerRafRef.current = null;
@@ -1514,24 +2447,67 @@ const CanvasCollagePreview = ({
     };
   }, [getStickerDraftFromPointer, stickerInteraction, updateSticker]);
 
-  // Update component dimensions and panel rectangles
-  useEffect(() => {
+  // Update component dimensions and panel rectangles.
+  // useLayoutEffect keeps overlays/editor in sync during rapid caption height changes.
+  useLayoutEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const width = rect.width || 400;
-        const height = width / aspectRatioValue;
+        const baseImageHeight = width / aspectRatioValue;
+        const captionLayout = resolveTopCaptionLayout(width, baseImageHeight);
+        const totalHeight = captionLayout.totalHeight || baseImageHeight;
+        const imageAreaHeight = captionLayout.imageAreaHeight || baseImageHeight;
+        const imageOffsetY = captionLayout.imageOffsetY || 0;
         
-        setComponentWidth(width);
-        setComponentHeight(height);
+        setComponentWidth((prevWidth) => (
+          areNumbersClose(prevWidth, width) ? prevWidth : width
+        ));
+        setComponentHeight((prevHeight) => (
+          areNumbersClose(prevHeight, totalHeight) ? prevHeight : totalHeight
+        ));
+        setTopCaptionLayout((prevLayout) => (
+          areTopCaptionLayoutsEqual(prevLayout, captionLayout) ? prevLayout : captionLayout
+        ));
         
         if (layoutConfig) {
-          const rects = parseGridToRects(layoutConfig, width, height, panelCount, borderPixels);
-          setPanelRects(rects);
+          const baseRects = parseGridToRects(layoutConfig, width, imageAreaHeight, panelCount, borderPixels);
+          const shiftedRects = baseRects.map((panelRect) => ({
+            ...panelRect,
+            y: panelRect.y + imageOffsetY,
+          }));
+          setPanelRects((prevRects) => (
+            areRectsEqual(prevRects, shiftedRects) ? prevRects : shiftedRects
+          ));
           
           // Update border zones for dragging
-          const zones = detectBorderZones(layoutConfig, width, height, borderPixels);
-          setBorderZones(zones);
+          const zones = detectBorderZones(layoutConfig, width, imageAreaHeight, borderPixels, baseRects).map((zone) => ({
+            ...zone,
+            y: zone.y + imageOffsetY,
+            centerY: Number.isFinite(zone.centerY) ? zone.centerY + imageOffsetY : zone.centerY,
+          }));
+          if (BORDER_DEBUG_MODE) {
+            zones.forEach((zone) => {
+              borderDebugLog('zone', {
+                zoneId: zone.id,
+                edgeId: zone.edgeId || zone.id,
+                orientation: zone.type,
+                boundaryStart: zone.boundaryStart,
+                boundaryEnd: zone.boundaryEnd,
+                segmentStart: zone.segmentStart,
+                segmentEnd: zone.segmentEnd,
+                adjacentPanels: zone.type === 'vertical'
+                  ? { left: zone.leftPanelIds || [], right: zone.rightPanelIds || [] }
+                  : { top: zone.topPanelIds || [], bottom: zone.bottomPanelIds || [] },
+              });
+            });
+          }
+          setBorderZones((prevZones) => (
+            areBorderZonesEqual(prevZones, zones) ? prevZones : zones
+          ));
+        } else {
+          setPanelRects((prevRects) => (prevRects.length === 0 ? prevRects : []));
+          setBorderZones((prevZones) => (prevZones.length === 0 ? prevZones : []));
         }
       }
     };
@@ -1540,7 +2516,7 @@ const CanvasCollagePreview = ({
     window.addEventListener('resize', updateDimensions);
     
     return () => window.removeEventListener('resize', updateDimensions);
-  }, [aspectRatioValue, layoutConfig, panelCount, borderPixels]);
+  }, [aspectRatioValue, layoutConfig, panelCount, borderPixels, resolveTopCaptionLayout]);
 
   // When panel sizes change (e.g., inner border dragged), carry focal point and clamp to avoid gaps
   useEffect(() => {
@@ -1667,6 +2643,8 @@ const CanvasCollagePreview = ({
       ctx.fillStyle = borderColor;
       ctx.fillRect(0, 0, componentWidth, componentHeight);
     }
+
+    drawTopCaptionLayer(ctx, { includePlaceholder: !isGeneratingCollage });
     
     // Check if any panel is in transform mode or reorder mode to hide all captions
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
@@ -1680,7 +2658,7 @@ const CanvasCollagePreview = ({
       const imageIndex = panelImageMapping[panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
       const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
-      const panelText = panelTexts[panelId] || {};
+      const panelText = resolvePanelTextForCanvas(panelId);
 
       // Draw panel background
       ctx.fillStyle = hasImage
@@ -1766,8 +2744,17 @@ const CanvasCollagePreview = ({
       }
     });
 
+    if (floatingTextLayerIds.length > 0) {
+      floatingTextLayerIds.forEach((layerId) => {
+        const panelText = resolvePanelTextForCanvas(layerId);
+        if (!panelText || typeof panelText !== 'object') return;
+        captionEntries.push({ rect: floatingTextLayerRect, panelText });
+      });
+    }
+
     // Draw stickers between images and captions so captions stay on top.
     if (Array.isArray(stickers) && stickers.length > 0) {
+      const stickerPreviewAlpha = anyPanelInTransformMode ? 0.28 : 1;
       stickers.forEach((sticker) => {
         if (!sticker?.id) return;
         const stickerImage = loadedStickers[sticker.id];
@@ -1775,11 +2762,14 @@ const CanvasCollagePreview = ({
         const stickerRect = getStickerRectPx(sticker, stickerImage);
         if (!stickerRect) return;
 
+        let contextSaved = false;
         try {
+          ctx.save();
+          contextSaved = true;
+          ctx.globalAlpha = stickerPreviewAlpha;
           if (Math.abs(stickerRect.angleDeg || 0) > 0.01) {
             const centerX = stickerRect.x + (stickerRect.width / 2);
             const centerY = stickerRect.y + (stickerRect.height / 2);
-            ctx.save();
             ctx.translate(centerX, centerY);
             ctx.rotate((stickerRect.angleDeg * Math.PI) / 180);
             ctx.drawImage(
@@ -1793,7 +2783,9 @@ const CanvasCollagePreview = ({
             return;
           }
           ctx.drawImage(stickerImage, stickerRect.x, stickerRect.y, stickerRect.width, stickerRect.height);
+          ctx.restore();
         } catch (_) {
+          if (contextSaved) ctx.restore();
           // Ignore sticker draw failures so preview rendering still succeeds.
         }
       });
@@ -1806,7 +2798,7 @@ const CanvasCollagePreview = ({
       const { cleanText, ranges } = parseFormattedText(rawCaption);
       const hasActualText = cleanText && cleanText.trim();
       const shouldShowPlaceholder = !hasActualText && !isGeneratingCollage;
-      const displayText = hasActualText ? cleanText : 'Add Caption';
+      const displayText = hasActualText ? cleanText : CAPTION_PLACEHOLDER_TEXT;
       const activeRanges = hasActualText ? ranges : [];
 
       // Hide all captions when any panel is in transform mode or reorder mode
@@ -1844,6 +2836,7 @@ const CanvasCollagePreview = ({
         const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
         const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0); // Default to baseline bottom position
         const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
+        const textAlign = normalizeTextAlignValue(panelText.textAlign || lastUsedTextSettings.textAlign || 'center');
 
         // Apply different opacity for placeholder vs actual text
         let textColor;
@@ -1912,25 +2905,26 @@ const CanvasCollagePreview = ({
         ctx.shadowOffsetY = 0;
         ctx.shadowBlur = 14;
 
-        // Calculate available text area (with padding on sides and bottom)
-        const textPadding = 10;
-        const maxTextWidth = width - (textPadding * 2);
+        // Use a configurable text box width so captions can stay wide (Fabric-like textbox behavior).
+        const textBoxWidth = resolveTextBoxWidthPx(rect, panelText, lastUsedTextSettings);
 
         // Calculate text position based on position settings
         // textPositionX: -100 (left) to 100 (right), 0 = center
         // textPositionY: -100 (bottom anchored) to 100 (top anchored), 0 = default bottom position
-        const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
+        const textAnchorX = getTextAnchorXFromPosition(rect, textPositionX);
 
         const lineHeight = fontSize * 1.2;
         const wrappedLines = buildWrappedLines(
           ctx,
           displayText,
           activeRanges,
-          maxTextWidth,
+          textBoxWidth,
           baseInlineStyle,
           fontSize,
           fontFamily,
         );
+        const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, textBoxWidth);
+        const textBlockCenterX = textBlockLeft + (textBoxWidth / 2);
 
         // Calculate text block positioning with proper anchoring
         const totalTextHeight = wrappedLines.length * lineHeight;
@@ -1940,22 +2934,7 @@ const CanvasCollagePreview = ({
         // textPositionY = 0: bottom edge of text at 95% of panel height (default position)
         // textPositionY = 100: top edge of text at top of panel (y + textPadding)
 
-        let textAnchorY;
-        if (textPositionY <= 0) {
-          // Position between default bottom (95%) and beyond frame bottom edge
-          const defaultBottomPosition = y + (height * 0.95);
-          const extendedBottomPosition = y + height + (height * 0.1); // Allow text to extend 10% beyond frame bottom
-          const t = Math.abs(textPositionY) / 100; // 0 to 1
-          textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
-          // Text is anchored by its bottom edge
-        } else {
-          // Position between default bottom (95%) and frame top edge (0%)
-          const defaultBottomPosition = y + (height * 0.95);
-          const frameTopPosition = y; // Allow text to extend to frame edge
-          const t = textPositionY / 100; // 0 to 1
-          textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
-          // Text is anchored by its bottom edge
-        }
+        const textAnchorY = getTextAnchorYFromPosition(rect, textPositionY);
 
         // Calculate where the first line should start (top of text block)
         const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
@@ -1964,7 +2943,7 @@ const CanvasCollagePreview = ({
         if (textRotation !== 0) {
           ctx.save();
           // Translate to the center of the text block
-          const textCenterX = textX;
+          const textCenterX = textBlockCenterX;
           const textCenterY = textAnchorY - totalTextHeight / 2;
           ctx.translate(textCenterX, textCenterY);
           ctx.rotate((textRotation * Math.PI) / 180);
@@ -1973,7 +2952,7 @@ const CanvasCollagePreview = ({
 
         wrappedLines.forEach((line, lineIndex) => {
           const lineY = startY + lineIndex * lineHeight;
-          const lineX = textX - (line.width / 2);
+          const lineX = getLineStartX(textAlign, textAnchorX, line.width);
           const segments = getSegmentsForLine(activeRanges, line.start, line.end, baseInlineStyle);
           let cursorX = lineX;
 
@@ -2036,37 +3015,44 @@ const CanvasCollagePreview = ({
     fontsReadyVersion,
     stickers,
     loadedStickers,
-    getStickerRectPx
+    getStickerRectPx,
+    drawTopCaptionLayer,
+    resolvePanelTextForCanvas,
+    floatingTextLayerIds,
+    floatingTextLayerRect,
+    getTextAnchorXFromPosition,
+    getTextAnchorYFromPosition
   ]);
 
   // Helper function to calculate text area dimensions for a panel
   const getTextAreaBounds = useCallback((panel, panelText) => {
     if (!panel) return null;
-    
-    // Get text properties (same as in drawCanvas)
-    const baseFontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
-    const scaledFontSize = baseFontSize * textScaleFactor;
-    const textPadding = 10; // Visual padding for text rendering
-    const activationPadding = 1; // Extremely tight padding for activation area
-    const lineHeight = scaledFontSize * 1.2;
+
+    const controlPadding = TEXT_LAYER_CONTROL_PADDING_PX;
     const textPositionX = panelText?.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
     const textPositionY = panelText?.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
     const textRotation = panelText?.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
-    
+    const textAlign = normalizeTextAlignValue(panelText?.textAlign || lastUsedTextSettings.textAlign || 'center');
+
     const rawCaption = panelText?.rawContent ?? panelText?.content ?? '';
     const { cleanText, ranges } = parseFormattedText(rawCaption);
     const hasActualText = cleanText && cleanText.trim();
-    const displayText = hasActualText ? cleanText : 'Add Caption';
+    const displayText = hasActualText ? cleanText : CAPTION_PLACEHOLDER_TEXT;
     const activeRanges = hasActualText ? ranges : [];
-    
-    // Use the same accurate text measurement logic as drawCanvas
-    const maxTextWidth = panel.width - (textPadding * 2);
-    
-    // Create temporary canvas for accurate text measurement
+
+    let baseFontSize = panelText?.fontSize || lastUsedTextSettings.fontSize || 26;
+    if (hasActualText && !panelText?.fontSize && typeof calculateOptimalFontSize === 'function') {
+      baseFontSize = calculateOptimalFontSize(cleanText, panel.width, panel.height);
+    }
+    const scaledFontSize = baseFontSize * textScaleFactor;
+    const lineHeight = scaledFontSize * 1.2;
+    const textBoxWidthPercent = resolveTextBoxWidthPercent(panelText, lastUsedTextSettings);
+    const textBoxWidth = getTextBoxWidthPx(panel.width, textBoxWidthPercent);
+
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
-    
-    // Set font properties exactly like in drawCanvas
+    if (!tempCtx) return null;
+
     const fontWeight = panelText?.fontWeight || lastUsedTextSettings.fontWeight || 400;
     const fontStyle = panelText?.fontStyle || lastUsedTextSettings.fontStyle || 'normal';
     const fontFamily = panelText?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
@@ -2080,96 +3066,58 @@ const CanvasCollagePreview = ({
       tempCtx,
       displayText,
       activeRanges,
-      maxTextWidth,
+      textBoxWidth,
       baseInlineStyle,
       scaledFontSize,
       fontFamily,
     );
-    const actualLines = wrappedLines.length;
-    
-    // Calculate actual text width from the wrapped lines
+    const actualLines = Math.max(1, wrappedLines.length);
     const actualTextWidth = Math.max(...wrappedLines.map(line => line.width), 0);
-    
-    // Calculate actual text dimensions
     const actualTextHeight = actualLines * lineHeight;
-    
-    // Calculate text position based on position settings (same as drawCanvas)
-    const textX = panel.x + (panel.width / 2) + (textPositionX / 100) * (panel.width / 2 - textPadding);
-    
-    // Use the same improved vertical positioning logic as in drawCanvas
-    let textAnchorY;
-    if (textPositionY <= 0) {
-      // Position between default bottom (95%) and beyond frame bottom edge
-      const defaultBottomPosition = panel.y + (panel.height * 0.95);
-      const extendedBottomPosition = panel.y + panel.height + (panel.height * 0.1); // Allow text to extend 10% beyond frame bottom
-      const t = Math.abs(textPositionY) / 100; // 0 to 1
-      textAnchorY = defaultBottomPosition + t * (extendedBottomPosition - defaultBottomPosition);
-      // Text is anchored by its bottom edge
-    } else {
-      // Position between default bottom (95%) and frame top edge (0%)
-      const defaultBottomPosition = panel.y + (panel.height * 0.95);
-      const frameTopPosition = panel.y; // Allow text to extend to frame edge
-      const t = textPositionY / 100; // 0 to 1
-      textAnchorY = defaultBottomPosition + t * (frameTopPosition - defaultBottomPosition);
-      // Text is anchored by its bottom edge
-    }
-    
-    // Calculate where the text block starts (top of text block)
+
+    const textAnchorX = getTextAnchorXFromPosition(panel, textPositionX);
+    const textAnchorY = getTextAnchorYFromPosition(panel, textPositionY);
     const textBlockY = textAnchorY - actualTextHeight;
-    
-    // Calculate activation area bounds around the actual text block position
-    let activationAreaHeight = actualTextHeight + (activationPadding * 2);
-    let activationAreaWidth = actualTextWidth + (activationPadding * 2);
-    let activationAreaX = textX - (activationAreaWidth / 2);
-    let activationAreaY = textBlockY - activationPadding;
-    
-    // If rotation is applied, calculate rotated bounds
-    if (textRotation !== 0) {
-      const textCenterX = textX;
-      const textCenterY = textAnchorY - actualTextHeight / 2;
-      const radians = (textRotation * Math.PI) / 180;
-      const cos = Math.cos(radians);
-      const sin = Math.sin(radians);
-      
-      // Calculate corners of unrotated text box
-      const corners = [
-        { x: activationAreaX, y: activationAreaY },
-        { x: activationAreaX + activationAreaWidth, y: activationAreaY },
-        { x: activationAreaX + activationAreaWidth, y: activationAreaY + activationAreaHeight },
-        { x: activationAreaX, y: activationAreaY + activationAreaHeight }
-      ];
-      
-      // Rotate corners around text center
-      const rotatedCorners = corners.map(corner => {
-        const dx = corner.x - textCenterX;
-        const dy = corner.y - textCenterY;
-        return {
-          x: textCenterX + dx * cos - dy * sin,
-          y: textCenterY + dx * sin + dy * cos
-        };
-      });
-      
-      // Calculate bounding box of rotated text
-      const minX = Math.min(...rotatedCorners.map(c => c.x));
-      const maxX = Math.max(...rotatedCorners.map(c => c.x));
-      const minY = Math.min(...rotatedCorners.map(c => c.y));
-      const maxY = Math.max(...rotatedCorners.map(c => c.y));
-      
-      activationAreaX = minX;
-      activationAreaY = minY;
-      activationAreaWidth = maxX - minX;
-      activationAreaHeight = maxY - minY;
-    }
-    
+
+    const visualTextWidth = Math.max(1, actualTextWidth);
+    const visualTextLeft = getTextBlockLeft(textAlign, textAnchorX, visualTextWidth);
+    const controlWidth = Math.max(22, visualTextWidth + (controlPadding * 2));
+    const controlHeight = Math.max(22, actualTextHeight + (controlPadding * 2));
+    const controlX = visualTextLeft - controlPadding;
+    const controlY = textBlockY - controlPadding;
+    const controlCenterX = controlX + (controlWidth / 2);
+    const controlCenterY = controlY + (controlHeight / 2);
+
     return {
-      x: Math.max(panel.x, Math.min(panel.x + panel.width - activationAreaWidth, activationAreaX)), // Keep within panel bounds
-      y: Math.max(panel.y, Math.min(panel.y + panel.height - activationAreaHeight, activationAreaY)), // Keep within panel bounds
-      width: Math.min(activationAreaWidth, panel.width), // Don't exceed panel width
-      height: Math.min(activationAreaHeight, panel.height), // Don't exceed panel height
+      x: controlX,
+      y: controlY,
+      width: controlWidth,
+      height: controlHeight,
       actualTextY: textAnchorY,
-      actualTextHeight
+      actualTextHeight,
+      actualTextWidth,
+      textBoxWidth,
+      textBoxWidthPercent,
+      textAnchorX,
+      textAnchorY,
+      textPositionX,
+      textPositionY,
+      textRotation,
+      baseFontSize,
+      controlX,
+      controlY,
+      controlWidth,
+      controlHeight,
+      controlCenterX,
+      controlCenterY,
     };
-  }, [lastUsedTextSettings, textScaleFactor]);
+  }, [
+    lastUsedTextSettings,
+    textScaleFactor,
+    calculateOptimalFontSize,
+    getTextAnchorXFromPosition,
+    getTextAnchorYFromPosition,
+  ]);
 
   // Handle text editing
   const handleTextEdit = useCallback((panelId) => {
@@ -2177,6 +3125,15 @@ const CanvasCollagePreview = ({
     if (isReorderMode) {
       setIsReorderMode(false);
       setReorderSourcePanel(null);
+    }
+    setActiveTextLayerId(
+      panelId && panelId !== TOP_CAPTION_PANEL_ID ? panelId : null
+    );
+    setTextLayerInteraction(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
     }
     
     const isOpening = textEditingPanel !== panelId;
@@ -2376,13 +3333,453 @@ const CanvasCollagePreview = ({
     }
   }, [textEditingPanel, panelRects, isReorderMode, panelImageMapping, images, updatePanelText, lastUsedTextSettings]);
 
+  useEffect(() => {
+    if (!panelTextAutoOpenRequest) return;
+    const requestId = panelTextAutoOpenRequest.requestId;
+    if (!requestId || handledTextAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelId = panelTextAutoOpenRequest.panelId || null;
+    if (!requestedPanelId && Number.isInteger(panelTextAutoOpenRequest.panelIndex)) {
+      requestedPanelId = `panel-${panelTextAutoOpenRequest.panelIndex + 1}`;
+    }
+    if (!requestedPanelId) return;
+
+    handledTextAutoOpenRequestRef.current = requestId;
+    if (textEditingPanel !== requestedPanelId) {
+      handleTextEdit(requestedPanelId);
+    }
+
+    if (typeof onPanelTextAutoOpenHandled === 'function') {
+      onPanelTextAutoOpenHandled(requestId);
+    }
+  }, [panelTextAutoOpenRequest, handleTextEdit, onPanelTextAutoOpenHandled, textEditingPanel]);
+
+  useEffect(() => {
+    if (!panelTransformAutoOpenRequest) return;
+    const requestId = panelTransformAutoOpenRequest.requestId;
+    if (!requestId || handledTransformAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelId = panelTransformAutoOpenRequest.panelId || null;
+    if (!requestedPanelId && Number.isInteger(panelTransformAutoOpenRequest.panelIndex)) {
+      requestedPanelId = `panel-${panelTransformAutoOpenRequest.panelIndex + 1}`;
+    }
+    if (!requestedPanelId) return;
+
+    handledTransformAutoOpenRequestRef.current = requestId;
+    if (textEditingPanel !== null) {
+      setTextEditingPanel(null);
+    }
+    if (isReorderMode) {
+      setIsReorderMode(false);
+      setReorderSourcePanel(null);
+    }
+    setIsTransformMode((prev) => ({ ...prev, [requestedPanelId]: true }));
+
+    if (typeof onPanelTransformAutoOpenHandled === 'function') {
+      onPanelTransformAutoOpenHandled(requestId);
+    }
+  }, [
+    panelTransformAutoOpenRequest,
+    onPanelTransformAutoOpenHandled,
+    textEditingPanel,
+    isReorderMode,
+  ]);
+
+  useEffect(() => {
+    if (!panelReorderAutoOpenRequest) return;
+    const requestId = panelReorderAutoOpenRequest.requestId;
+    if (!requestId || handledReorderAutoOpenRequestRef.current === requestId) return;
+
+    let requestedPanelId = panelReorderAutoOpenRequest.panelId || null;
+    if (!requestedPanelId && Number.isInteger(panelReorderAutoOpenRequest.panelIndex)) {
+      requestedPanelId = `panel-${panelReorderAutoOpenRequest.panelIndex + 1}`;
+    }
+    if (!requestedPanelId) return;
+
+    handledReorderAutoOpenRequestRef.current = requestId;
+    if (textEditingPanel !== null) {
+      setTextEditingPanel(null);
+    }
+    setIsTransformMode({});
+    setIsReorderMode(true);
+    setReorderSourcePanel(requestedPanelId);
+
+    if (typeof onPanelReorderAutoOpenHandled === 'function') {
+      onPanelReorderAutoOpenHandled(requestId);
+    }
+  }, [
+    panelReorderAutoOpenRequest,
+    onPanelReorderAutoOpenHandled,
+    textEditingPanel,
+  ]);
+
   const handleTextClose = useCallback(() => {
     setTextEditingPanel(null);
-  }, []);
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    setTextLayerSnapGuide(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
+    }
+    clearOverlayTouchTapTracker();
+  }, [clearOverlayTouchTapTracker]);
+
+  const handleTextBackdropClick = useCallback((event) => {
+    if (Date.now() < (textLayerDismissSuppressUntilRef.current || 0) || textLayerInteraction) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      return;
+    }
+    handleTextClose();
+  }, [handleTextClose, textLayerInteraction]);
 
 
 
 
+
+  const clearActiveTextLayerSelection = useCallback((event, options = {}) => {
+    const { suppressEvents = true } = options;
+    if (suppressEvents && event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (suppressEvents && event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    setTextEditingPanel(null);
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    setTextLayerSnapGuide(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
+    }
+    clearOverlayTouchTapTracker();
+  }, [clearOverlayTouchTapTracker]);
+
+  const getTextLayerUpdateFromPointer = useCallback((interaction, clientX, clientY) => {
+    if (!interaction) return null;
+    const panel = interaction.panelRect;
+    if (!panel) return null;
+
+    if (interaction.mode === 'rotate') {
+      const pointerAngle = angleFromPointDeg(interaction.centerClientX, interaction.centerClientY, clientX, clientY);
+      return {
+        updates: {
+          textRotation: snapAngleToZeroDeg(pointerAngle + 90),
+        },
+        snapGuide: null,
+      };
+    }
+
+    const dx = clientX - interaction.startClientX;
+    const dy = clientY - interaction.startClientY;
+
+    if (interaction.mode === 'resize') {
+      const safeTextWidth = Math.max(24, panel.width - (TEXT_PADDING_PX * 2));
+      const minTextWidth = Math.min(TEXT_LAYER_MIN_BOX_WIDTH_PX, safeTextWidth);
+      const startTextBoxWidthPx = Number.isFinite(interaction.startTextBoxWidthPx)
+        ? interaction.startTextBoxWidthPx
+        : getTextBoxWidthPx(panel.width, interaction.startTextBoxWidthPercent);
+      const nextTextBoxWidthPx = clamp(startTextBoxWidthPx + dx, minTextWidth, safeTextWidth);
+      const nextTextBoxWidthPercent = clamp(
+        (nextTextBoxWidthPx / safeTextWidth) * 100,
+        TEXT_LAYER_MIN_BOX_WIDTH_PERCENT,
+        TEXT_LAYER_MAX_BOX_WIDTH_PERCENT,
+      );
+      const heightScale = (interaction.startControlHeight + dy) / Math.max(1, interaction.startControlHeight);
+      const fontScale = Math.max(0.25, heightScale);
+      return {
+        updates: {
+          fontSize: clamp(interaction.startFontSize * fontScale, TEXT_MIN_FONT_SIZE, TEXT_MAX_FONT_SIZE),
+          textBoxWidthPercent: nextTextBoxWidthPercent,
+        },
+        snapGuide: null,
+      };
+    }
+
+    const panelCenterX = panel.x + (panel.width / 2);
+    const panelCenterY = panel.y + (panel.height / 2);
+    const snapThresholdX = clamp(
+      panel.width * TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX,
+    );
+    const snapThresholdY = clamp(
+      panel.height * TEXT_LAYER_CENTER_SNAP_THRESHOLD_RATIO,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MIN_PX,
+      TEXT_LAYER_CENTER_SNAP_THRESHOLD_MAX_PX,
+    );
+    const nextControlCenterX = interaction.startControlCenterX + dx;
+    const nextControlCenterY = interaction.startControlCenterY + dy;
+    const snappedToCenterX = Math.abs(nextControlCenterX - panelCenterX) <= snapThresholdX;
+    const snappedToCenterY = Math.abs(nextControlCenterY - panelCenterY) <= snapThresholdY;
+    const snappedControlCenterX = snappedToCenterX ? panelCenterX : nextControlCenterX;
+    const snappedControlCenterY = snappedToCenterY ? panelCenterY : nextControlCenterY;
+    const nextAnchorX = interaction.startAnchorX + (snappedControlCenterX - interaction.startControlCenterX);
+    const nextAnchorY = interaction.startAnchorY + (snappedControlCenterY - interaction.startControlCenterY);
+    return {
+      updates: {
+        textPositionX: getTextPositionXFromAnchor(panel, nextAnchorX),
+        textPositionY: getTextPositionYFromAnchor(panel, nextAnchorY),
+      },
+      snapGuide: (snappedToCenterX || snappedToCenterY) ? {
+        panelRect: panel,
+        x: snappedToCenterX ? panelCenterX : null,
+        y: snappedToCenterY ? panelCenterY : null,
+      } : null,
+    };
+  }, [getTextPositionXFromAnchor, getTextPositionYFromAnchor]);
+
+  const handleTextLayerPointerDown = useCallback((event, textLayer, mode = 'move') => {
+    if (!textLayer?.panelId || !textLayer?.panel || !textLayer?.bounds) return;
+    if (event?.button !== undefined && event.button !== 0) return;
+    if (Object.values(isTransformMode).some(Boolean) || isReorderMode) return;
+    if (textEditingPanel !== null && textEditingPanel !== textLayer.panelId) return;
+    clearOverlayTouchTapTracker();
+
+    const panelId = textLayer.panelId;
+    const currentText = panelTextsRef.current?.[panelId] || {};
+    const currentRawText = currentText.rawContent ?? currentText.content ?? '';
+    const hasActualText = Boolean(parseFormattedText(currentRawText).cleanText.trim());
+    const isMoveInteraction = mode === 'move';
+    const isAlreadySelected = activeTextLayerId === panelId;
+    const selectLayerAndOpenEditor = () => {
+      setActiveTextLayerId(panelId);
+      setTextLayerInteraction(null);
+      setSelectedBorderZoneId(null);
+      if (textEditingPanel !== panelId) {
+        handleTextEdit(panelId);
+      }
+    };
+    const openPlaceholderEditor = () => {
+      setActiveTextLayerId(panelId);
+      if (textEditingPanel !== panelId) {
+        handleTextEdit(panelId);
+      }
+    };
+    if (isMoveInteraction && !isAlreadySelected) {
+      if (event?.pointerType === 'touch') {
+        if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+        const started = beginOverlayTouchTapTracking(
+          event,
+          hasActualText ? selectLayerAndOpenEditor : openPlaceholderEditor
+        );
+        if (started) return;
+      }
+      if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+      if (hasActualText) {
+        selectLayerAndOpenEditor();
+      } else {
+        openPlaceholderEditor();
+      }
+      return;
+    }
+
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    textLayerDismissSuppressUntilRef.current = Date.now() + 280;
+    try {
+      if (event?.currentTarget && typeof event.currentTarget.setPointerCapture === 'function' && event.pointerId !== undefined) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
+    } catch (_) {
+      // ignore pointer capture failures
+    }
+
+    setActiveTextLayerId(panelId);
+    setSelectedBorderZoneId(null);
+    setTextLayerSnapGuide(null);
+    setActiveStickerId(null);
+    setStickerInteraction(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+
+    const containerRect = containerRef.current?.getBoundingClientRect?.();
+    const centerLocalX = textLayer.bounds.controlX + (textLayer.bounds.controlWidth / 2);
+    const centerLocalY = textLayer.bounds.controlY + (textLayer.bounds.controlHeight / 2);
+    const centerClientX = (containerRect?.left || 0) + centerLocalX;
+    const centerClientY = (containerRect?.top || 0) + centerLocalY;
+    const initialTextBoxWidthPercent = resolveTextBoxWidthPercent(currentText, lastUsedTextSettings);
+    const initialTextBoxWidthPx = Number.isFinite(Number(textLayer.bounds.textBoxWidth))
+      ? Number(textLayer.bounds.textBoxWidth)
+      : getTextBoxWidthPx(textLayer.panel.width, initialTextBoxWidthPercent);
+    textLayerGestureRef.current = { moved: false, editorHiddenDuringMove: false };
+
+    setTextLayerInteraction({
+      panelId,
+      mode,
+      panelRect: {
+        x: textLayer.panel.x,
+        y: textLayer.panel.y,
+        width: textLayer.panel.width,
+        height: textLayer.panel.height,
+      },
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startAnchorX: textLayer.bounds.textAnchorX,
+      startAnchorY: textLayer.bounds.textAnchorY,
+      startControlCenterX: centerLocalX,
+      startControlCenterY: centerLocalY,
+      startControlWidth: textLayer.bounds.controlWidth,
+      startControlHeight: textLayer.bounds.controlHeight,
+      startFontSize: Number.isFinite(Number(textLayer.bounds.baseFontSize))
+        ? Number(textLayer.bounds.baseFontSize)
+        : (Number(currentText.fontSize) || lastUsedTextSettings.fontSize || 26),
+      startTextBoxWidthPx: initialTextBoxWidthPx,
+      startTextBoxWidthPercent: initialTextBoxWidthPercent,
+      centerClientX,
+      centerClientY,
+      startedWithEditorOpen: textEditingPanel === panelId,
+      hasActualText,
+    });
+  }, [
+    activeTextLayerId,
+    isTransformMode,
+    isReorderMode,
+    textEditingPanel,
+    lastUsedTextSettings.fontSize,
+    lastUsedTextSettings.textBoxWidthPercent,
+    handleTextEdit,
+    beginOverlayTouchTapTracking,
+    clearOverlayTouchTapTracker,
+  ]);
+
+  const handleTextLayerDone = useCallback((event) => {
+    clearActiveTextLayerSelection(event);
+  }, [clearActiveTextLayerSelection]);
+
+  const handleTextLayerEdit = useCallback((event, panelId) => {
+    if (!panelId) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    if (textEditingPanel !== panelId) {
+      handleTextEdit(panelId);
+    }
+  }, [handleTextEdit, textEditingPanel]);
+
+  useEffect(() => {
+    if (!textLayerInteraction || typeof updatePanelText !== 'function') return;
+
+    const applyPointerSample = () => {
+      const pending = pendingTextLayerPointerRef.current;
+      if (!pending) return;
+      pendingTextLayerPointerRef.current = null;
+      const pointerResult = getTextLayerUpdateFromPointer(textLayerInteraction, pending.clientX, pending.clientY);
+      if (!pointerResult) return;
+      const { updates, snapGuide } = pointerResult;
+      setTextLayerSnapGuide(snapGuide);
+      if (!updates || typeof updates !== 'object') return;
+
+      const currentText = panelTextsRef.current?.[textLayerInteraction.panelId] || {};
+      const nextUpdates = {};
+      Object.entries(updates).forEach(([key, value]) => {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) return;
+        const previousValue = Number(currentText[key]);
+        if (!Number.isFinite(previousValue) || Math.abs(previousValue - numericValue) > 0.01) {
+          nextUpdates[key] = numericValue;
+        }
+      });
+
+      if (Object.keys(nextUpdates).length > 0) {
+        updatePanelText(textLayerInteraction.panelId, nextUpdates);
+      }
+    };
+
+    const requestPointerApply = () => {
+      if (textLayerRafRef.current !== null) return;
+      textLayerRafRef.current = window.requestAnimationFrame(() => {
+        textLayerRafRef.current = null;
+        applyPointerSample();
+      });
+    };
+
+    const handlePointerMove = (event) => {
+      if (textLayerInteraction.mode === 'move') {
+        const moveDistance = Math.abs(event.clientX - textLayerInteraction.startClientX)
+          + Math.abs(event.clientY - textLayerInteraction.startClientY);
+        if (moveDistance >= 3) {
+          textLayerGestureRef.current.moved = true;
+          if (textLayerInteraction.startedWithEditorOpen && !textLayerGestureRef.current.editorHiddenDuringMove) {
+            setTextEditingPanel((prev) => (prev === textLayerInteraction.panelId ? null : prev));
+            textLayerGestureRef.current.editorHiddenDuringMove = true;
+          }
+        }
+      }
+      pendingTextLayerPointerRef.current = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+      };
+      requestPointerApply();
+    };
+
+    const handlePointerEnd = () => {
+      if (textLayerRafRef.current !== null) {
+        window.cancelAnimationFrame(textLayerRafRef.current);
+        textLayerRafRef.current = null;
+      }
+      textLayerDismissSuppressUntilRef.current = Date.now() + 240;
+      applyPointerSample();
+      setTextLayerSnapGuide(null);
+      const panelId = textLayerInteraction.panelId;
+      const didMove = textLayerGestureRef.current.moved;
+      const editorWasHiddenDuringMove = textLayerGestureRef.current.editorHiddenDuringMove;
+      textLayerGestureRef.current = { moved: false, editorHiddenDuringMove: false };
+      setTextLayerInteraction(null);
+      pendingTextLayerPointerRef.current = null;
+      if (textLayerInteraction.mode === 'move' && panelId) {
+        if (didMove) {
+          if (textLayerInteraction.startedWithEditorOpen && editorWasHiddenDuringMove) {
+            handleTextEdit(panelId);
+          }
+        } else if ((activeTextLayerId === panelId || !textLayerInteraction.hasActualText) && textEditingPanel !== panelId) {
+          handleTextEdit(panelId);
+        }
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      if (textLayerRafRef.current !== null) {
+        window.cancelAnimationFrame(textLayerRafRef.current);
+        textLayerRafRef.current = null;
+      }
+      pendingTextLayerPointerRef.current = null;
+    };
+  }, [getTextLayerUpdateFromPointer, textLayerInteraction, updatePanelText, handleTextEdit, activeTextLayerId, textEditingPanel]);
+
+  useEffect(() => {
+    if (!Object.values(isTransformMode).some(Boolean) && !isReorderMode) return;
+    setActiveTextLayerId(null);
+    setTextLayerInteraction(null);
+    setTextLayerSnapGuide(null);
+    pendingTextLayerPointerRef.current = null;
+    if (textLayerRafRef.current !== null) {
+      window.cancelAnimationFrame(textLayerRafRef.current);
+      textLayerRafRef.current = null;
+    }
+  }, [isTransformMode, isReorderMode]);
+
+  useEffect(() => {
+    if (!activeTextLayerId) return;
+    const panelExists = panelRects.some((panel) => panel.panelId === activeTextLayerId);
+    const floatingLayerExists = (
+      isFloatingTextLayerId(activeTextLayerId) &&
+      Boolean(panelTexts?.[activeTextLayerId])
+    );
+    if (!panelExists && !floatingLayerExists) {
+      setActiveTextLayerId(null);
+      setTextLayerInteraction(null);
+      setTextLayerSnapGuide(null);
+    }
+  }, [activeTextLayerId, panelRects, panelTexts]);
 
   // Redraw canvas when dependencies change
   useEffect(() => {
@@ -2445,7 +3842,12 @@ const CanvasCollagePreview = ({
   // Notify parent when any editing mode is active/inactive (transform, reorder, captions, border-drag)
   useEffect(() => {
     const anyPanelInTransformMode = Object.values(isTransformMode).some(Boolean);
-    const active = anyPanelInTransformMode || isReorderMode || (textEditingPanel !== null) || isDraggingBorder || Boolean(stickerInteraction);
+    const active = anyPanelInTransformMode
+      || isReorderMode
+      || (textEditingPanel !== null)
+      || isDraggingBorder
+      || Boolean(stickerInteraction)
+      || Boolean(textLayerInteraction);
     try {
       const canvas = canvasRef.current;
       if (canvas) canvas.dataset.editing = active ? '1' : '0';
@@ -2453,7 +3855,7 @@ const CanvasCollagePreview = ({
     if (typeof onEditingSessionChange === 'function') {
       onEditingSessionChange(active);
     }
-  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, stickerInteraction, onEditingSessionChange]);
+  }, [isTransformMode, isReorderMode, textEditingPanel, isDraggingBorder, stickerInteraction, textLayerInteraction, onEditingSessionChange]);
 
 
 
@@ -2468,45 +3870,29 @@ const CanvasCollagePreview = ({
   // Global mouse/touch handlers for border dragging
   useEffect(() => {
     const handleGlobalMouseMove = (e) => {
-      if (isDraggingBorder && draggedBorder && containerRef.current) {
+      if (isDraggingBorderRef.current) {
         e.preventDefault();
-        const rect = containerRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const deltaX = x - borderDragStart.x;
-        const deltaY = y - borderDragStart.y;
-        
-        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-        setBorderDragStart({ x, y });
+        updateBorderDragFromClient(e.clientX, e.clientY);
       }
     };
 
     const handleGlobalTouchMove = (e) => {
-      if (isDraggingBorder && draggedBorder && containerRef.current && e.touches.length === 1) {
+      if (isDraggingBorderRef.current && e.touches.length === 1) {
         e.preventDefault();
-        const rect = containerRef.current.getBoundingClientRect();
         const touch = e.touches[0];
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        const deltaX = x - borderDragStart.x;
-        const deltaY = y - borderDragStart.y;
-        
-        updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-        setBorderDragStart({ x, y });
+        updateBorderDragFromClient(touch.clientX, touch.clientY);
       }
     };
 
     const handleGlobalMouseUp = () => {
-      if (isDraggingBorder) {
-        setIsDraggingBorder(false);
-        setDraggedBorder(null);
+      if (isDraggingBorderRef.current) {
+        stopBorderDrag(true);
       }
     };
 
     const handleGlobalTouchEnd = () => {
-      if (isDraggingBorder) {
-        setIsDraggingBorder(false);
-        setDraggedBorder(null);
+      if (isDraggingBorderRef.current) {
+        stopBorderDrag(true);
       }
     };
 
@@ -2515,6 +3901,7 @@ const CanvasCollagePreview = ({
       document.addEventListener('mouseup', handleGlobalMouseUp);
       document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
       document.addEventListener('touchend', handleGlobalTouchEnd);
+      document.addEventListener('touchcancel', handleGlobalTouchEnd);
     }
 
     return () => {
@@ -2522,8 +3909,9 @@ const CanvasCollagePreview = ({
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('touchmove', handleGlobalTouchMove);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
+      document.removeEventListener('touchcancel', handleGlobalTouchEnd);
     };
-  }, [isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+  }, [isDraggingBorder, updateBorderDragFromClient, stopBorderDrag]);
 
   // Cleanup hover timeout on unmount
   useEffect(() => () => {
@@ -2555,12 +3943,8 @@ const CanvasCollagePreview = ({
     const y = e.clientY - rect.top;
 
     // Handle border dragging
-    if (isDraggingBorder && draggedBorder) {
-      const deltaX = x - borderDragStart.x;
-      const deltaY = y - borderDragStart.y;
-      
-      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-      setBorderDragStart({ x, y });
+    if (isDraggingBorderRef.current && draggedBorderRef.current) {
+      updateBorderDragFromClient(e.clientX, e.clientY);
       return;
     }
 
@@ -2579,6 +3963,7 @@ const CanvasCollagePreview = ({
     // Check for border zones first (they have priority)
     const borderZone = findBorderZone(x, y);
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+    const isOverTopCaptionArea = isPointInTopCaptionArea(x, y);
     
     // Find which panel is under the mouse
     const hoveredPanelIndex = panelRects.findIndex(panel => 
@@ -2600,10 +3985,7 @@ const CanvasCollagePreview = ({
         // Get precise text area bounds
         const textAreaBounds = getTextAreaBounds(panel, panelText);
         if (textAreaBounds) {
-          isOverTextArea = x >= textAreaBounds.x && 
-                          x <= textAreaBounds.x + textAreaBounds.width &&
-                          y >= textAreaBounds.y && 
-                          y <= textAreaBounds.y + textAreaBounds.height;
+          isOverTextArea = isPointInTextAreaBounds(x, y, textAreaBounds);
         }
       }
     }
@@ -2613,7 +3995,15 @@ const CanvasCollagePreview = ({
       setHoveredBorder(borderZone);
     }
 
-    if (hoveredPanelIndex !== hoveredPanel) {
+    if (isOverTopCaptionArea) {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      if (hoveredPanel !== null) {
+        setHoveredPanel(null);
+      }
+    } else if (hoveredPanelIndex !== hoveredPanel) {
       // Clear any existing hover timeout
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
@@ -2639,6 +4029,14 @@ const CanvasCollagePreview = ({
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null && !isReorderMode) {
       const { cursor: borderCursor } = borderZone;
       cursor = borderCursor;
+    } else if (isOverTopCaptionArea && !borderZone) {
+      if (!anyPanelInTransformMode && !isReorderMode) {
+        if (textEditingPanel === null || textEditingPanel === TOP_CAPTION_PANEL_ID) {
+          cursor = 'text';
+        } else {
+          cursor = 'default';
+        }
+      }
     } else if (hoveredPanelIndex >= 0 && !borderZone) {
       const panel = panelRects[hoveredPanelIndex];
       
@@ -2747,7 +4145,7 @@ const CanvasCollagePreview = ({
         setDragStart({ x, y });
       }
     }
-  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag, hoveredBorder, textEditingPanel]);
+  }, [panelRects, hoveredPanel, isDragging, selectedPanel, dragStart, isTransformMode, panelTransforms, updatePanelTransform, panelImageMapping, loadedImages, panelTexts, getTextAreaBounds, findBorderZone, updateBorderDragFromClient, hoveredBorder, textEditingPanel, isPointInTopCaptionArea]);
 
   // Function to dismiss transform mode for all panels
   const dismissTransformMode = useCallback(() => {
@@ -2844,6 +4242,7 @@ const CanvasCollagePreview = ({
 
   // Open/close the action menu (placed before handlers that depend on it)
   const handleActionMenuOpen = useCallback((event, panelId) => {
+    if (isDraggingBorderRef.current) return;
     // Respect optional suppression window; guard against unexpected errors
     const suppressed = (() => {
       try {
@@ -2879,6 +4278,14 @@ const CanvasCollagePreview = ({
   const handleMouseDown = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (activeTextLayerId) {
+      if (Date.now() < (textLayerDismissSuppressUntilRef.current || 0)) {
+        return;
+      }
+      frameTapSuppressUntilRef.current = Date.now() + 260;
+      clearActiveTextLayerSelection(e);
+      return;
+    }
     if (activeStickerId) {
       frameTapSuppressUntilRef.current = Date.now() + 260;
       clearActiveStickerSelection(e);
@@ -2894,10 +4301,21 @@ const CanvasCollagePreview = ({
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
     if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
-      // Start border dragging
-      setIsDraggingBorder(true);
-      setDraggedBorder(borderZone);
-      setBorderDragStart({ x, y });
+      const borderZoneId = getBorderZoneId(borderZone);
+      e.preventDefault();
+      startBorderDragFromClient(borderZone, borderZoneId, e.clientX, e.clientY);
+      return;
+    }
+    if (selectedBorderZoneId !== null) {
+      setSelectedBorderZoneId(null);
+    }
+
+    const topCaptionHit = isPointInTopCaptionArea(x, y);
+    if (topCaptionHit && !anyPanelInTransformMode && !isReorderMode) {
+      if (textEditingPanel !== null && textEditingPanel !== TOP_CAPTION_PANEL_ID) {
+        return;
+      }
+      handleTextEdit(TOP_CAPTION_PANEL_ID, e);
       return;
     }
     
@@ -2937,10 +4355,7 @@ const CanvasCollagePreview = ({
         const panelText = panelTexts[clickedPanel.panelId] || {};
         const textAreaBounds = getTextAreaBounds(clickedPanel, panelText);
         if (textAreaBounds) {
-          isTextAreaClick = x >= textAreaBounds.x && 
-                           x <= textAreaBounds.x + textAreaBounds.width &&
-                           y >= textAreaBounds.y && 
-                           y <= textAreaBounds.y + textAreaBounds.height;
+          isTextAreaClick = isPointInTextAreaBounds(x, y, textAreaBounds);
         }
       }
       
@@ -2981,7 +4396,7 @@ const CanvasCollagePreview = ({
         handleActionMenuOpen({ clientX: e.clientX, clientY: e.clientY }, clickedPanel.panelId);
       }
     }
-  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, handleActionMenuOpen, activeStickerId, clearActiveStickerSelection]);
+  }, [panelRects, isTransformMode, textEditingPanel, panelImageMapping, loadedImages, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, handleActionMenuOpen, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId, startBorderDragFromClient]);
 
   const handleMouseUp = useCallback(() => {
     if (longPressTimerRef.current) {
@@ -2989,10 +4404,12 @@ const CanvasCollagePreview = ({
       longPressTimerRef.current = null;
     }
     longPressActiveRef.current = false;
+    const wasDraggingBorder = isDraggingBorderRef.current || isDraggingBorder;
     setIsDragging(false);
-    setIsDraggingBorder(false);
-    setDraggedBorder(null);
-  }, []);
+    if (wasDraggingBorder) {
+      stopBorderDrag(true);
+    }
+  }, [isDraggingBorder, stopBorderDrag]);
 
   const handleMouseLeave = useCallback(() => {
     // Clear any pending hover timeout
@@ -3201,12 +4618,22 @@ const CanvasCollagePreview = ({
     
     const rect = canvas.getBoundingClientRect();
     const touches = Array.from(e.touches);
+    const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     
     if (touches.length === 1) {
+      if (activeTextLayerId) {
+        if (Date.now() < (textLayerDismissSuppressUntilRef.current || 0)) {
+          return;
+        }
+        touchStartInfo.current = null;
+        frameTapSuppressUntilRef.current = Date.now() + 260;
+        clearActiveTextLayerSelection(e, { suppressEvents: false });
+        return;
+      }
       if (activeStickerId) {
         touchStartInfo.current = null;
         frameTapSuppressUntilRef.current = Date.now() + 260;
-        clearActiveStickerSelection(e);
+        clearActiveStickerSelection(e, { suppressEvents: false });
         return;
       }
       // Single touch - handle like mouse down
@@ -3228,15 +4655,32 @@ const CanvasCollagePreview = ({
       
       // Check for border zone touches first
       const borderZone = findBorderZone(x, y);
-      const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
+      const topCaptionHit = isPointInTopCaptionArea(x, y);
       
       if (borderZone && !anyPanelInTransformMode && textEditingPanel === null) {
-        // Start border dragging
+        const borderZoneId = getBorderZoneId(borderZone);
+        // Start border dragging directly from the handle.
         e.preventDefault();
         e.stopPropagation();
-        setIsDraggingBorder(true);
-        setDraggedBorder(borderZone);
-        setBorderDragStart({ x, y });
+        startBorderDragFromClient(borderZone, borderZoneId, touch.clientX, touch.clientY);
+        return;
+      }
+      if (selectedBorderZoneId !== null) {
+        setSelectedBorderZoneId(null);
+      }
+
+      if (topCaptionHit && !anyPanelInTransformMode && !isReorderMode) {
+        if (textEditingPanel !== null && textEditingPanel !== TOP_CAPTION_PANEL_ID) {
+          return;
+        }
+        touchStartInfo.current = {
+          panelId: TOP_CAPTION_PANEL_ID,
+          startX: touch.clientX,
+          startY: touch.clientY,
+          startTime: Date.now(),
+          startScrollY: window.scrollY || window.pageYOffset || 0,
+          isTextArea: true,
+        };
         return;
       }
 
@@ -3257,10 +4701,7 @@ const CanvasCollagePreview = ({
           const panelText = panelTexts[clickedPanel.panelId] || {};
           const textAreaBounds = getTextAreaBounds(clickedPanel, panelText);
           if (textAreaBounds) {
-            isTextAreaTouch = x >= textAreaBounds.x && 
-                             x <= textAreaBounds.x + textAreaBounds.width &&
-                             y >= textAreaBounds.y && 
-                             y <= textAreaBounds.y + textAreaBounds.height;
+            isTextAreaTouch = isPointInTextAreaBounds(x, y, textAreaBounds);
           }
         }
         
@@ -3386,7 +4827,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, setIsDraggingBorder, setDraggedBorder, setBorderDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, clearActiveStickerSelection]);
+  }, [panelRects, isTransformMode, onPanelClick, selectedPanel, panelTransforms, panelImageMapping, loadedImages, getTouchDistance, textEditingPanel, handleTextEdit, panelTexts, getTextAreaBounds, findBorderZone, isReorderMode, handleReorderDestination, dismissTransformMode, setSelectedPanel, setIsDragging, setDragStart, touchStartInfo, lastInteractionTime, setTouchStartDistance, setTouchStartScale, activeStickerId, activeTextLayerId, clearActiveStickerSelection, clearActiveTextLayerSelection, isPointInTopCaptionArea, selectedBorderZoneId, getBorderZoneId, startBorderDragFromClient]);
 
   const handleTouchMove = useCallback((e) => {
     const canvas = canvasRef.current;
@@ -3433,19 +4874,12 @@ const CanvasCollagePreview = ({
     }
 
     // Handle border dragging
-    if (isDraggingBorder && draggedBorder && touches.length === 1) {
+    if (isDraggingBorderRef.current && draggedBorderRef.current && touches.length === 1) {
       e.preventDefault();
       e.stopPropagation();
       
       const touch = touches[0];
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      
-      const deltaX = x - borderDragStart.x;
-      const deltaY = y - borderDragStart.y;
-      
-      updateLayoutWithBorderDrag(draggedBorder, deltaX, deltaY);
-      setBorderDragStart({ x, y });
+      updateBorderDragFromClient(touch.clientX, touch.clientY);
       return;
     }
     
@@ -3618,7 +5052,7 @@ const CanvasCollagePreview = ({
         }
       }
     }
-  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, isDraggingBorder, draggedBorder, borderDragStart, updateLayoutWithBorderDrag]);
+  }, [isDragging, selectedPanel, panelRects, isTransformMode, dragStart, panelTransforms, panelImageMapping, loadedImages, updatePanelTransform, touchStartDistance, touchStartScale, getTouchDistance, getTouchCenter, updateBorderDragFromClient]);
 
   const handleTouchEnd = useCallback((e) => {
     // Clear any pending long-press timer
@@ -3626,9 +5060,11 @@ const CanvasCollagePreview = ({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    const wasDraggingBorder = isDraggingBorderRef.current || isDraggingBorder;
     setIsDragging(false);
-    setIsDraggingBorder(false);
-    setDraggedBorder(null);
+    if (wasDraggingBorder) {
+      stopBorderDrag(true);
+    }
     setTouchStartDistance(null);
     setTouchStartScale(1);
 
@@ -3703,7 +5139,7 @@ const CanvasCollagePreview = ({
     
     // Always clear touchStartInfo
     touchStartInfo.current = null;
-  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen]);
+  }, [handleTextEdit, dismissTransformMode, handleActionMenuOpen, isDraggingBorder, stopBorderDrag]);
 
   // Cancel reorder mode
   const cancelReorderMode = useCallback(() => {
@@ -3754,7 +5190,14 @@ const CanvasCollagePreview = ({
     if (actionMenuPanelId && typeof onPanelClick === 'function') {
       const rect = panelRects.find(r => r.panelId === actionMenuPanelId);
       if (rect) {
-        onPanelClick(rect.index, actionMenuPanelId);
+        const canvasRect = canvasRef.current?.getBoundingClientRect();
+        const anchorPosition = canvasRect
+          ? {
+              left: Math.round(canvasRect.left + rect.x + (rect.width / 2)),
+              top: Math.round(canvasRect.top + rect.y + (rect.height / 2)),
+            }
+          : null;
+        onPanelClick(rect.index, actionMenuPanelId, { anchorPosition });
       }
     }
     handleActionMenuClose();
@@ -3820,6 +5263,8 @@ const CanvasCollagePreview = ({
           exportCtx.fillStyle = borderColor;
           exportCtx.fillRect(0, 0, componentWidth, componentHeight);
         }
+
+        drawTopCaptionLayer(exportCtx, { includePlaceholder: false });
 
         const captionEntries = [];
 
@@ -3901,6 +5346,14 @@ const CanvasCollagePreview = ({
             exportCtx.stroke();
           }
         });
+
+        if (floatingTextLayerIds.length > 0) {
+          floatingTextLayerIds.forEach((layerId) => {
+            const panelText = resolvePanelTextForCanvas(layerId);
+            if (!panelText || typeof panelText !== 'object') return;
+            captionEntries.push({ rect: floatingTextLayerRect, panelText });
+          });
+        }
 
         const drawStickerLayers = async () => {
           if (!Array.isArray(stickers) || stickers.length === 0) return;
@@ -3991,6 +5444,7 @@ const CanvasCollagePreview = ({
             const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : (lastUsedTextSettings.textPositionX || 0);
             const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : (lastUsedTextSettings.textPositionY || 0);
             const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : (lastUsedTextSettings.textRotation || 0);
+            const textAlign = normalizeTextAlignValue(panelText.textAlign || lastUsedTextSettings.textAlign || 'center');
 
             exportCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
             exportCtx.fillStyle = baseTextColor;
@@ -4015,9 +5469,8 @@ const CanvasCollagePreview = ({
             exportCtx.shadowOffsetY = 0;
             exportCtx.shadowBlur = 14;
 
-            const textPadding = 10;
-            const maxTextWidth = width - (textPadding * 2);
-            const textX = x + (width / 2) + (textPositionX / 100) * (width / 2 - textPadding);
+            const textBoxWidth = resolveTextBoxWidthPx(rect, panelText, lastUsedTextSettings);
+            const textAnchorX = getTextAnchorXFromPosition(rect, textPositionX);
 
             const lineHeight = fontSize * 1.2;
 
@@ -4025,11 +5478,13 @@ const CanvasCollagePreview = ({
               exportCtx,
               cleanText,
               ranges,
-              maxTextWidth,
+              textBoxWidth,
               baseInlineStyle,
               fontSize,
               fontFamily,
             );
+            const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, textBoxWidth);
+            const textBlockCenterX = textBlockLeft + (textBoxWidth / 2);
 
             // Calculate text block positioning with proper anchoring (same as drawCanvas)
             const totalTextHeight = lines.length * lineHeight;
@@ -4056,7 +5511,7 @@ const CanvasCollagePreview = ({
             if (textRotation !== 0) {
               exportCtx.save();
               // Translate to the center of the text block
-              const textCenterX = textX;
+              const textCenterX = textBlockCenterX;
               const textCenterY = textAnchorY - totalTextHeight / 2;
               exportCtx.translate(textCenterX, textCenterY);
               exportCtx.rotate((textRotation * Math.PI) / 180);
@@ -4065,7 +5520,7 @@ const CanvasCollagePreview = ({
 
             lines.forEach((line, lineIndex) => {
               const lineY = startY + lineIndex * lineHeight;
-              const lineX = textX - (line.width / 2);
+              const lineX = getLineStartX(textAlign, textAnchorX, line.width);
               const segments = getSegmentsForLine(ranges, line.start, line.end, baseInlineStyle);
               let cursorX = lineX;
 
@@ -4117,7 +5572,28 @@ const CanvasCollagePreview = ({
       } else {
         resolve(null);
       }
-    }), [componentWidth, componentHeight, panelRects, loadedImages, loadedStickers, stickers, panelImageMapping, panelTransforms, borderPixels, borderColor, panelTexts, lastUsedTextSettings, theme.palette.mode, calculateOptimalFontSize, textScaleFactor, getStickerRectPx]);
+    }), [
+      componentWidth,
+      componentHeight,
+      panelRects,
+      loadedImages,
+      loadedStickers,
+      stickers,
+      panelImageMapping,
+      panelTransforms,
+      borderPixels,
+      borderColor,
+      panelTexts,
+      lastUsedTextSettings,
+      theme.palette.mode,
+      calculateOptimalFontSize,
+      textScaleFactor,
+      getStickerRectPx,
+      drawTopCaptionLayer,
+      floatingTextLayerIds,
+      floatingTextLayerRect,
+      resolvePanelTextForCanvas,
+    ]);
 
   // Expose the getCanvasBlob function to parent components
   useEffect(() => {
@@ -4180,6 +5656,66 @@ const CanvasCollagePreview = ({
         })
         .filter(Boolean)
     : [];
+  const panelTextLayers = panelRects
+    .map((panel) => {
+      const imageIndex = panelImageMapping[panel.panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      if (!hasImage) return null;
+      const panelText = resolvePanelTextForCanvas(panel.panelId);
+      const bounds = getTextAreaBounds(panel, panelText);
+      if (!bounds) return null;
+      return {
+        panelId: panel.panelId,
+        panel,
+        bounds,
+        isActive: activeTextLayerId === panel.panelId,
+      };
+    })
+    .filter(Boolean);
+  const floatingTextLayers = floatingTextLayerIds
+    .map((layerId) => {
+      const panelText = resolvePanelTextForCanvas(layerId);
+      if (!panelText || typeof panelText !== 'object') return null;
+      const bounds = getTextAreaBounds(floatingTextLayerRect, panelText);
+      if (!bounds) return null;
+      return {
+        panelId: layerId,
+        panel: floatingTextLayerRect,
+        bounds,
+        isActive: activeTextLayerId === layerId,
+        isFloating: true,
+      };
+    })
+    .filter(Boolean);
+  const textLayers = [...panelTextLayers, ...floatingTextLayers];
+  const textLayerBoundsByPanelId = textLayers.reduce((next, layer) => {
+    if (!layer?.panelId || !layer?.bounds) return next;
+    const controlRect = {
+      x: layer.bounds.controlX,
+      y: layer.bounds.controlY,
+      width: layer.bounds.controlWidth,
+      height: layer.bounds.controlHeight,
+    };
+    const rotatedControlAabb = getRotatedRectAabb(
+      controlRect,
+      layer.bounds.textRotation || 0,
+      layer.bounds.controlCenterX,
+      layer.bounds.controlCenterY,
+    );
+    const anchorRect = rotatedControlAabb || controlRect;
+    const handleSize = componentWidth < 560 ? 28 : 22;
+    const editorHandleClearance = Math.max(
+      (handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO) - 6,
+      4,
+    );
+    next[layer.panelId] = {
+      x: anchorRect.x,
+      y: anchorRect.y,
+      width: anchorRect.width,
+      height: anchorRect.height + editorHandleClearance,
+    };
+    return next;
+  }, {});
 
   return (
     <Box 
@@ -4263,11 +5799,13 @@ const CanvasCollagePreview = ({
                   width: rect.width,
                   height: rect.height,
                   zIndex: 1 + index,
-                  pointerEvents: 'auto',
+                  pointerEvents: anyPanelInTransformMode ? 'none' : 'auto',
                   cursor: stickerInteraction?.stickerId === sticker.id
                     ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
-                    : 'grab',
-                  touchAction: 'none',
+                    : (activeStickerId === sticker.id ? 'grab' : 'pointer'),
+                  touchAction: (activeStickerId === sticker.id || stickerInteraction?.stickerId === sticker.id)
+                    ? 'none'
+                    : 'pan-y pinch-zoom',
                   transformOrigin: 'center center',
                   transform: `rotate(${rect.angleDeg || 0}deg)`,
                 }}
@@ -4285,7 +5823,7 @@ const CanvasCollagePreview = ({
             }}
           >
             {stickerLayers.map(({ sticker, index, rect, isActive }) => {
-              if (!isActive) return null;
+              if (!isActive || anyPanelInTransformMode) return null;
               const handleSize = componentWidth < 560 ? 30 : 22;
               const rotateHandleSize = componentWidth < 560 ? 26 : 20;
               const deleteHandleSize = componentWidth < 560 ? 28 : 22;
@@ -4428,6 +5966,231 @@ const CanvasCollagePreview = ({
           </Box>
         </>
       )}
+
+      {!anyPanelInTransformMode && !isReorderMode && textLayers.length > 0 && (
+        <>
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              zIndex: 33,
+              pointerEvents: 'none',
+            }}
+          >
+            {textLayers.map((layer) => (
+              <Box
+                key={`text-layer-hitbox-${layer.panelId}`}
+                onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'move')}
+                sx={{
+                  position: 'absolute',
+                  left: layer.bounds.controlX,
+                  top: layer.bounds.controlY,
+                  width: layer.bounds.controlWidth,
+                  height: layer.bounds.controlHeight,
+                  pointerEvents: 'auto',
+                  cursor: textLayerInteraction?.panelId === layer.panelId
+                    ? ((textLayerInteraction?.mode === 'move' || textLayerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
+                    : (layer.isActive ? 'grab' : 'pointer'),
+                  touchAction: layer.isActive ? 'none' : 'pan-y pinch-zoom',
+                  border: '1px solid transparent',
+                  borderRadius: 1,
+                  backgroundColor: 'transparent',
+                  transformOrigin: 'center center',
+                  transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
+                }}
+              />
+            ))}
+          </Box>
+
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'visible',
+              zIndex: 34,
+              pointerEvents: 'none',
+            }}
+          >
+            {textLayers.map((layer) => {
+              if (!layer.isActive) return null;
+              const handleSize = componentWidth < 560 ? 28 : 22;
+              const rotateHandleSize = componentWidth < 560 ? 24 : 18;
+              const actionHandleSize = componentWidth < 560 ? 28 : 22;
+              return (
+                <Box
+                  key={`text-layer-controls-${layer.panelId}`}
+                  sx={{
+                    position: 'absolute',
+                    left: layer.bounds.controlX,
+                    top: layer.bounds.controlY,
+                    width: layer.bounds.controlWidth,
+                    height: layer.bounds.controlHeight,
+                    pointerEvents: 'none',
+                    transformOrigin: 'center center',
+                    transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      inset: 0,
+                      border: '2px solid rgba(33, 150, 243, 0.95)',
+                      borderRadius: 1,
+                      boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -18,
+                      width: 2,
+                      height: 14,
+                      transform: 'translateX(-50%)',
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <Box
+                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'rotate')}
+                    sx={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: -(rotateHandleSize + 14),
+                      width: rotateHandleSize,
+                      height: rotateHandleSize,
+                      transform: 'translateX(-50%)',
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(117, 117, 117, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: textLayerInteraction?.panelId === layer.panelId && textLayerInteraction?.mode === 'rotate'
+                        ? 'grabbing'
+                        : 'grab',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
+                  </Box>
+                  <Box
+                    onPointerDown={handleTextLayerDone}
+                    sx={{
+                      position: 'absolute',
+                      left: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      width: actionHandleSize,
+                      height: actionHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(67, 160, 71, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Check sx={{ fontSize: actionHandleSize * 0.62 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleTextLayerEdit(event, layer.panelId)}
+                    sx={{
+                      position: 'absolute',
+                      right: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      width: actionHandleSize,
+                      height: actionHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Subtitles sx={{ fontSize: actionHandleSize * 0.58 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize')}
+                    sx={{
+                      position: 'absolute',
+                      right: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      bottom: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      width: handleSize,
+                      height: handleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: 'nwse-resize',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </>
+      )}
+
+      {textLayerInteraction?.mode === 'move' && textLayerSnapGuide?.panelRect && (textLayerSnapGuide.x !== null || textLayerSnapGuide.y !== null) && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 35,
+          }}
+        >
+          {textLayerSnapGuide.x !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: textLayerSnapGuide.x,
+                top: textLayerSnapGuide.panelRect.y,
+                width: 0,
+                height: textLayerSnapGuide.panelRect.height,
+                borderLeft: '1px solid rgba(33, 150, 243, 0.95)',
+                transform: 'translateX(-0.5px)',
+              }}
+            />
+          )}
+          {textLayerSnapGuide.y !== null && (
+            <Box
+              sx={{
+                position: 'absolute',
+                left: textLayerSnapGuide.panelRect.x,
+                top: textLayerSnapGuide.y,
+                width: textLayerSnapGuide.panelRect.width,
+                height: 0,
+                borderTop: '1px solid rgba(33, 150, 243, 0.95)',
+                transform: 'translateY(-0.5px)',
+              }}
+            />
+          )}
+        </Box>
+      )}
       
       {/* Control panels positioned over canvas */}
       {panelRects.map((rect) => {
@@ -4509,7 +6272,7 @@ const CanvasCollagePreview = ({
                 calculateOptimalFontSize={calculateOptimalFontSize}
                 textScaleFactor={textScaleFactor}
                 onClose={handleTextClose}
-                rect={rect}
+                rect={textLayerBoundsByPanelId[panelId] || rect}
                 componentWidth={componentWidth}
               />
             )}
@@ -4518,6 +6281,67 @@ const CanvasCollagePreview = ({
           </Box>
         );
       })}
+
+      {floatingTextLayers.map((layer) => {
+        if (!layer?.panelId || textEditingPanel !== layer.panelId) return null;
+        return (
+          <CaptionEditor
+            key={`floating-text-editor-${layer.panelId}`}
+            panelId={layer.panelId}
+            panelTexts={panelTexts}
+            lastUsedTextSettings={lastUsedTextSettings}
+            updatePanelText={updatePanelText}
+            panelRects={[
+              ...panelRects,
+              {
+                panelId: layer.panelId,
+                x: floatingTextLayerRect.x,
+                y: floatingTextLayerRect.y,
+                width: floatingTextLayerRect.width,
+                height: floatingTextLayerRect.height,
+                index: floatingTextLayerRect.index,
+              },
+            ]}
+            calculateOptimalFontSize={calculateOptimalFontSize}
+            textScaleFactor={textScaleFactor}
+            onClose={handleTextClose}
+            rect={textLayerBoundsByPanelId[layer.panelId] || floatingTextLayerRect}
+            componentWidth={componentWidth}
+            placeholder={FLOATING_TEXT_LAYER_PLACEHOLDER}
+            clearRemovesEntry
+          />
+        );
+      })}
+
+      {topCaptionLayout?.enabled && topCaptionLayout?.rect && textEditingPanel === TOP_CAPTION_PANEL_ID && (
+        <CaptionEditor
+          panelId={TOP_CAPTION_PANEL_ID}
+          panelTexts={panelTexts}
+          lastUsedTextSettings={lastUsedTextSettings}
+          updatePanelText={updatePanelText}
+          panelRects={[
+            ...panelRects,
+            {
+              panelId: TOP_CAPTION_PANEL_ID,
+              x: topCaptionLayout.rect.x,
+              y: topCaptionLayout.rect.y,
+              width: topCaptionLayout.rect.width,
+              height: topCaptionLayout.rect.height,
+              index: -1,
+            },
+          ]}
+          calculateOptimalFontSize={calculateOptimalFontSize}
+          textScaleFactor={textScaleFactor}
+          onClose={handleTextClose}
+          rect={topCaptionLayout.rect}
+          componentWidth={componentWidth}
+          placeholder={TOP_CAPTION_PLACEHOLDER}
+          allowPositioning={false}
+          showTopCaptionOptions
+          topCaptionDefaultBackgroundColor={borderColor || TOP_CAPTION_DEFAULTS.backgroundColor}
+          clearRemovesEntry
+        />
+      )}
 
       {/* Hover overlays - positioned over canvas panels */}
       {panelRects.map((rect, index) => {
@@ -4568,9 +6392,10 @@ const CanvasCollagePreview = ({
               width: rect.width,
               height: rect.height,
               backgroundColor: 'rgba(0, 0, 0, 0.50)', // Light darkening
-              backdropFilter: 'blur(1px) grayscale(50%)', // Blur and grayscale effect
+              // Avoid heavy backdrop filters during rapid top-caption resizing.
+              backdropFilter: 'none',
               pointerEvents: isReorderMode ? 'auto' : 'none', // Allow clicks during reorder mode
-              transition: 'all 0.35s ease-out', // Clearly noticeable fade
+              transition: 'none',
               zIndex: 15, // Above hover overlays, below caption editor controls
               cursor: isReorderMode ? 'pointer' : 'default',
             }}
@@ -4655,7 +6480,7 @@ const CanvasCollagePreview = ({
       {/* Invisible backdrop for text editor - container-bound to avoid covering bottom bars */}
       {textEditingPanel !== null && (
         <Box
-          onClick={handleTextClose}
+          onClick={handleTextBackdropClick}
           sx={{
             position: 'absolute',
             top: 0,
@@ -4713,57 +6538,92 @@ const CanvasCollagePreview = ({
       {!Object.values(isTransformMode).some(enabled => enabled) &&
        textEditingPanel === null &&
        !isReorderMode &&
-       borderZones.map((zone) => (
-        <Box
-          key={`border-zone-${zone.id || `${zone.type}-${zone.index}`}`}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDraggingBorder(true);
-            setDraggedBorder(zone);
-            const rect = containerRef.current.getBoundingClientRect();
-            setBorderDragStart({ 
-              x: e.clientX - rect.left, 
-              y: e.clientY - rect.top 
-            });
-          }}
-          onTouchStart={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsDraggingBorder(true);
-            setDraggedBorder(zone);
-            const rect = containerRef.current.getBoundingClientRect();
-            const touch = e.touches[0];
-            setBorderDragStart({ 
-              x: touch.clientX - rect.left, 
-              y: touch.clientY - rect.top 
-            });
-          }}
-          sx={{
-            position: 'absolute',
-            top: zone.y,
-            left: zone.x,
-            width: zone.width,
-            height: zone.height,
-            cursor: zone.cursor,
-            backgroundColor: isDraggingBorder && draggedBorder === zone 
-              ? 'rgba(33, 150, 243, 0.4)' 
-              : hoveredBorder === zone 
-                ? 'rgba(33, 150, 243, 0.2)' 
-                : 'transparent',
-            transition: 'background-color 0.2s ease',
-            zIndex: 10, // Above canvas and overlays, below text editor
-            pointerEvents: 'auto',
-            // Add a subtle visual indicator on hover
-            '&:hover': {
-              backgroundColor: 'rgba(33, 150, 243, 0.25)',
-            },
-            // Touch-friendly styling
-            touchAction: 'none', // Prevent default touch behaviors
-            userSelect: 'none', // Prevent text selection
-          }}
-        />
-      ))}
+       borderZones.map((zone) => {
+         const zoneId = getBorderZoneId(zone);
+         const isSelectedZone = selectedBorderZoneId === zoneId;
+         const isHoveredZone = getBorderZoneId(hoveredBorder) === zoneId;
+         const handleWidth = Number.isFinite(zone.handleWidth)
+           ? zone.handleWidth
+           : (zone.type === 'vertical' ? BORDER_ZONE_HANDLE_THICKNESS_PX : BORDER_ZONE_HANDLE_LENGTH_PX);
+         const handleHeight = Number.isFinite(zone.handleHeight)
+           ? zone.handleHeight
+           : (zone.type === 'vertical' ? BORDER_ZONE_HANDLE_LENGTH_PX : BORDER_ZONE_HANDLE_THICKNESS_PX);
+         return (
+           <Box
+             key={`border-zone-${zoneId}`}
+             onMouseDown={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               startBorderDragFromClient(zone, zoneId, e.clientX, e.clientY);
+             }}
+             onTouchStart={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               const touch = e.touches?.[0];
+               if (!touch) return;
+               startBorderDragFromClient(zone, zoneId, touch.clientX, touch.clientY);
+             }}
+             onTouchMove={(e) => {
+               if (!isDraggingBorderRef.current || e.touches.length !== 1) return;
+               e.stopPropagation();
+               e.preventDefault();
+               const touch = e.touches[0];
+               updateBorderDragFromClient(touch.clientX, touch.clientY);
+             }}
+             onTouchEnd={(e) => {
+               if (!isDraggingBorderRef.current) return;
+               e.preventDefault();
+               e.stopPropagation();
+               stopBorderDrag(true);
+             }}
+             onTouchCancel={(e) => {
+               if (!isDraggingBorderRef.current) return;
+               e.preventDefault();
+               e.stopPropagation();
+               stopBorderDrag(true);
+             }}
+             sx={{
+               position: 'absolute',
+               top: zone.y,
+               left: zone.x,
+               width: zone.width,
+               height: zone.height,
+               cursor: zone.cursor,
+               backgroundColor: BORDER_ZONE_SHOW_HIT_AREA_DEBUG
+                 ? (isSelectedZone
+                   ? 'rgba(33,150,243,0.24)'
+                   : (isHoveredZone ? 'rgba(33,150,243,0.18)' : 'rgba(33,150,243,0.12)'))
+                 : 'transparent',
+               border: BORDER_ZONE_SHOW_HIT_AREA_DEBUG
+                 ? (isSelectedZone
+                   ? '1px solid rgba(33,150,243,0.55)'
+                   : '1px dashed rgba(33,150,243,0.35)')
+                 : 'none',
+               borderRadius: 999,
+               boxSizing: 'border-box',
+               zIndex: 40, // Keep border handles above text layer hitboxes
+               pointerEvents: 'auto',
+               touchAction: 'none',
+               userSelect: 'none', // Prevent text selection
+             }}
+            >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: handleWidth,
+                  height: handleHeight,
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(255,255,255,0.92)',
+                  pointerEvents: 'none',
+                  opacity: 0.45,
+                }}
+              />
+            </Box>
+         );
+       })}
 
       {/* Action menu for panel controls (Crop & Zoom, Rearrange, Replace Image) */}
       <Menu
@@ -4847,6 +6707,7 @@ const CanvasCollagePreview = ({
 CanvasCollagePreview.propTypes = {
   selectedTemplate: PropTypes.object,
   panelCount: PropTypes.number,
+  isSingleImageAutoCustomAspect: PropTypes.bool,
   images: PropTypes.arrayOf(PropTypes.oneOfType([
     PropTypes.string,
     PropTypes.shape({
@@ -4889,6 +6750,24 @@ CanvasCollagePreview.propTypes = {
   updatePanelText: PropTypes.func,
   lastUsedTextSettings: PropTypes.object,
   onCaptionEditorVisibleChange: PropTypes.func,
+  panelTextAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTextAutoOpenHandled: PropTypes.func,
+  panelTransformAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTransformAutoOpenHandled: PropTypes.func,
+  panelReorderAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelReorderAutoOpenHandled: PropTypes.func,
   isGeneratingCollage: PropTypes.bool,
   renderSig: PropTypes.string,
   onRendered: PropTypes.func,

@@ -9,11 +9,49 @@ import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const TOP_CAPTION_PANEL_ID = '__top-caption__';
+const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
+const isFloatingTextLayerId = (panelId) => (
+  typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
+);
+const TOP_CAPTION_DEFAULTS = {
+  fontSize: 42,
+  fontWeight: 700,
+  fontStyle: 'normal',
+  fontFamily: 'IMPACT',
+  color: '#111111',
+  strokeWidth: 0,
+  textAlign: 'left',
+  captionSpacingY: 0,
+  backgroundColor: '#ffffff',
+};
+
+const normalizeTextAlign = (value) => {
+  if (value === 'left' || value === 'center' || value === 'right') return value;
+  return 'center';
+};
+
+const getLineStartX = (textAlign, anchorX, lineWidth) => {
+  const align = normalizeTextAlign(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - lineWidth;
+  return anchorX - (lineWidth / 2);
+};
+
+const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
+  const align = normalizeTextAlign(textAlign);
+  if (align === 'left') return anchorX;
+  if (align === 'right') return anchorX - blockWidth;
+  return anchorX - (blockWidth / 2);
+};
 
 // Determine if a persisted custom layout is compatible with the requested panel count
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
     if (!customLayout || typeof customLayout !== 'object') return false;
+    if (Array.isArray(customLayout.panelRects)) {
+      return customLayout.panelRects.length >= Math.max(1, panelCount || 1);
+    }
     // Prefer explicit areas length when present
     if (Array.isArray(customLayout.areas)) {
       return customLayout.areas.length >= Math.max(1, panelCount || 1);
@@ -32,7 +70,11 @@ function isCustomLayoutCompatible(customLayout, panelCount) {
 // Create layout config by id, optionally using a persisted custom layout
 function createLayoutConfigById(templateId, panelCount, customLayout) {
   // Only apply a persisted custom layout if it can support the requested panel count
-  if (customLayout && (customLayout.gridTemplateColumns || customLayout.gridTemplateRows)) {
+  if (customLayout && (
+    customLayout.gridTemplateColumns
+    || customLayout.gridTemplateRows
+    || Array.isArray(customLayout.panelRects)
+  )) {
     try {
       if (isCustomLayoutCompatible(customLayout, panelCount)) {
         return customLayout;
@@ -101,8 +143,58 @@ function parseGridTemplateAreas(gridTemplateAreas) {
   return areas;
 }
 
+function getPanelOrderIndex(panelRect, fallbackIndex = 0) {
+  const explicitIndex = Number(panelRect?.index);
+  if (Number.isFinite(explicitIndex)) return explicitIndex;
+  const panelId = String(panelRect?.panelId || '');
+  const idMatch = panelId.match(/^panel-(\d+)$/);
+  if (idMatch) {
+    return Math.max(0, parseInt(idMatch[1], 10) - 1);
+  }
+  return fallbackIndex;
+}
+
+function clampRectRatio(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(1, numeric));
+}
+
 // Convert layoutConfig to panel rectangles, honoring borders and template areas (mirrors preview logic)
 function parseGridToRects(layoutConfig, componentWidth, componentHeight, panelCount, borderPixels) {
+  if (Array.isArray(layoutConfig?.panelRects) && layoutConfig.panelRects.length > 0) {
+    const inset = Math.max(0, Number(borderPixels) || 0);
+    const interiorLeft = inset;
+    const interiorTop = inset;
+    const interiorRight = Math.max(interiorLeft + 1, componentWidth - inset);
+    const interiorBottom = Math.max(interiorTop + 1, componentHeight - inset);
+    const interiorWidth = Math.max(1, interiorRight - interiorLeft);
+    const interiorHeight = Math.max(1, interiorBottom - interiorTop);
+
+    const rects = layoutConfig.panelRects
+      .slice(0, Math.max(1, panelCount || 1))
+      .map((panelRect, fallbackIndex) => {
+        const panelId = panelRect?.panelId || `panel-${fallbackIndex + 1}`;
+        const index = getPanelOrderIndex(panelRect, fallbackIndex);
+        const xRatio = clampRectRatio(panelRect?.x);
+        const yRatio = clampRectRatio(panelRect?.y);
+        const widthRatio = clampRectRatio(panelRect?.width);
+        const heightRatio = clampRectRatio(panelRect?.height);
+        const x = interiorLeft + (xRatio * interiorWidth);
+        const y = interiorTop + (yRatio * interiorHeight);
+        const right = Math.max(x, Math.min(interiorRight, interiorLeft + ((xRatio + widthRatio) * interiorWidth)));
+        const bottom = Math.max(y, Math.min(interiorBottom, interiorTop + ((yRatio + heightRatio) * interiorHeight)));
+        const width = right - x;
+        const height = bottom - y;
+        if (width <= 0.25 || height <= 0.25) return null;
+        return { x, y, width, height, panelId, index };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.index - b.index);
+
+    if (rects.length > 0) return rects;
+  }
+
   // Determine columns/rows and their fractional sizes
   let columns = 1;
   let rows = 1;
@@ -273,43 +365,131 @@ function loadImage(src) {
 
 export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   if (!snap) return null;
-  const aspectRatio = snap.selectedAspectRatio || 'square';
+  const selectedAspectRatio = snap.selectedAspectRatio || 'square';
   const arMap = { square: 1, portrait: 0.8, 'ratio-2-3': 2/3, story: 0.5625, classic: 1.33, 'ratio-3-2': 1.5, landscape: 1.78 };
-  const ar = arMap[aspectRatio] || 1;
+  const customAspectRatio = Number(snap.customAspectRatio);
+  const ar = selectedAspectRatio === 'custom' && Number.isFinite(customAspectRatio) && customAspectRatio > 0
+    ? Math.max(0.1, Math.min(10, customAspectRatio))
+    : (arMap[selectedAspectRatio] || 1);
   const panelCount = Math.max(1, Math.min(snap.panelCount || 1, 5));
   const borderPct = normalizeBorderThickness(snap.borderThickness);
   const borderColor = snap.borderColor || '#000000';
+  const images = Array.isArray(snap.images) ? snap.images : [];
 
   const width = maxDim;
-  const height = Math.max(1, Math.round(width / ar));
+  const baseImageHeight = Math.max(1, Math.round(width / ar));
   const dpr = 1;
   const BASE_CANVAS_WIDTH = 400; // Keep text scale in sync with preview
   const textScaleFactor = width / BASE_CANVAS_WIDTH;
   const borderPixels = Math.round((borderPct / 100) * width);
+  const wrapSimpleText = (drawCtx, text, maxWidth) => {
+    const lines = [];
+    const manual = String(text || '').split('\n');
+    manual.forEach((line) => {
+      if (drawCtx.measureText(line).width <= maxWidth) {
+        lines.push(line);
+      } else {
+        const words = line.split(' ');
+        let currentLine = '';
+        words.forEach((word) => {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const testWidth = drawCtx.measureText(testLine).width;
+          if (testWidth <= maxWidth) {
+            currentLine = testLine;
+          } else if (currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            let charLine = '';
+            for (let i = 0; i < word.length; i += 1) {
+              const testChar = charLine + word[i];
+              if (drawCtx.measureText(testChar).width <= maxWidth) {
+                charLine = testChar;
+              } else {
+                if (charLine) lines.push(charLine);
+                charLine = word[i];
+              }
+            }
+            if (charLine) lines.push(charLine);
+          }
+        });
+        if (currentLine) lines.push(currentLine);
+      }
+    });
+    return lines;
+  };
+  const topCaptionConfig = snap?.panelTexts?.[TOP_CAPTION_PANEL_ID];
+  const topCaptionRaw = topCaptionConfig?.rawContent ?? topCaptionConfig?.content ?? '';
+  const { cleanText: topCaptionText } = parseFormattedText(String(topCaptionRaw));
+  const hasTopCaptionText = Boolean(topCaptionText && topCaptionText.trim());
+  const shouldExpandForSingleCustom = (
+    selectedAspectRatio === 'custom' &&
+    panelCount === 1 &&
+    images.length === 1
+  );
+  let topCaptionHeight = 0;
+  if (hasTopCaptionText) {
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    if (measureCtx) {
+      const captionSpacingY = Number.isFinite(Number(topCaptionConfig?.captionSpacingY))
+        ? Math.max(0, Number(topCaptionConfig.captionSpacingY))
+        : TOP_CAPTION_DEFAULTS.captionSpacingY;
+      const scaledCaptionSpacingY = captionSpacingY * textScaleFactor;
+      const baseFontSize = Number(topCaptionConfig?.fontSize) > 0
+        ? Number(topCaptionConfig.fontSize)
+        : TOP_CAPTION_DEFAULTS.fontSize;
+      const fontSize = baseFontSize * textScaleFactor;
+      const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+      const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+      const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+      measureCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+      const horizontalPadding = Math.max(18, Math.round(width * 0.045));
+      const verticalPadding = Math.max(12, Math.round(fontSize * 0.42)) + scaledCaptionSpacingY;
+      const maxTextWidth = Math.max(48, width - (horizontalPadding * 2) - (borderPixels * 2));
+      const wrappedLines = wrapSimpleText(measureCtx, topCaptionText, maxTextWidth);
+      const lineHeight = fontSize * 1.2;
+      const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
+      const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
+      const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
+      const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+      topCaptionHeight = shouldExpandForSingleCustom
+        ? Math.max(56, requestedCaptionHeight)
+        : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+    }
+  }
+  const imageAreaHeight = hasTopCaptionText
+    ? (shouldExpandForSingleCustom ? baseImageHeight : Math.max(1, baseImageHeight - topCaptionHeight))
+    : baseImageHeight;
+  const totalHeight = hasTopCaptionText
+    ? (shouldExpandForSingleCustom ? baseImageHeight + topCaptionHeight : baseImageHeight)
+    : baseImageHeight;
   
   // If the snapshot includes the source preview canvas size, compute scale factors
   // so pixel-based transforms (positionX/positionY) scale proportionally
   const sourceCanvasWidth = typeof snap.canvasWidth === 'number' ? snap.canvasWidth : null;
   const sourceCanvasHeight = typeof snap.canvasHeight === 'number' ? snap.canvasHeight : null;
   const scaleX = sourceCanvasWidth && sourceCanvasWidth > 0 ? (width / sourceCanvasWidth) : 1;
-  const scaleY = sourceCanvasHeight && sourceCanvasHeight > 0 ? (height / sourceCanvasHeight) : 1;
+  const scaleY = sourceCanvasHeight && sourceCanvasHeight > 0 ? (totalHeight / sourceCanvasHeight) : 1;
 
   const canvas = document.createElement('canvas');
   canvas.width = width * dpr;
-  canvas.height = height * dpr;
+  canvas.height = totalHeight * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, width, totalHeight);
   if (borderPixels > 0) {
     ctx.fillStyle = borderColor;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(0, 0, width, totalHeight);
   }
 
   const layoutConfig = createLayoutConfigById(snap.selectedTemplateId, panelCount, snap.customLayout);
-  const rects = parseGridToRects(layoutConfig, width, height, panelCount, borderPixels);
+  const rects = parseGridToRects(layoutConfig, width, imageAreaHeight, panelCount, borderPixels).map((rect) => ({
+    ...rect,
+    y: rect.y + topCaptionHeight,
+  }));
 
   // Load images referenced in snapshot
-  const images = Array.isArray(snap.images) ? snap.images : [];
   const loaded = await Promise.all(images.map(loadImageFromRef));
 
   // Ensure custom fonts are loaded before rendering text so canvas uses intended fonts
@@ -391,7 +571,202 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     return lines;
   };
 
-  // Draw panels: images and captions (to mirror final export)
+  if (hasTopCaptionText && topCaptionHeight > 0) {
+    const captionRect = {
+      x: borderPixels,
+      y: Math.max(0, borderPixels),
+      width: Math.max(1, width - (borderPixels * 2)),
+      height: Math.max(1, topCaptionHeight - borderPixels),
+    };
+    const baseFontSize = Number(topCaptionConfig?.fontSize) > 0
+      ? Number(topCaptionConfig.fontSize)
+      : TOP_CAPTION_DEFAULTS.fontSize;
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
+    const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
+    const textAlign = normalizeTextAlign(topCaptionConfig?.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
+    const textColor = topCaptionConfig?.color || TOP_CAPTION_DEFAULTS.color;
+    const strokeWidth = topCaptionConfig?.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
+    const normalizedTopCaptionBackground = typeof topCaptionConfig?.backgroundColor === 'string'
+      ? topCaptionConfig.backgroundColor.trim().toLowerCase()
+      : '';
+    const hasExplicitTopCaptionBackground = (
+      topCaptionConfig?.backgroundColorExplicit === true ||
+      (normalizedTopCaptionBackground.length > 0 && normalizedTopCaptionBackground !== '#ffffff')
+    );
+    const backgroundColor = hasExplicitTopCaptionBackground
+      ? topCaptionConfig.backgroundColor
+      : (borderColor || TOP_CAPTION_DEFAULTS.backgroundColor);
+
+    ctx.save();
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(captionRect.x, captionRect.y, captionRect.width, captionRect.height);
+    ctx.beginPath();
+    ctx.rect(captionRect.x, captionRect.y, captionRect.width, captionRect.height);
+    ctx.clip();
+
+    const textPadding = Math.max(16, captionRect.width * 0.04);
+    const maxTextWidth = Math.max(24, captionRect.width - textPadding * 2);
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const lines = wrapSimpleText(ctx, topCaptionText, maxTextWidth);
+    const lineHeight = fontSize * 1.2;
+    const totalTextHeight = lines.length * lineHeight;
+    const startY = captionRect.y + ((captionRect.height - totalTextHeight) / 2) + (lineHeight / 2);
+    const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
+    const textAnchorX = textAlign === 'left'
+      ? captionRect.x + textPadding
+      : textAlign === 'right'
+        ? captionRect.x + captionRect.width - textPadding
+        : captionRect.x + captionRect.width / 2;
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    if (strokeWidth > 0) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.72)';
+      ctx.lineWidth = strokeWidth;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+    }
+    lines.forEach((line, idx) => {
+      const y = startY + idx * lineHeight;
+      const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
+      const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
+      if (strokeWidth > 0) ctx.strokeText(line, drawX, y);
+      ctx.fillText(line, drawX, y);
+    });
+    ctx.restore();
+  }
+
+  const drawTextLayerInRect = (panelRect, panelText) => {
+    if (!panelRect || !panelText || typeof panelText !== 'object') return;
+    const x = Number(panelRect.x);
+    const y = Number(panelRect.y);
+    const w = Number(panelRect.width);
+    const h = Number(panelRect.height);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(w) || !Number.isFinite(h) || w <= 1 || h <= 1) return;
+
+    const rawCaption = panelText.rawContent ?? panelText.content ?? '';
+    const { cleanText } = parseFormattedText(String(rawCaption));
+    if (!cleanText || !cleanText.trim()) return;
+
+    ctx.save();
+    // Clip to layer bounds
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+
+    // Determine base font size: explicit or auto-fit similar to preview
+    let baseFontSize = panelText.fontSize || 26;
+    if (!panelText.fontSize) {
+      // Auto-calc: try decreasing sizes until it fits 40% of layer height
+      const textPadding = 10;
+      const maxTextWidth = w - textPadding * 2;
+      const maxTextHeight = h * 0.4;
+      const reasonableMax = Math.min(48, Math.max(16, h * 0.15));
+      const probe = document.createElement('canvas').getContext('2d');
+      if (probe) {
+        for (let size = reasonableMax; size >= 8; size -= 2) {
+          probe.font = `700 ${size}px Arial`;
+          const words = String(cleanText).split(' ');
+          const lines = [];
+          let currentLine = '';
+          words.forEach((word) => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            if (probe.measureText(testLine).width <= maxTextWidth) {
+              currentLine = testLine;
+            } else {
+              if (currentLine) lines.push(currentLine);
+              currentLine = word;
+            }
+          });
+          if (currentLine) lines.push(currentLine);
+          const lineHeight = size * 1.2;
+          const total = lines.length * lineHeight;
+          if (total <= maxTextHeight) {
+            baseFontSize = Math.max(size, 12);
+            break;
+          }
+        }
+      }
+    }
+
+    const fontSize = baseFontSize * textScaleFactor;
+    const fontWeight = panelText.fontWeight || 400;
+    const fontStyle = panelText.fontStyle || 'normal';
+    const fontFamily = panelText.fontFamily || 'Arial';
+    const textColor = panelText.color || '#ffffff';
+    const strokeWidth = panelText.strokeWidth ?? 2;
+    const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
+    const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
+    const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
+    const textAlign = normalizeTextAlign(panelText.textAlign || 'center');
+
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = strokeWidth;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.shadowBlur = 3;
+
+    const textPadding = 10;
+    const maxTextWidth = w - textPadding * 2;
+    const textAnchorX = x + textPadding + ((textPositionX + 100) / 200) * maxTextWidth;
+    const lineHeight = fontSize * 1.2;
+    const lines = wrapText(ctx, String(cleanText), maxTextWidth);
+    const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
+    const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
+    const textBlockCenterX = textBlockLeft + (maxLineWidth / 2);
+    const totalTextHeight = lines.length * lineHeight;
+
+    let textAnchorY;
+    if (textPositionY <= 0) {
+      const defaultBottom = y + (h * 0.95);
+      const extendedBottom = y + h + (h * 0.1);
+      const t = Math.abs(textPositionY) / 100;
+      textAnchorY = defaultBottom + t * (extendedBottom - defaultBottom);
+    } else {
+      const defaultBottom = y + (h * 0.95);
+      const frameTop = y;
+      const t = textPositionY / 100;
+      textAnchorY = defaultBottom + t * (frameTop - defaultBottom);
+    }
+
+    const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
+
+    if (textRotation !== 0) {
+      ctx.save();
+      const textCenterX = textBlockCenterX;
+      const textCenterY = textAnchorY - totalTextHeight / 2;
+      ctx.translate(textCenterX, textCenterY);
+      ctx.rotate((textRotation * Math.PI) / 180);
+      ctx.translate(-textCenterX, -textCenterY);
+    }
+
+    lines.forEach((line, idx) => {
+      const lineY = startY + idx * lineHeight;
+      const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
+      const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
+      if (strokeWidth > 0) ctx.strokeText(line, drawX, lineY);
+      ctx.fillText(line, drawX, lineY);
+    });
+
+    if (textRotation !== 0) {
+      ctx.restore();
+    }
+
+    ctx.restore();
+  };
+
+  // Draw panels: images and panel-bound captions (to mirror final export)
   rects.forEach(({ x, y, width: w, height: h, panelId }) => {
     const imageIndex = snap.panelImageMapping?.[panelId];
     const hasImage = typeof imageIndex === 'number' && loaded[imageIndex];
@@ -421,116 +796,25 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
         ctx.restore();
       }
-    }
-
-    const rawCaption = panelText.rawContent ?? panelText.content ?? '';
-    const { cleanText } = parseFormattedText(String(rawCaption));
-
-    // Draw actual text (if present), matching export logic
-    if (hasImage && cleanText && cleanText.trim()) {
-      ctx.save();
-      // Clip to frame bounds
-      ctx.beginPath();
-      ctx.rect(x, y, w, h);
-      ctx.clip();
-
-      // Determine base font size: explicit or auto-fit similar to preview
-      let baseFontSize = panelText.fontSize || 26;
-      if (!panelText.fontSize) {
-        // Auto-calc: try decreasing sizes until it fits 40% of panel height
-        const textPadding = 10;
-        const maxTextWidth = w - textPadding * 2;
-        const maxTextHeight = h * 0.4;
-        const reasonableMax = Math.min(48, Math.max(16, h * 0.15));
-        const probe = document.createElement('canvas').getContext('2d');
-        for (let size = reasonableMax; size >= 8; size -= 2) {
-          probe.font = `700 ${size}px Arial`;
-          const words = String(cleanText).split(' ');
-          const lines = [];
-          let currentLine = '';
-          words.forEach((word) => {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            if (probe.measureText(testLine).width <= maxTextWidth) {
-              currentLine = testLine;
-            } else {
-              if (currentLine) lines.push(currentLine);
-              currentLine = word;
-            }
-          });
-          if (currentLine) lines.push(currentLine);
-          const lineHeight = size * 1.2;
-          const total = lines.length * lineHeight;
-          if (total <= maxTextHeight) { baseFontSize = Math.max(size, 12); break; }
-        }
-      }
-
-      const fontSize = baseFontSize * textScaleFactor;
-      const fontWeight = panelText.fontWeight || 400;
-      const fontStyle = panelText.fontStyle || 'normal';
-      const fontFamily = panelText.fontFamily || 'Arial';
-      const textColor = panelText.color || '#ffffff';
-      const strokeWidth = panelText.strokeWidth || 2;
-      const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
-      const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
-      const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
-
-      ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-      ctx.fillStyle = textColor;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = strokeWidth;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
-      ctx.shadowBlur = 3;
-
-      const textPadding = 10;
-      const maxTextWidth = w - textPadding * 2;
-      const textX = x + (w / 2) + (textPositionX / 100) * (w / 2 - textPadding);
-      const lineHeight = fontSize * 1.2;
-      const lines = wrapText(ctx, String(cleanText), maxTextWidth);
-      const totalTextHeight = lines.length * lineHeight;
-
-      let textAnchorY;
-      if (textPositionY <= 0) {
-        const defaultBottom = y + (h * 0.95);
-        const extendedBottom = y + h + (h * 0.1);
-        const t = Math.abs(textPositionY) / 100;
-        textAnchorY = defaultBottom + t * (extendedBottom - defaultBottom);
-      } else {
-        const defaultBottom = y + (h * 0.95);
-        const frameTop = y;
-        const t = textPositionY / 100;
-        textAnchorY = defaultBottom + t * (frameTop - defaultBottom);
-      }
-
-      const startY = textAnchorY - totalTextHeight + (lineHeight / 2);
-
-      if (textRotation !== 0) {
-        ctx.save();
-        const textCenterX = textX;
-        const textCenterY = textAnchorY - totalTextHeight / 2;
-        ctx.translate(textCenterX, textCenterY);
-        ctx.rotate((textRotation * Math.PI) / 180);
-        ctx.translate(-textCenterX, -textCenterY);
-      }
-
-      lines.forEach((line, idx) => {
-        const lineY = startY + idx * lineHeight;
-        if (strokeWidth > 0) ctx.strokeText(line, textX, lineY);
-        ctx.fillText(line, textX, lineY);
-      });
-
-      if (textRotation !== 0) {
-        ctx.restore();
-      }
-
-      ctx.restore();
+      drawTextLayerInRect({ x, y, width: w, height: h }, panelText);
     }
   });
+
+  // Draw floating text layers anchored to the full collage area (below top caption).
+  const floatingTextLayers = (snap.panelTexts && typeof snap.panelTexts === 'object')
+    ? Object.entries(snap.panelTexts).filter(([panelId]) => isFloatingTextLayerId(panelId))
+    : [];
+  if (floatingTextLayers.length > 0) {
+    const floatingRect = {
+      x: 0,
+      y: topCaptionHeight,
+      width,
+      height: imageAreaHeight,
+    };
+    floatingTextLayers.forEach(([, panelText]) => {
+      drawTextLayerInRect(floatingRect, panelText);
+    });
+  }
 
   // Draw global sticker overlays (top-most, across the full collage canvas)
   const stickerRefs = Array.isArray(snap.stickers) ? snap.stickers : [];
@@ -552,15 +836,15 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const yRaw = Number(stickerRef?.yPercent);
       const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
       const widthPx = clamp((widthPercent / 100) * width, 12, width * 0.98);
-      const heightPx = clamp(widthPx / aspectRatio, 12, height * 0.98);
+      const heightPx = clamp(widthPx / aspectRatio, 12, totalHeight * 0.98);
       const minVisibleX = Math.min(32, widthPx);
       const minVisibleY = Math.min(32, heightPx);
       const minX = -widthPx + minVisibleX;
       const maxX = width - minVisibleX;
       const minY = -heightPx + minVisibleY;
-      const maxY = height - minVisibleY;
+      const maxY = totalHeight - minVisibleY;
       const xPx = clamp((Number.isFinite(xRaw) ? xRaw : 36) / 100 * width, minX, maxX);
-      const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * height, minY, maxY);
+      const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * totalHeight, minY, maxY);
 
       try {
         if (Math.abs(angleDeg) > 0.01) {

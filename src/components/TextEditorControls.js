@@ -19,6 +19,24 @@ import FormatColorTextIcon from '@mui/icons-material/FormatColorText';
 import BorderColorIcon from '@mui/icons-material/BorderColor';
 import fonts from '../utils/fonts';
 
+const resolveFontOptions = (fontList, selectedFont) => {
+  const source = Array.isArray(fontList)
+    ? fontList
+    : (Array.isArray(fontList?.default) ? fontList.default : []);
+  const defaults = ['Arial', 'Impact', 'Georgia', 'Verdana', 'Courier New'];
+  const unique = new Map();
+  [...defaults, ...source].forEach((font) => {
+    if (typeof font !== 'string' || !font.trim()) return;
+    const key = font.trim().toLowerCase();
+    if (!unique.has(key)) unique.set(key, font.trim());
+  });
+  if (typeof selectedFont === 'string' && selectedFont.trim()) {
+    const key = selectedFont.trim().toLowerCase();
+    if (!unique.has(key)) unique.set(key, selectedFont.trim());
+  }
+  return Array.from(unique.values());
+};
+
 // Update PropTypes to include layerColor and layerStrokeColor
 TextEditorControls.propTypes = {
   handleStyle: PropTypes.func,
@@ -38,7 +56,11 @@ TextEditorControls.propTypes = {
 
 const FontSelector = ({ selectedFont, onSelectFont, index }) => (
   <Select
-    value={selectedFont || 'Arial'}
+    value={(() => {
+      const options = resolveFontOptions(fonts, selectedFont);
+      const requested = String(selectedFont || 'Arial').trim().toLowerCase();
+      return options.find((font) => font.toLowerCase() === requested) || selectedFont || 'Arial';
+    })()}
     onChange={(e) => onSelectFont(e.target.value, index)}
     displayEmpty
     inputProps={{ 'aria-label': 'Without label' }}
@@ -67,7 +89,7 @@ const FontSelector = ({ selectedFont, onSelectFont, index }) => (
       },
     }}
   >
-    {fonts.map((font) => (
+    {resolveFontOptions(fonts, selectedFont).map((font) => (
       <MenuItem key={font} value={font} sx={{ fontFamily: font }}>
         {font}
       </MenuItem>

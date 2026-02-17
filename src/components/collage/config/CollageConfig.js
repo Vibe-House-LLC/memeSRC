@@ -2,11 +2,27 @@ import {
   getLayoutsForPanelCount,
   createAutoLayout,
   layoutStyles,
-  recommendedLayouts
+  recommendedLayouts,
+  getLayoutDirection,
 } from './layouts';
+
+const findClosestAspectRatioPreset = (targetRatio, presets) => {
+  const safeTarget = Number.isFinite(targetRatio) && targetRatio > 0 ? targetRatio : 1;
+  const validPresets = (presets || []).filter((preset) => (
+    preset?.id !== 'custom' && Number.isFinite(preset?.value) && preset.value > 0
+  ));
+  if (validPresets.length === 0) return null;
+  return validPresets.reduce((closestPreset, preset) => {
+    if (!closestPreset) return preset;
+    const currentDistance = Math.abs(preset.value - safeTarget);
+    const bestDistance = Math.abs(closestPreset.value - safeTarget);
+    return currentDistance < bestDistance ? preset : closestPreset;
+  }, validPresets[0]);
+};
 
 // Aspect ratio presets
 export const aspectRatioPresets = [
+  { id: 'custom', name: 'Custom', value: 1 },
   { id: 'square', name: 'Square', value: 1 },
   { id: 'portrait', name: 'Portrait', value: 0.8 },
   { id: 'ratio-2-3', name: '2:3', value: 2/3 },
@@ -43,12 +59,16 @@ export const layoutTemplates = [
     maxImages: panelCount,
     renderPreview: (aspectRatio, theme, imageCount = 0) => {
       const actualImageCount = imageCount || panelCount;
-      const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) ||
-                                aspectRatioPresets.find(preset => preset.id === 'square');
+      const closestAspectRatio = findClosestAspectRatioPreset(aspectRatio, aspectRatioPresets) ||
+        aspectRatioPresets.find(preset => preset.id === 'square');
       const aspectRatioId = closestAspectRatio?.id || 'square';
       
       // Forward to our layout module system
-      const layouts = getLayoutsForPanelCount(panelCount, aspectRatioId);
+      const layouts = getLayoutsForPanelCount(
+        panelCount,
+        aspectRatioId,
+        aspectRatioId === 'custom' ? aspectRatio : null
+      );
       if (layouts.length > 0) {
         return layouts[0].renderPreview(aspectRatio, theme, actualImageCount);
       }
@@ -60,7 +80,7 @@ export const layoutTemplates = [
 ];
 
 // Re-export the getLayoutsForPanelCount function for external use
-export { getLayoutsForPanelCount };
+export { getLayoutsForPanelCount, getLayoutDirection };
 
 // Re-export the layoutStyles and recommendedLayouts for use in UI components
 export { layoutStyles, recommendedLayouts }; 

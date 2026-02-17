@@ -44,6 +44,7 @@ export interface CollageSnapshot {
   stickers?: CollageStickerRef[];
   selectedTemplateId: string | null;
   selectedAspectRatio: AspectRatio;
+  customAspectRatio?: number;
   panelCount: number;
   borderThickness?: number | string;
   borderColor?: string;

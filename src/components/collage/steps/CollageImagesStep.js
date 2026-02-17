@@ -1,11 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Box, Button, useMediaQuery } from '@mui/material';
+import { Box, Button, Menu, MenuItem, ListItemIcon, ListItemText, useMediaQuery } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
+import TextFieldsRoundedIcon from '@mui/icons-material/TextFieldsRounded';
+import StyleRoundedIcon from '@mui/icons-material/StyleRounded';
+import ViewModuleRoundedIcon from '@mui/icons-material/ViewModuleRounded';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
+import { LibraryPickerDialog } from '../../library';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
@@ -26,6 +31,8 @@ const CollageImagesStep = ({
   panelCount = 2,
   selectedTemplate,
   selectedAspectRatio = 'portrait',
+  customAspectRatio = 1,
+  isSingleImageAutoCustomAspect = false,
   borderThickness = 'medium',
   borderColor,
   borderThicknessOptions = [
@@ -61,7 +68,19 @@ const CollageImagesStep = ({
   canAddPanel = false,
   panelAutoOpenRequest,
   onPanelAutoOpenHandled,
+  panelTextAutoOpenRequest,
+  onPanelTextAutoOpenHandled,
+  panelTransformAutoOpenRequest,
+  onPanelTransformAutoOpenHandled,
+  panelReorderAutoOpenRequest,
+  onPanelReorderAutoOpenHandled,
   onRemovePanelRequest,
+  onAddTextRequest,
+  onAddStickerFromLibrary,
+  canManageStickers = false,
+  showTopAddButton = true,
+  showBottomAddButton = true,
+  previewInteractionDisabled = false,
   // Render tracking passthrough for autosave thumbnails
   renderSig,
   onPreviewRendered,
@@ -77,6 +96,11 @@ const CollageImagesStep = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const fileInputRef = useRef(null);
+  const [addMenuAnchorEl, setAddMenuAnchorEl] = useState(null);
+  const [addMenuPosition, setAddMenuPosition] = useState('end');
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [stickerPickerBusy, setStickerPickerBusy] = useState(false);
+  const [stickerPickerError, setStickerPickerError] = useState('');
   
   // Debug the props we're receiving
   debugLog("CollageImagesStep props:", {
@@ -165,6 +189,64 @@ const CollageImagesStep = ({
       onAddPanelRequest(position);
     }
   };
+  const isAddMenuOpen = Boolean(addMenuAnchorEl);
+  const canAddText = typeof onAddTextRequest === 'function';
+  const canAddSticker = canManageStickers && typeof onAddStickerFromLibrary === 'function';
+  const openAddMenu = (event, position = 'end') => {
+    setAddMenuPosition(position);
+    setAddMenuAnchorEl(event.currentTarget);
+  };
+  const closeAddMenu = () => {
+    setAddMenuAnchorEl(null);
+  };
+  const handleAddTopCaption = () => {
+    closeAddMenu();
+    if (canAddText) {
+      onAddTextRequest('top-caption');
+    }
+  };
+  const handleAddTextLayer = () => {
+    closeAddMenu();
+    if (canAddText) {
+      onAddTextRequest('text-layer');
+    }
+  };
+  const handleAddSticker = () => {
+    closeAddMenu();
+    if (!canAddSticker) return;
+    setStickerPickerError('');
+    setStickerPickerOpen(true);
+  };
+  const handleAddPanel = () => {
+    closeAddMenu();
+    triggerAddPanelRequest(addMenuPosition);
+  };
+  const closeStickerPicker = () => {
+    if (stickerPickerBusy) return;
+    setStickerPickerOpen(false);
+    setStickerPickerError('');
+  };
+  const handleStickerSelect = async (items) => {
+    if (!canAddSticker) return;
+    if (!Array.isArray(items) || items.length === 0) return;
+    setStickerPickerBusy(true);
+    setStickerPickerError('');
+    try {
+      await onAddStickerFromLibrary(items[0]);
+      setStickerPickerOpen(false);
+    } catch (error) {
+      console.error('Failed to add sticker from unified add menu', error);
+      setStickerPickerError('Unable to add that sticker right now.');
+    } finally {
+      setStickerPickerBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (previewInteractionDisabled) {
+      closeAddMenu();
+    }
+  }, [previewInteractionDisabled]);
   const addPanelButtonSx = {
     textTransform: 'none',
     fontWeight: 700,
@@ -197,30 +279,38 @@ const CollageImagesStep = ({
         alignItems: 'center',
         position: 'relative',
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            size={isMobile ? 'small' : 'medium'}
-            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
-            onClick={() => triggerAddPanelRequest('start')}
-            disabled={!canTriggerAddPanel}
-            sx={addPanelButtonSx}
-          >
-            Add panel
-          </Button>
-        </Box>
+        {showTopAddButton && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: isMobile ? 0.75 : 1 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size={isMobile ? 'small' : 'medium'}
+              startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+              endIcon={<ExpandMoreRoundedIcon fontSize="small" />}
+              onClick={(event) => openAddMenu(event, 'start')}
+              sx={addPanelButtonSx}
+            >
+              Add
+            </Button>
+          </Box>
+        )}
 
         {/* Always render the preview, let it handle null templates */}
-        <Box sx={{ 
-          width: '100%', 
-          mb: 1,
-          position: 'relative'
-        }} id="collage-preview-container">
+        <Box
+          sx={{
+            width: '100%',
+            mb: 1,
+            position: 'relative',
+            pointerEvents: previewInteractionDisabled ? 'none' : 'auto',
+          }}
+          id="collage-preview-container"
+        >
           <CollagePreview 
             canvasResetKey={canvasResetKey}
             selectedTemplate={selectedTemplate}
             selectedAspectRatio={selectedAspectRatio}
+            customAspectRatio={customAspectRatio}
+            isSingleImageAutoCustomAspect={isSingleImageAutoCustomAspect}
             panelCount={panelCount || 1} /* Ensure we always have a fallback */
             selectedImages={selectedImages || []}
             addImage={addImage}
@@ -264,22 +354,77 @@ const CollageImagesStep = ({
             allowHydrationTransformCarry={allowHydrationTransformCarry}
             panelAutoOpenRequest={panelAutoOpenRequest}
             onPanelAutoOpenHandled={onPanelAutoOpenHandled}
+            panelTextAutoOpenRequest={panelTextAutoOpenRequest}
+            onPanelTextAutoOpenHandled={onPanelTextAutoOpenHandled}
+            panelTransformAutoOpenRequest={panelTransformAutoOpenRequest}
+            onPanelTransformAutoOpenHandled={onPanelTransformAutoOpenHandled}
+            panelReorderAutoOpenRequest={panelReorderAutoOpenRequest}
+            onPanelReorderAutoOpenHandled={onPanelReorderAutoOpenHandled}
             onRemovePanelRequest={onRemovePanelRequest}
           />
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            size={isMobile ? 'small' : 'medium'}
-            startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
-            onClick={() => triggerAddPanelRequest('end')}
-            disabled={!canTriggerAddPanel}
-            sx={addPanelButtonSx}
-          >
-            Add panel
-          </Button>
-        </Box>
+        {showBottomAddButton && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mt: 0.5 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              size={isMobile ? 'small' : 'medium'}
+              startIcon={<AddCircleOutlineRoundedIcon fontSize="small" />}
+              endIcon={<ExpandMoreRoundedIcon fontSize="small" />}
+              onClick={(event) => openAddMenu(event, 'end')}
+              sx={addPanelButtonSx}
+            >
+              Add
+            </Button>
+          </Box>
+        )}
+        <Menu
+          anchorEl={addMenuAnchorEl}
+          open={isAddMenuOpen}
+          onClose={closeAddMenu}
+          PaperProps={{
+            sx: {
+              minWidth: 220,
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+            },
+          }}
+        >
+          <MenuItem onClick={handleAddTopCaption} disabled={!canAddText}>
+            <ListItemIcon><TextFieldsRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Add Top Caption" />
+          </MenuItem>
+          <MenuItem onClick={handleAddTextLayer} disabled={!canAddText}>
+            <ListItemIcon><TextFieldsRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Text Layer" />
+          </MenuItem>
+          <MenuItem onClick={handleAddSticker} disabled={!canAddSticker}>
+            <ListItemIcon><StyleRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Add Sticker" />
+          </MenuItem>
+          <MenuItem onClick={handleAddPanel} disabled={!canTriggerAddPanel}>
+            <ListItemIcon><ViewModuleRoundedIcon fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Add Panel" />
+          </MenuItem>
+        </Menu>
+        <LibraryPickerDialog
+          open={stickerPickerOpen}
+          onClose={closeStickerPicker}
+          title="Choose a sticker from your library"
+          onSelect={(items) => { void handleStickerSelect(items); }}
+          busy={stickerPickerBusy}
+          errorText={stickerPickerError}
+          browserProps={{
+            multiple: false,
+            uploadEnabled: true,
+            deleteEnabled: false,
+            showActionBar: false,
+            selectionEnabled: true,
+            previewOnClick: true,
+            showSelectToggle: true,
+            initialSelectMode: true,
+          }}
+        />
         {/* Hidden file input for Add Image button */}
         <input
           type="file"
@@ -313,6 +458,8 @@ CollageImagesStep.propTypes = {
   panelCount: PropTypes.number,
   selectedTemplate: PropTypes.object,
   selectedAspectRatio: PropTypes.string,
+  customAspectRatio: PropTypes.number,
+  isSingleImageAutoCustomAspect: PropTypes.bool,
   borderThickness: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   borderColor: PropTypes.string,
   borderThicknessOptions: PropTypes.array,
@@ -363,7 +510,31 @@ CollageImagesStep.propTypes = {
     panelIndex: PropTypes.number,
   }),
   onPanelAutoOpenHandled: PropTypes.func,
+  panelTextAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTextAutoOpenHandled: PropTypes.func,
+  panelTransformAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTransformAutoOpenHandled: PropTypes.func,
+  panelReorderAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelReorderAutoOpenHandled: PropTypes.func,
   onRemovePanelRequest: PropTypes.func,
+  onAddTextRequest: PropTypes.func,
+  onAddStickerFromLibrary: PropTypes.func,
+  canManageStickers: PropTypes.bool,
+  showTopAddButton: PropTypes.bool,
+  showBottomAddButton: PropTypes.bool,
+  previewInteractionDisabled: PropTypes.bool,
   canvasResetKey: PropTypes.number,
 };
 

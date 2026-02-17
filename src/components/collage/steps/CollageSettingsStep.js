@@ -10,8 +10,12 @@ import {
   Alert,
   Chip,
   IconButton,
+  TextField,
   useMediaQuery,
   Tooltip,
+  Menu,
+  MenuItem,
+  ListItemIcon,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -31,7 +35,13 @@ import {
   ArrowUpward,
   ArrowDownward,
   DeleteOutline,
-  AddPhotoAlternate
+  AddPhotoAlternate,
+  MoreHoriz,
+  Crop,
+  DragIndicator,
+  Image as ImageIcon,
+  Subtitles,
+  Add,
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
 import { LibraryPickerDialog } from "../../library";
@@ -40,7 +50,7 @@ import { LibraryPickerDialog } from "../../library";
 import { TemplateCard } from "../styled/CollageStyled";
 
 // Import layout configuration
-import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount } from "../config/CollageConfig";
+import { aspectRatioPresets, layoutTemplates, getLayoutsForPanelCount, getLayoutDirection } from "../config/CollageConfig";
 
 // Color presets for border colors
 const COLOR_PRESETS = [
@@ -250,12 +260,33 @@ const MobileSettingsTypeButton = styled(Button, {
   },
 }));
 
-const MOBILE_SETTING_OPTIONS = [
-  { id: 'aspect-ratio', label: 'Size', panelId: 'collage-settings-panel-aspect-ratio' },
+export const MOBILE_SETTING_OPTIONS = [
+  { id: 'panels', label: 'Panels', panelId: 'collage-settings-panel-panels' },
+  { id: 'aspect-ratio', label: 'Size/Ratio', panelId: 'collage-settings-panel-aspect-ratio' },
   { id: 'layout', label: 'Layout', panelId: 'collage-settings-panel-layout' },
   { id: 'borders', label: 'Borders', panelId: 'collage-settings-panel-borders' },
   { id: 'stickers', label: 'Stickers', panelId: 'collage-settings-panel-stickers' },
 ];
+
+const normalizeCustomAspectRatio = (value, fallback = 1) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return fallback;
+  return Math.max(0.1, Math.min(10, numericValue));
+};
+
+const ratioToEditorInputs = (ratio) => {
+  const safeRatio = normalizeCustomAspectRatio(ratio, 1);
+  if (safeRatio >= 1) {
+    return {
+      width: Number((safeRatio * 100).toFixed(2)),
+      height: 100,
+    };
+  }
+  return {
+    width: 100,
+    height: Number((100 / safeRatio).toFixed(2)),
+  };
+};
 
 // Helper function to convert aspect ratio value to a friendly format
 const getFriendlyAspectRatio = (value) => {
@@ -336,7 +367,11 @@ const CollageLayoutSettings = ({
   setSelectedTemplate, 
   selectedAspectRatio, 
   setSelectedAspectRatio,
+  customAspectRatio = 1,
+  setCustomAspectRatio,
   panelCount,
+  panelImageMapping,
+  panelTexts,
   handleNext,
   aspectRatioPresets,
   layoutTemplates,
@@ -351,6 +386,17 @@ const CollageLayoutSettings = ({
   onAddStickerFromLibrary,
   onMoveSticker,
   onRemoveSticker,
+  onMovePanel,
+  canAddPanel = false,
+  onAddPanelRequest,
+  onOpenPanelSource,
+  onOpenPanelText,
+  onOpenPanelTransform,
+  onOpenPanelReorder,
+  onRemovePanelRequest,
+  showMobileTabs = true,
+  mobileActiveSetting,
+  onMobileActiveSettingChange,
 }) => {
   // State for scroll indicators
   const [aspectLeftScroll, setAspectLeftScroll] = useState(false);
@@ -361,10 +407,14 @@ const CollageLayoutSettings = ({
   const [borderRightScroll, setBorderRightScroll] = useState(false);
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
-  const [activeMobileSetting, setActiveMobileSetting] = useState('aspect-ratio');
+  const [uncontrolledActiveMobileSetting, setUncontrolledActiveMobileSetting] = useState('aspect-ratio');
   const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
   const [stickerError, setStickerError] = useState('');
+  const [customRatioWidthInput, setCustomRatioWidthInput] = useState('100');
+  const [customRatioHeightInput, setCustomRatioHeightInput] = useState('100');
+  const [panelActionAnchorEl, setPanelActionAnchorEl] = useState(null);
+  const [panelActionTarget, setPanelActionTarget] = useState(null);
   
   // Refs for scrollable containers
   const aspectRatioRef = useRef(null);
@@ -378,6 +428,19 @@ const CollageLayoutSettings = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user } = useContext(UserContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
+  const isMobileSettingControlled = mobileActiveSetting !== undefined;
+  const activeMobileSetting = isMobileSettingControlled ? mobileActiveSetting : uncontrolledActiveMobileSetting;
+  const setActiveMobileSetting = (nextSettingIdOrUpdater) => {
+    const nextSettingId = typeof nextSettingIdOrUpdater === 'function'
+      ? nextSettingIdOrUpdater(activeMobileSetting)
+      : nextSettingIdOrUpdater;
+    if (!isMobileSettingControlled) {
+      setUncontrolledActiveMobileSetting(nextSettingId);
+    }
+    if (typeof onMobileActiveSettingChange === 'function') {
+      onMobileActiveSettingChange(nextSettingId);
+    }
+  };
 
   const isSectionVisible = (sectionId) => !isMobile || activeMobileSetting === sectionId;
 
@@ -426,15 +489,28 @@ const CollageLayoutSettings = ({
   
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
+    if (selectedAspectRatio === 'custom') {
+      return normalizeCustomAspectRatio(customAspectRatio, 1);
+    }
     const preset = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
     return preset ? preset.value : 1;
   };
+
+  useEffect(() => {
+    const { width, height } = ratioToEditorInputs(customAspectRatio);
+    setCustomRatioWidthInput(String(width));
+    setCustomRatioHeightInput(String(height));
+  }, [customAspectRatio]);
   
   // Get compatible templates based on panel count
   const getCompatibleTemplates = () => {
     // Use our new getLayoutsForPanelCount function if it exists, otherwise fall back
     if (typeof getLayoutsForPanelCount === 'function') {
-      return getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+      return getLayoutsForPanelCount(
+        panelCount,
+        selectedAspectRatio,
+        selectedAspectRatio === 'custom' ? customAspectRatio : null
+      );
     }
     
     // Legacy fallback (should not be needed once updated)
@@ -446,18 +522,66 @@ const CollageLayoutSettings = ({
   // Handle aspect ratio change
   const handleSelectAspectRatio = (aspectRatioId) => {
     setSelectedAspectRatio(aspectRatioId);
-    
+
+    const currentCompatibleTemplates = (typeof getLayoutsForPanelCount === 'function')
+      ? getLayoutsForPanelCount(
+        panelCount,
+        selectedAspectRatio,
+        selectedAspectRatio === 'custom' ? customAspectRatio : null
+      )
+      : compatibleTemplates;
+    const currentDefaultTemplateId = currentCompatibleTemplates?.[0]?.id || null;
+    const selectedTemplateId = selectedTemplate?.id || null;
+    const isManualNonDefaultSelection = Boolean(
+      selectedTemplateId &&
+      currentDefaultTemplateId &&
+      selectedTemplateId !== currentDefaultTemplateId
+    );
+    const preferredDirection = isManualNonDefaultSelection
+      ? getLayoutDirection(selectedTemplateId)
+      : null;
+
     // Get templates optimized for the new aspect ratio
     const newCompatibleTemplates = (typeof getLayoutsForPanelCount === 'function') 
-      ? getLayoutsForPanelCount(panelCount, aspectRatioId)
+      ? getLayoutsForPanelCount(
+        panelCount,
+        aspectRatioId,
+        aspectRatioId === 'custom' ? customAspectRatio : null
+      )
       : compatibleTemplates;
       
-    // If we have templates, select the most suitable one
+    // If we have templates, select the most suitable one.
+    // Preserve manual non-default stack direction when we can.
     if (newCompatibleTemplates.length > 0) {
-      // The templates should already be prioritized based on aspect ratio suitability
-      // The most suitable template for this aspect ratio will be first in the list
-      setSelectedTemplate(newCompatibleTemplates[0]);
+      let nextTemplate = newCompatibleTemplates[0];
+      if (preferredDirection) {
+        const directionMatchedTemplate = newCompatibleTemplates.find((template) => (
+          getLayoutDirection(template?.id) === preferredDirection
+        ));
+        if (directionMatchedTemplate) {
+          nextTemplate = directionMatchedTemplate;
+        }
+      }
+      setSelectedTemplate(nextTemplate);
     }
+  };
+
+  const applyCustomRatioInputs = () => {
+    const widthValue = Number(customRatioWidthInput);
+    const heightValue = Number(customRatioHeightInput);
+    if (!Number.isFinite(widthValue) || !Number.isFinite(heightValue) || widthValue <= 0 || heightValue <= 0) {
+      const { width, height } = ratioToEditorInputs(customAspectRatio);
+      setCustomRatioWidthInput(String(width));
+      setCustomRatioHeightInput(String(height));
+      return;
+    }
+    const ratio = normalizeCustomAspectRatio(widthValue / heightValue, customAspectRatio);
+    if (typeof setCustomAspectRatio === 'function') {
+      setCustomAspectRatio(ratio);
+    }
+    const normalizedInputs = ratioToEditorInputs(ratio);
+    setCustomRatioWidthInput(String(normalizedInputs.width));
+    setCustomRatioHeightInput(String(normalizedInputs.height));
   };
   
   // Handle template selection
@@ -648,7 +772,7 @@ const CollageLayoutSettings = ({
     setTimeout(() => {
       handleAspectScroll();
     }, 100);
-  }, [selectedAspectRatio, panelCount]);
+  }, [selectedAspectRatio, customAspectRatio, panelCount]);
   
   // Update layout scroll indicators when templates or panel count changes
   useEffect(() => {
@@ -697,14 +821,13 @@ const CollageLayoutSettings = ({
     refreshActiveSectionScroll();
     const timer = setTimeout(refreshActiveSectionScroll, 120);
     return () => clearTimeout(timer);
-  }, [activeMobileSetting, isMobile, panelCount, selectedAspectRatio, borderThickness, borderColor]);
+  }, [activeMobileSetting, isMobile, panelCount, selectedAspectRatio, customAspectRatio, borderThickness, borderColor]);
   
   // Render aspect ratio preview
   const renderAspectRatioPreview = (preset) => {
-    const { value, name } = preset;
-    
-    // Calculate dimensions based on the aspect ratio value
-    const friendlyRatio = getFriendlyAspectRatio(value);
+    const value = preset.id === 'custom'
+      ? normalizeCustomAspectRatio(customAspectRatio, 1)
+      : preset.value;
   
     // Determine box dimensions to exactly match the aspect ratio
     const isPortrait = value < 1;
@@ -758,6 +881,68 @@ const CollageLayoutSettings = ({
   const compatibleTemplates = getCompatibleTemplates();
   const selectedAspectRatioObj = aspectRatioPresets.find(p => p.id === selectedAspectRatio);
   const stickerLayers = Array.isArray(stickers) ? [...stickers].reverse() : [];
+  const panelLayers = Array.from({ length: Math.max(1, Number(panelCount) || 1) }).map((_, panelIndex) => {
+    const panelId = `panel-${panelIndex + 1}`;
+    const imageIndex = panelImageMapping?.[panelId];
+    const mappedImage = (
+      typeof imageIndex === 'number' &&
+      Array.isArray(selectedImages) &&
+      imageIndex >= 0
+    ) ? selectedImages[imageIndex] : null;
+    return {
+      panelId,
+      panelIndex,
+      imageIndex,
+      image: mappedImage,
+    };
+  });
+  const panelActionMenuOpen = Boolean(panelActionAnchorEl);
+  const panelActionLayer = panelActionTarget
+    ? panelLayers.find((layer) => layer.panelId === panelActionTarget.panelId)
+    : null;
+  const panelActionHasImage = Boolean(
+    panelActionLayer &&
+    typeof panelActionLayer.imageIndex === 'number' &&
+    panelActionLayer.image
+  );
+  const panelActionText = panelActionLayer
+    ? panelTexts?.[panelActionLayer.panelId]
+    : null;
+  const panelActionHasCaption = Boolean(
+    panelActionText &&
+    typeof panelActionText.content === 'string' &&
+    panelActionText.content.trim().length > 0
+  );
+
+  const closePanelActionMenu = () => {
+    setPanelActionAnchorEl(null);
+    setPanelActionTarget(null);
+  };
+
+  const openPanelActionMenu = (event, panelLayer) => {
+    event.stopPropagation();
+    setPanelActionAnchorEl(event.currentTarget);
+    setPanelActionTarget({
+      panelId: panelLayer.panelId,
+      panelIndex: panelLayer.panelIndex,
+    });
+  };
+
+  const triggerPanelAction = (callback) => {
+    if (!panelActionTarget || typeof callback !== 'function') {
+      closePanelActionMenu();
+      return;
+    }
+    const { panelId, panelIndex } = panelActionTarget;
+    closePanelActionMenu();
+    callback(panelId, panelIndex);
+  };
+
+  useEffect(() => {
+    if (activeMobileSetting !== 'panels' && panelActionMenuOpen) {
+      closePanelActionMenu();
+    }
+  }, [activeMobileSetting, panelActionMenuOpen]);
   
   // Clean up all the duplicate state variables and use a single savedCustomColor state
   const [savedCustomColor, setSavedCustomColor] = useState(() => {
@@ -782,7 +967,7 @@ const CollageLayoutSettings = ({
   
   return (
     <Box sx={{ pt: isMobile ? 0.5 : 0, pb: isMobile ? 0.25 : 0 }}>
-      {isMobile && (
+      {isMobile && showMobileTabs && (
         <Box sx={{ mb: 1.25 }}>
           <MobileSettingsTypeScroller role="tablist" aria-label="Collage settings categories">
             {MOBILE_SETTING_OPTIONS.map(({ id, label, panelId }, index) => {
@@ -809,6 +994,197 @@ const CollageLayoutSettings = ({
               );
             })}
           </MobileSettingsTypeScroller>
+        </Box>
+      )}
+
+      {isMobile && (
+        <Box
+          id="collage-settings-panel-panels"
+          role="tabpanel"
+          aria-labelledby="collage-settings-tab-panels"
+          hidden={!isSectionVisible('panels')}
+          sx={{
+            display: isSectionVisible('panels') ? 'block' : 'none',
+            mb: 0.75,
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1.25,
+              mb: 1.1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1, minWidth: 180 }}>
+              Rearrange panel order and image placement.
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<Add fontSize="small" />}
+              disabled={!canAddPanel || typeof onAddPanelRequest !== 'function'}
+              onClick={() => typeof onAddPanelRequest === 'function' && onAddPanelRequest()}
+              sx={{
+                borderRadius: 999,
+                textTransform: 'none',
+                fontWeight: 700,
+                minHeight: 34,
+                px: 1.6,
+              }}
+            >
+              Add panel
+            </Button>
+          </Box>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {panelLayers.map((panelLayer) => {
+              const { panelId, panelIndex, imageIndex, image } = panelLayer;
+              const canMoveUp = panelIndex > 0;
+              const canMoveDown = panelIndex < panelLayers.length - 1;
+              const thumbSrc = image?.displayUrl || image?.originalUrl || '';
+              const hasImage = (
+                typeof thumbSrc === 'string' &&
+                thumbSrc.length > 0 &&
+                thumbSrc !== '__START_FROM_SCRATCH__'
+              );
+              const panelLabel = `Panel ${panelIndex + 1}`;
+
+              return (
+                <Box
+                  key={`panel-layer-row-${panelId}`}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    p: 1,
+                    borderRadius: 1.5,
+                    border: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82)}`,
+                    backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.62 : 0.9),
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      bgcolor: alpha(theme.palette.common.black, 0.08),
+                      flexShrink: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {hasImage ? (
+                      <Box
+                        component="img"
+                        src={thumbSrc}
+                        alt={panelLabel}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <GridView sx={{ color: 'text.disabled', fontSize: 20 }} />
+                    )}
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {panelLabel}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {hasImage
+                        ? `Image ${Number(imageIndex) + 1}`
+                        : 'No image assigned'}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.35 }}>
+                    <IconButton
+                      size="small"
+                      onClick={(event) => openPanelActionMenu(event, panelLayer)}
+                      aria-label={`Panel actions for ${panelLabel}`}
+                    >
+                      <MoreHoriz fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveUp && typeof onMovePanel === 'function' && onMovePanel(panelId, 1)}
+                      disabled={!canMoveUp}
+                      aria-label={`Move ${panelLabel} up`}
+                    >
+                      <ArrowUpward fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => canMoveDown && typeof onMovePanel === 'function' && onMovePanel(panelId, -1)}
+                      disabled={!canMoveDown}
+                      aria-label={`Move ${panelLabel} down`}
+                    >
+                      <ArrowDownward fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+
+          <Menu
+            anchorEl={panelActionAnchorEl}
+            open={panelActionMenuOpen}
+            onClose={closePanelActionMenu}
+            PaperProps={{ sx: { minWidth: 200 } }}
+          >
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelTransform)}
+              disabled={!panelActionHasImage || typeof onOpenPanelTransform !== 'function'}
+            >
+              <ListItemIcon>
+                <Crop fontSize="small" />
+              </ListItemIcon>
+              Crop & Zoom
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelReorder)}
+              disabled={!panelActionHasImage || typeof onOpenPanelReorder !== 'function'}
+            >
+              <ListItemIcon>
+                <DragIndicator fontSize="small" />
+              </ListItemIcon>
+              Rearrange
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelSource)}
+              disabled={typeof onOpenPanelSource !== 'function'}
+            >
+              <ListItemIcon>
+                <ImageIcon fontSize="small" />
+              </ListItemIcon>
+              {panelActionHasImage ? 'Replace Image' : 'Add Image'}
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onOpenPanelText)}
+              disabled={!panelActionHasImage || typeof onOpenPanelText !== 'function'}
+            >
+              <ListItemIcon>
+                <Subtitles fontSize="small" />
+              </ListItemIcon>
+              {panelActionHasCaption ? 'Edit caption' : 'Add caption'}
+            </MenuItem>
+            <MenuItem
+              onClick={() => triggerPanelAction(onRemovePanelRequest)}
+              disabled={panelCount <= 1 || typeof onRemovePanelRequest !== 'function'}
+              sx={{ color: 'error.main' }}
+            >
+              <ListItemIcon sx={{ color: 'inherit' }}>
+                <DeleteOutline fontSize="small" />
+              </ListItemIcon>
+              Remove Panel
+            </MenuItem>
+          </Menu>
         </Box>
       )}
     
@@ -892,7 +1268,7 @@ const CollageLayoutSettings = ({
                 {renderAspectRatioPreview(preset)}
                 
                 <Chip
-                  label={getFriendlyAspectRatio(preset.value)}
+                  label={preset.id === 'custom' ? 'Custom' : getFriendlyAspectRatio(preset.value)}
                   size="small"
                   variant="filled"
                   sx={{
@@ -939,6 +1315,60 @@ const CollageLayoutSettings = ({
             isVisible={aspectRightScroll}
           />
         </Box>
+
+        {selectedAspectRatio === 'custom' && (
+          <Box
+            sx={{
+              mt: 1.25,
+              p: 1.25,
+              borderRadius: 1.5,
+              border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.35 : 0.9),
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+              Custom Ratio
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TextField
+                label="Width"
+                type="number"
+                size="small"
+                value={customRatioWidthInput}
+                inputProps={{ min: 0.1, step: 0.1 }}
+                onChange={(event) => setCustomRatioWidthInput(event.target.value)}
+                onBlur={applyCustomRatioInputs}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyCustomRatioInputs();
+                  }
+                }}
+              />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 0.5 }}>:</Typography>
+              <TextField
+                label="Height"
+                type="number"
+                size="small"
+                value={customRatioHeightInput}
+                inputProps={{ min: 0.1, step: 0.1 }}
+                onChange={(event) => setCustomRatioHeightInput(event.target.value)}
+                onBlur={applyCustomRatioInputs}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyCustomRatioInputs();
+                  }
+                }}
+              />
+              <Chip
+                size="small"
+                label={getFriendlyAspectRatio(getAspectRatioValue())}
+                sx={{ ml: 0.5 }}
+              />
+            </Box>
+          </Box>
+        )}
       </Box>
       
       {/* Layout Section - shows compatible layouts based on panel count */}

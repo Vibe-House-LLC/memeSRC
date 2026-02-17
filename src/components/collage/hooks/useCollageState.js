@@ -55,6 +55,11 @@ const normalizeAngleDeg = (value) => {
   if (next <= -180) next += 360;
   return next;
 };
+const normalizeCustomAspectRatio = (value, fallback = 1) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return fallback;
+  return Math.max(0.1, Math.min(10, numericValue));
+};
 
 /**
  * Custom hook to manage collage state
@@ -66,7 +71,7 @@ export const useCollageState = () => {
   const [panelImageMapping, setPanelImageMapping] = useState({});
   // panelTransforms maps: { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
   const [panelTransforms, setPanelTransforms] = useState({});
-  // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number } }
+  // panelTexts maps: { panelId: { content: string, fontSize: number, fontWeight: string, fontFamily: string, color: string, strokeWidth: number, textBoxWidthPercent?: number } }
   const [panelTexts, setPanelTexts] = useState({});
   // stickers are global overlays on the full collage canvas (not inside individual panels)
   const [stickers, setStickers] = useState([]);
@@ -76,7 +81,9 @@ export const useCollageState = () => {
     fontWeight: 400,
     fontFamily: 'Arial',
     color: '#ffffff',
-    strokeWidth: 2
+    strokeWidth: 2,
+    textAlign: 'center',
+    textBoxWidthPercent: 90,
   });
   
   // Auto-save to library is disabled; keep state for legacy props but do not use
@@ -87,6 +94,15 @@ export const useCollageState = () => {
   const savedImageDataUrls = useRef(new Set());
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState('portrait');
+  const [customAspectRatio, setCustomAspectRatioState] = useState(1);
+  const setCustomAspectRatio = useCallback((valueOrUpdater) => {
+    setCustomAspectRatioState((prevValue) => {
+      const nextValue = (typeof valueOrUpdater === 'function')
+        ? valueOrUpdater(prevValue)
+        : valueOrUpdater;
+      return normalizeCustomAspectRatio(nextValue, prevValue);
+    });
+  }, []);
 const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
 const [finalImage, setFinalImage] = useState(null);
 const [isCreatingCollage, setIsCreatingCollage] = useState(false);
@@ -104,7 +120,8 @@ const [borderThickness, setBorderThickness] = useState(() => {
   const prevLayoutValues = useRef({
     panelCount: null,
     selectedAspectRatio: null,
-    selectedTemplate: null
+    selectedTemplate: null,
+    customAspectRatio: null,
   });
 
   // Ref to track previous border thickness for transform adjustment
@@ -143,7 +160,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
   // Initialize template on mount
   useEffect(() => {
     if (DEBUG_MODE) console.log("useCollageState initializing...");
-    const initialTemplates = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+    const initialTemplates = getLayoutsForPanelCount(
+      panelCount,
+      selectedAspectRatio,
+      selectedAspectRatio === 'custom' ? customAspectRatio : null
+    );
     if (initialTemplates.length > 0) {
       if (DEBUG_MODE) console.log("Setting initial template:", initialTemplates[0].id);
       setSelectedTemplate(initialTemplates[0]);
@@ -172,13 +193,19 @@ const [borderThickness, setBorderThickness] = useState(() => {
 
   // Select the most suitable template when panel count or aspect ratio changes
   useEffect(() => {
-    const compatibleTemplates = getLayoutsForPanelCount(panelCount, selectedAspectRatio);
+    const compatibleTemplates = getLayoutsForPanelCount(
+      panelCount,
+      selectedAspectRatio,
+      selectedAspectRatio === 'custom' ? customAspectRatio : null
+    );
     const currentTemplateIsCompatible = selectedTemplate &&
          selectedTemplate.minImages <= panelCount &&
          selectedTemplate.maxImages >= panelCount;
 
     if (DEBUG_MODE) {
-      console.log(`[TEMPLATE DEBUG] Panel count: ${panelCount}, aspect ratio: ${selectedAspectRatio}`);
+      console.log(`[TEMPLATE DEBUG] Panel count: ${panelCount}, aspect ratio: ${selectedAspectRatio}`, {
+        customAspectRatio,
+      });
       console.log(`[TEMPLATE DEBUG] Compatible templates:`, compatibleTemplates.map(t => t.name));
       console.log(`[TEMPLATE DEBUG] Current template:`, selectedTemplate?.name);
       console.log(`[TEMPLATE DEBUG] Current template compatible:`, currentTemplateIsCompatible);
@@ -223,6 +250,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
     const hasChanges = 
       (prev.panelCount !== null && prev.panelCount !== panelCount) ||
       (prev.selectedAspectRatio !== null && prev.selectedAspectRatio !== selectedAspectRatio) ||
+      (
+        prev.customAspectRatio !== null &&
+        selectedAspectRatio === 'custom' &&
+        prev.customAspectRatio !== customAspectRatio
+      ) ||
       (prev.selectedTemplate !== null && prev.selectedTemplate?.id !== selectedTemplate?.id);
 
     // Reset all transforms when layout-related properties change
@@ -239,10 +271,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
     prevLayoutValues.current = {
       panelCount,
       selectedAspectRatio,
-      selectedTemplate
+      selectedTemplate,
+      customAspectRatio,
     };
 
-  }, [panelCount, selectedAspectRatio, selectedTemplate, resetPanelTransforms, resetPanelTexts]);
+  }, [panelCount, selectedAspectRatio, selectedTemplate, customAspectRatio, resetPanelTransforms, resetPanelTexts]);
 
   // Track latest images so we can safely revoke blobs only on unmount
   const latestImagesRef = useRef([]);
@@ -916,6 +949,8 @@ const [borderThickness, setBorderThickness] = useState(() => {
           fontFamily: preferredFont,
           color: lastUsedTextSettings.color,
           strokeWidth: lastUsedTextSettings.strokeWidth,
+          textAlign: lastUsedTextSettings.textAlign || 'center',
+          textBoxWidthPercent: lastUsedTextSettings.textBoxWidthPercent || 90,
           autoAssigned: true, // Mark as auto-assigned from subtitle
           subtitleShowing: imageData.subtitleShowing || false
         };
@@ -960,6 +995,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
         // Clean up texts for panels that no longer exist in the mapping
         const validPanelIds = new Set(Object.keys(panelImageMapping));
         Object.keys(prev).forEach(panelId => {
+          // Preserve non-panel text entries (e.g., top caption metadata)
+          if (parsePanelIndexFromId(panelId) === null) {
+            return;
+          }
           if (!validPanelIds.has(panelId)) {
             delete updated[panelId];
             if (DEBUG_MODE) {
@@ -1044,6 +1083,8 @@ const [borderThickness, setBorderThickness] = useState(() => {
     setSelectedTemplate,
     selectedAspectRatio,
     setSelectedAspectRatio,
+    customAspectRatio,
+    setCustomAspectRatio,
     panelCount,
     setPanelCount,
     finalImage,

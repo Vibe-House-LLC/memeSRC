@@ -13,6 +13,7 @@ import {
   Tooltip, 
   ToggleButtonGroup, 
   ToggleButton, 
+  Menu,
   Dialog, 
   DialogTitle, 
   DialogContent, 
@@ -24,6 +25,10 @@ import {
   FormatBold, 
   FormatItalic, 
   FormatUnderlined,
+  FormatAlignLeft,
+  FormatAlignCenter,
+  FormatAlignRight,
+  FormatColorFill,
   Palette,
   SwapHoriz, 
   SwapVert, 
@@ -58,6 +63,61 @@ const TEXT_COLOR_PRESETS = [
 ];
 
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
+const DEFAULT_FONT_OPTIONS = ['Arial', 'Impact', 'Georgia', 'Verdana', 'Courier New'];
+const VALID_TEXT_ALIGNMENTS = ['left', 'center', 'right'];
+
+const normalizeTextAlign = (value) => (
+  VALID_TEXT_ALIGNMENTS.includes(value) ? value : 'center'
+);
+
+const resolveFontOptions = (fontList, activeFont) => {
+  const sourceList = Array.isArray(fontList)
+    ? fontList
+    : (Array.isArray(fontList?.default) ? fontList.default : []);
+  const unique = new Map();
+
+  [...DEFAULT_FONT_OPTIONS, ...sourceList]
+    .filter((font) => typeof font === 'string' && font.trim().length > 0)
+    .forEach((font) => {
+      const key = font.trim().toLowerCase();
+      if (!unique.has(key)) {
+        unique.set(key, font.trim());
+      }
+    });
+
+  if (typeof activeFont === 'string' && activeFont.trim().length > 0) {
+    const key = activeFont.trim().toLowerCase();
+    if (!unique.has(key)) {
+      unique.set(key, activeFont.trim());
+    }
+  }
+
+  return Array.from(unique.values());
+};
+
+const clampChannel = (value) => Math.max(0, Math.min(255, Math.round(value)));
+
+const toHexColorInput = (value, fallback = '#ffffff') => {
+  if (typeof value !== 'string') return fallback;
+  const color = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+  if (/^#[0-9a-f]{3}$/i.test(color)) {
+    return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`;
+  }
+
+  const rgbaMatch = color.match(/rgba?\(([^)]+)\)/i);
+  if (rgbaMatch) {
+    const parts = rgbaMatch[1].split(',').map((part) => Number(part.trim()));
+    const [r, g, b] = parts;
+    if ([r, g, b].every((part) => Number.isFinite(part))) {
+      const toHex = (channel) => clampChannel(channel).toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+  }
+
+  return fallback;
+};
+
 
 // Horizontal scrollable container for horizontal scrolling sections
 const HorizontalScroller = styled(Box)(({ theme }) => ({
@@ -181,19 +241,48 @@ const CaptionEditor = ({
   onClose,
   rect,
   componentWidth,
+  placeholder = 'Add Caption',
+  allowPositioning = true,
+  clearRemovesEntry = false,
+  showTopCaptionOptions = false,
+  topCaptionDefaultBackgroundColor = '#ffffff',
 }) => {
   const theme = useTheme();
   // Current text color for UI bindings (e.g., toolbar swatch)
   const currentTextColor = panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff';
+  const defaultTextAlign = showTopCaptionOptions
+    ? 'left'
+    : (lastUsedTextSettings.textAlign || 'center');
+  const currentTextAlign = normalizeTextAlign(
+    panelTexts[panelId]?.textAlign || defaultTextAlign
+  );
+  const rawTopCaptionBackgroundColor = panelTexts[panelId]?.backgroundColor;
+  const hasExplicitTopCaptionBackground = (
+    panelTexts[panelId]?.backgroundColorExplicit === true ||
+    (
+      typeof rawTopCaptionBackgroundColor === 'string' &&
+      rawTopCaptionBackgroundColor.trim().length > 0 &&
+      rawTopCaptionBackgroundColor.trim().toLowerCase() !== '#ffffff'
+    )
+  );
+  const currentTopCaptionBackgroundColor = hasExplicitTopCaptionBackground
+    ? (rawTopCaptionBackgroundColor || topCaptionDefaultBackgroundColor || '#ffffff')
+    : (topCaptionDefaultBackgroundColor || '#ffffff');
+  const normalizedTopCaptionBackgroundColor = toHexColorInput(
+    currentTopCaptionBackgroundColor,
+    '#ffffff',
+  );
   // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
   const [activeSlider, setActiveSlider] = useState(null);
   const [positioningOnly, setPositioningOnly] = useState(false);
+  const [alignmentAnchorEl, setAlignmentAnchorEl] = useState(null);
   // Inline toggle between format controls and color selector
   const [showInlineColor, setShowInlineColor] = useState(false);
   
   const textFieldRefs = useRef({});
+  const topCaptionBackgroundPickerRef = useRef(null);
   const selectionCacheRef = useRef({});
   const inlineParseCacheRef = useRef({
     rawValue: '',
@@ -267,12 +356,27 @@ const CaptionEditor = ({
 
   // Check if there's a saved custom color that's different from preset colors
   const hasSavedCustomTextColor = savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor);
+  const requestedFontFamily = panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
+  const fontOptions = React.useMemo(
+    () => resolveFontOptions(fonts, requestedFontFamily),
+    [requestedFontFamily]
+  );
+  const selectedFontFamily = React.useMemo(() => {
+    const normalizedRequested = String(requestedFontFamily || 'Arial').trim().toLowerCase();
+    return fontOptions.find((font) => font.toLowerCase() === normalizedRequested) || requestedFontFamily || 'Arial';
+  }, [fontOptions, requestedFontFamily]);
+  const alignmentIcon = currentTextAlign === 'left'
+    ? <FormatAlignLeft />
+    : currentTextAlign === 'right'
+      ? <FormatAlignRight />
+      : <FormatAlignCenter />;
 
   // Calculate responsive dimensions based on panel size with mobile-friendly minimums
   const minPanelSize = Math.min(rect.width, rect.height);
   const isMobileSize = minPanelSize < 200;
   const sidePadding = Math.max(isMobileSize ? 6 : 4, Math.min(12, rect.width * 0.02));
   const borderRadius = Math.max(3, Math.min(8, minPanelSize * 0.02));
+  const editorVerticalOffset = Math.max(10, Math.min(20, minPanelSize * 0.08));
 
   // Text color scroll handling uses native gestures and indicators
 
@@ -302,6 +406,26 @@ const CaptionEditor = ({
     handleTextChange('color', newColor);
     // Auto-close color picker after choosing a custom color
     setShowInlineColor(false);
+  };
+
+  const handleAlignmentMenuOpen = (event) => {
+    setAlignmentAnchorEl(event.currentTarget);
+  };
+
+  const handleAlignmentMenuClose = () => {
+    setAlignmentAnchorEl(null);
+  };
+
+  const handleAlignmentChange = (alignment) => {
+    handleTextChange('textAlign', normalizeTextAlign(alignment));
+    setAlignmentAnchorEl(null);
+  };
+
+  const handleTopCaptionBackgroundChange = (event) => {
+    const nextColor = event.target.value;
+    if (typeof nextColor === 'string' && nextColor.trim().length > 0) {
+      handleTextChange('backgroundColor', nextColor);
+    }
   };
 
   const handleTextChange = useCallback((property, value, rawValueOverride, parsedOverride) => {
@@ -335,7 +459,21 @@ const CaptionEditor = ({
         };
       }
     } else {
-      updatedText[property] = value;
+      if (value === undefined) {
+        delete updatedText[property];
+      } else {
+        updatedText[property] = value;
+      }
+
+      if (property === 'backgroundColor') {
+        if (typeof value === 'string' && value.trim().length > 0) {
+          updatedText.backgroundColor = value;
+          updatedText.backgroundColorExplicit = true;
+        } else {
+          delete updatedText.backgroundColor;
+          delete updatedText.backgroundColorExplicit;
+        }
+      }
 
       // Normalize font weight to numbers for better canvas compatibility
       if (property === 'fontWeight') {
@@ -399,6 +537,14 @@ const CaptionEditor = ({
       const defaultStrokeWidth = lastUsedTextSettings.strokeWidth || 2;
       return currentValue === undefined || currentValue === defaultStrokeWidth;
     }
+
+    if (propertyName === 'captionSpacingY') {
+      return currentValue === undefined || currentValue === 0;
+    }
+
+    if (propertyName === 'backgroundColor') {
+      return !hasExplicitTopCaptionBackground;
+    }
     
     if (propertyName === 'textPositionX') {
       const defaultPositionX = lastUsedTextSettings.textPositionX || 0;
@@ -416,7 +562,7 @@ const CaptionEditor = ({
     }
     
     return false;
-  }, [panelTexts, panelId, lastUsedTextSettings]);
+  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground]);
 
   // Helper function to get current value for display
   const getCurrentValue = useCallback((propertyName) => {
@@ -445,6 +591,15 @@ const CaptionEditor = ({
     if (propertyName === 'strokeWidth') {
       return currentValue || lastUsedTextSettings.strokeWidth || 2;
     }
+
+    if (propertyName === 'captionSpacingY') {
+      const spacingY = currentValue !== undefined ? currentValue : 0;
+      return Math.round(spacingY * textScaleFactor);
+    }
+
+    if (propertyName === 'backgroundColor') {
+      return currentTopCaptionBackgroundColor;
+    }
     
     if (propertyName === 'textPositionX') {
       return currentValue !== undefined ? currentValue : (lastUsedTextSettings.textPositionX || 0);
@@ -463,7 +618,17 @@ const CaptionEditor = ({
     }
     
     return currentValue || 0;
-  }, [panelTexts, panelId, lastUsedTextSettings, panelRects, calculateOptimalFontSize, textScaleFactor, getParsedText]);
+  }, [
+    panelTexts,
+    panelId,
+    lastUsedTextSettings,
+    panelRects,
+    calculateOptimalFontSize,
+    textScaleFactor,
+    getParsedText,
+    topCaptionDefaultBackgroundColor,
+    currentTopCaptionBackgroundColor,
+  ]);
 
   const syncActiveFormatsFromSelection = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
     const inputEl = textFieldRefs.current[panelId];
@@ -728,6 +893,12 @@ const CaptionEditor = ({
 
   // Focus text field when caption editor opens
   useEffect(() => {
+    if (!allowPositioning && positioningOnly) {
+      setPositioningOnly(false);
+    }
+  }, [allowPositioning, positioningOnly]);
+
+  useEffect(() => {
     let focusTimeout;
     let selectionTimeout;
     let touchTimeout;
@@ -769,14 +940,14 @@ const CaptionEditor = ({
       data-text-editor-container
       sx={{
         position: 'absolute',
-        top: rect.y + rect.height,
+        top: rect.y + rect.height + editorVerticalOffset,
         left: sidePadding,
         width: componentWidth - (sidePadding * 2),
-        zIndex: 20,
+        zIndex: 40,
         backgroundColor: 'rgba(0, 0, 0, 0.97)',
         borderRadius: `${borderRadius}px`,
         border: '1px solid rgba(255, 255, 255, 0.3)',
-        transition: 'all 0.3s ease-in-out',
+        transition: 'none',
         // Prevent double scroll and avoid covering bottom fixed bar
         maxHeight: 'calc(100vh - 140px)',
         overflowY: 'auto',
@@ -795,7 +966,7 @@ const CaptionEditor = ({
                 fullWidth
                 multiline
                 rows={2}
-                placeholder="Add Caption"
+                placeholder={placeholder}
                 value={rawTextValue}
                 onChange={(e) => {
                   const rawValue = e.target.value;
@@ -821,7 +992,10 @@ const CaptionEditor = ({
                     p: 0,
                   },
                   '& .MuiInputBase-input': {
-                    textAlign: 'center',
+                    textAlign: currentTextAlign,
+                  },
+                  '& textarea': {
+                    textAlign: currentTextAlign,
                   },
                   '& .MuiInputBase-inputMultiline': {
                     padding: '8px 12px',
@@ -845,7 +1019,7 @@ const CaptionEditor = ({
                   return result;
                 })()}
                 onChange={(event) => {
-                  const clicked = event?.currentTarget?.value;
+                  const clicked = event?.target?.closest?.('button')?.value || event?.currentTarget?.value;
                   if (clicked === 'bold' || clicked === 'italic' || clicked === 'underline') {
                     applyInlineStyleToggle(clicked === 'underline' ? 'underline' : clicked);
                   } else if (clicked === 'color') {
@@ -880,6 +1054,19 @@ const CaptionEditor = ({
                 <ToggleButton size='small' value="underline" aria-label="underline">
                   <FormatUnderlined />
                 </ToggleButton>
+                <ToggleButton
+                  size='small'
+                  value="alignment"
+                  aria-label="alignment"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAlignmentMenuOpen(e);
+                  }}
+                >
+                  {alignmentIcon}
+                </ToggleButton>
                 {/* Inline color toggle within the group */}
                 <ToggleButton
                   size='small'
@@ -893,11 +1080,11 @@ const CaptionEditor = ({
               </ToggleButtonGroup>
               <FormControl sx={{ flex: 1 }}>
                 <Select
-                  value={panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial'}
+                  value={selectedFontFamily}
                   onChange={(e) => handleTextChange('fontFamily', e.target.value)}
                   sx={{ 
                     color: '#ffffff',
-                    fontFamily: panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial',
+                    fontFamily: selectedFontFamily,
                     height: '42px',
                     '& .MuiSelect-select': {
                       textAlign: 'left',
@@ -928,7 +1115,7 @@ const CaptionEditor = ({
                     }
                   }}
                 >
-                  {fonts.map((font) => (
+                  {fontOptions.map((font) => (
                     <MenuItem 
                       key={font} 
                       value={font}
@@ -1049,6 +1236,40 @@ const CaptionEditor = ({
                 </Box>
               )}
               </Box>
+              <Menu
+                anchorEl={alignmentAnchorEl}
+                open={Boolean(alignmentAnchorEl)}
+                onClose={handleAlignmentMenuClose}
+                PaperProps={{
+                  sx: {
+                    bgcolor: 'rgba(0, 0, 0, 0.96)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                  },
+                }}
+              >
+                <MenuItem
+                  selected={currentTextAlign === 'left'}
+                  onClick={() => handleAlignmentChange('left')}
+                >
+                  <FormatAlignLeft sx={{ mr: 1 }} />
+                  Left
+                </MenuItem>
+                <MenuItem
+                  selected={currentTextAlign === 'center'}
+                  onClick={() => handleAlignmentChange('center')}
+                >
+                  <FormatAlignCenter sx={{ mr: 1 }} />
+                  Center
+                </MenuItem>
+                <MenuItem
+                  selected={currentTextAlign === 'right'}
+                  onClick={() => handleAlignmentChange('right')}
+                >
+                  <FormatAlignRight sx={{ mr: 1 }} />
+                  Right
+                </MenuItem>
+              </Menu>
             </>
           )}
 
@@ -1127,8 +1348,123 @@ const CaptionEditor = ({
             </Box>
             )}
 
+            {showTopCaptionOptions && !positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+              <Tooltip title="Top Caption Y Spacing" placement="left">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                  <SwapVert sx={{ color: '#ffffff' }} />
+                </Box>
+              </Tooltip>
+              <Slider
+                value={Math.round((panelTexts[panelId]?.captionSpacingY ?? 0) * textScaleFactor)}
+                onChange={(e, value) => {
+                  if (e.type === 'mousedown') {
+                    return;
+                  }
+                  const baseSpacingY = Number(value) / textScaleFactor;
+                  handleTextChange('captionSpacingY', Math.max(0, baseSpacingY));
+                }}
+                onMouseDown={() => handleSliderMouseDown('captionSpacingY')}
+                onMouseUp={handleSliderMouseUp}
+                onTouchStart={() => handleSliderMouseDown('captionSpacingY')}
+                onTouchEnd={handleSliderMouseUp}
+                min={0}
+                max={Math.round(100 * textScaleFactor)}
+                step={1}
+                sx={{
+                  flex: 1,
+                  color: '#ffffff',
+                  mx: 1,
+                }}
+              />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                {activeSlider === `${panelId}-captionSpacingY` ? (
+                  <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
+                    {getCurrentValue('captionSpacingY')}
+                  </Typography>
+                ) : (
+                  <IconButton
+                    size="small"
+                    onClick={() => handleResetClick('format', 'captionSpacingY')}
+                    disabled={isValueAtDefault('captionSpacingY')}
+                    sx={{
+                      color: '#ffffff',
+                      p: 0.5,
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                      '&.Mui-disabled': {
+                        color: 'rgba(255, 255, 255, 0.3)',
+                      }
+                    }}
+                  >
+                    <Restore fontSize="small" />
+                  </IconButton>
+                )}
+              </Box>
+            </Box>
+            )}
+
+            {showTopCaptionOptions && !positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+              <Tooltip title="Top Caption Background" placement="left">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                  <FormatColorFill sx={{ color: '#ffffff' }} />
+                </Box>
+              </Tooltip>
+              <Box sx={{ flex: 1, mx: 1, display: 'flex', alignItems: 'center', minHeight: 40 }}>
+                <Button
+                  fullWidth
+                  onClick={() => topCaptionBackgroundPickerRef.current?.click()}
+                  sx={{
+                    height: 34,
+                    color: isDarkColor(normalizedTopCaptionBackgroundColor) ? '#ffffff' : '#111111',
+                    backgroundColor: currentTopCaptionBackgroundColor,
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    textTransform: 'none',
+                    justifyContent: 'flex-start',
+                    px: 1.25,
+                    fontWeight: 700,
+                    '&:hover': {
+                      backgroundColor: currentTopCaptionBackgroundColor,
+                      filter: 'brightness(0.95)',
+                    },
+                  }}
+                >
+                  {currentTopCaptionBackgroundColor}
+                </Button>
+                <input
+                  type="color"
+                  ref={topCaptionBackgroundPickerRef}
+                  value={normalizedTopCaptionBackgroundColor}
+                  onChange={handleTopCaptionBackgroundChange}
+                  style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                <IconButton
+                  size="small"
+                  onClick={() => handleResetClick('format', 'backgroundColor')}
+                  disabled={isValueAtDefault('backgroundColor')}
+                  sx={{
+                    color: '#ffffff',
+                    p: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                    '&.Mui-disabled': {
+                      color: 'rgba(255, 255, 255, 0.3)',
+                    }
+                  }}
+                >
+                  <Restore fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+            )}
+
             {/* Placement controls (shown only in positioning mode) */}
-            {positioningOnly && (
+            {allowPositioning && positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Vertical Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1197,7 +1533,7 @@ const CaptionEditor = ({
             </Box>
             )}
 
-            {positioningOnly && (
+            {allowPositioning && positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
               <Tooltip title="Horizontal Position" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1254,7 +1590,7 @@ const CaptionEditor = ({
             </Box>
             )}
 
-            {positioningOnly && (
+            {allowPositioning && positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Tooltip title="Rotation" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1322,23 +1658,25 @@ const CaptionEditor = ({
         {/* Actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Position toggle on the left */}
-            <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
-              <IconButton
-                aria-label="Toggle positioning"
-                onClick={() => setPositioningOnly(v => !v)}
-                sx={{
-                  width: 40,
-                  height: 40,
-                  color: positioningOnly ? '#111' : '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  borderRadius: 1,
-                  bgcolor: positioningOnly ? '#fff' : 'transparent',
-                  '&:hover': { bgcolor: positioningOnly ? '#f0f0f0' : 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
-                }}
-              >
-                <ControlCamera fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            {allowPositioning && (
+              <Tooltip title={positioningOnly ? 'Show formatting controls' : 'Show positioning controls'} placement="top">
+                <IconButton
+                  aria-label="Toggle positioning"
+                  onClick={() => setPositioningOnly(v => !v)}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    color: positioningOnly ? '#111' : '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    borderRadius: 1,
+                    bgcolor: positioningOnly ? '#fff' : 'transparent',
+                    '&:hover': { bgcolor: positioningOnly ? '#f0f0f0' : 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.6)' },
+                  }}
+                >
+                  <ControlCamera fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
 
             {/* Done fills remaining space */}
             <Button
@@ -1362,7 +1700,11 @@ const CaptionEditor = ({
               onClick={() => {
                 const currentText = panelTexts[panelId] || {};
                 if (updatePanelText) {
-                  updatePanelText(panelId, { ...currentText, content: '', rawContent: '' });
+                  if (clearRemovesEntry) {
+                    updatePanelText(panelId, {}, { replace: true });
+                  } else {
+                    updatePanelText(panelId, { ...currentText, content: '', rawContent: '' });
+                  }
                 }
                 if (typeof onClose === 'function') onClose();
               }}
@@ -1438,6 +1780,11 @@ CaptionEditor.propTypes = {
   onClose: PropTypes.func.isRequired,
   rect: PropTypes.object,
   componentWidth: PropTypes.number,
+  placeholder: PropTypes.string,
+  allowPositioning: PropTypes.bool,
+  clearRemovesEntry: PropTypes.bool,
+  showTopCaptionOptions: PropTypes.bool,
+  topCaptionDefaultBackgroundColor: PropTypes.string,
 };
 
 export default CaptionEditor;

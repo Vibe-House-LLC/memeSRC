@@ -108,16 +108,121 @@ export const recommendedLayouts = {
   5: ['5-rows', 'featured-top-with-4-below', '5-columns']
 };
 
+const VERTICAL_LAYOUT_IDS = new Set([
+  'split-vertical',
+  'top-tall-bottom-short',
+  'top-short-bottom-tall',
+  'wide-top-narrow-bottom',
+  'wide-bottom-narrow-top',
+  'tall-75-25-split',
+  'two-thirds-one-third-v',
+  'one-third-two-thirds-v',
+  '3-rows',
+  'main-with-two-bottom',
+  'center-feature-tall',
+  'two-and-one-tall',
+  'two-and-one-square',
+  '4-rows',
+  'big-and-3-bottom',
+  'top-feature-with-3-bottom',
+  '5-rows',
+  'featured-top-with-4-below',
+  'featured-bottom-with-4-top',
+  'vertical-asymmetric-5',
+  'tall-mosaic',
+]);
+
+const HORIZONTAL_LAYOUT_IDS = new Set([
+  'split-horizontal',
+  'wide-left-narrow-right',
+  'narrow-left-wide-right',
+  'left-wide-right-narrow',
+  'left-narrow-right-wide',
+  'wide-75-25-split',
+  'two-thirds-one-third-h',
+  'one-third-two-thirds-h',
+  '3-columns',
+  'main-with-two-right',
+  'center-feature-wide',
+  'side-stack-wide',
+  'triptych',
+  '4-columns',
+  'big-and-3-right',
+  'left-feature-with-3-right',
+  '5-columns',
+  'featured-left-with-4-right',
+  'featured-left-with-grid',
+  'wide-mosaic',
+  'asymmetric-5',
+]);
+
+export const getLayoutDirection = (layoutId) => {
+  if (!layoutId) return null;
+  if (VERTICAL_LAYOUT_IDS.has(layoutId)) return 'vertical';
+  if (HORIZONTAL_LAYOUT_IDS.has(layoutId)) return 'horizontal';
+  return null;
+};
+
+const getPreferredDefaultLayoutId = (panelCount, category) => {
+  const count = Math.max(1, Math.min(Number(panelCount) || 1, 5));
+  if (count === 1) return 'single-panel';
+
+  if (category === 'wide') {
+    const horizontalDefaults = {
+      2: 'split-horizontal',
+      3: '3-columns',
+      4: '4-columns',
+      5: '5-columns',
+    };
+    return horizontalDefaults[count] || null;
+  }
+
+  const verticalDefaults = {
+    2: 'split-vertical',
+    3: '3-rows',
+    4: '4-rows',
+    5: '5-rows',
+  };
+  return verticalDefaults[count] || null;
+};
+
 /**
  * Gets layout templates based on panel count and aspect ratio
  */
-export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') => {
+export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square', customAspectRatioValue = null) => {
   // Ensure panel count is in the supported range (1-5)
   const normalizedPanelCount = Number.isFinite(panelCount) ? panelCount : 1;
   const adjustedPanelCount = Math.max(1, Math.min(normalizedPanelCount, 5));
   
-  const category = getAspectRatioCategory(aspectRatioId);
+  const category = getAspectRatioCategory(aspectRatioId, customAspectRatioValue);
   const layouts = layoutDefinitions[adjustedPanelCount][category] || [];
+  const preferredDefaultLayoutId = getPreferredDefaultLayoutId(adjustedPanelCount, category);
+  const categoryRecommendedLayouts = {
+    wide: {
+      2: ['split-horizontal', 'wide-left-narrow-right', 'split-vertical'],
+      3: ['3-columns', 'main-with-two-bottom', '3-rows'],
+      4: ['4-columns', 'grid-2x2', 'big-and-3-bottom'],
+      5: ['5-columns', 'featured-top-with-4-below', '5-rows'],
+    },
+    tall: {
+      2: ['split-vertical', 'top-tall-bottom-short', 'split-horizontal'],
+      3: ['3-rows', 'main-with-two-right', '3-columns'],
+      4: ['4-rows', 'big-and-3-right', 'grid-2x2'],
+      5: ['5-rows', 'featured-left-with-4-right', 'featured-bottom-with-4-top'],
+    },
+    square: {
+      2: ['split-vertical', 'split-horizontal', 'two-thirds-one-third-v'],
+      3: ['3-rows', 'main-with-two-bottom', '3-columns'],
+      4: ['4-rows', 'grid-2x2', 'big-and-3-bottom'],
+      5: ['5-rows', 'featured-top-with-4-below', '5-columns'],
+    },
+  };
+  const recommendedForCategory = (
+    categoryRecommendedLayouts[category]?.[adjustedPanelCount]
+    || recommendedLayouts[adjustedPanelCount]
+    || []
+  );
+  const recommendedRankMap = new Map(recommendedForCategory.map((layoutId, index) => [layoutId, index]));
   
   // Convert layouts to the full template format
   const mappedLayouts = layouts.map(layout => ({
@@ -128,7 +233,7 @@ export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') =>
     minImages: layout.panels,
     maxImages: layout.panels,
     style: layoutStyleMapping[layout.id] || 'grid',
-    recommended: recommendedLayouts[adjustedPanelCount]?.includes(layout.id) || false,
+    recommended: recommendedRankMap.has(layout.id),
     // Add properties for panel aspect ratios and equality
     hasTallPanels: layout.hasTallPanels || false,
     hasWidePanels: layout.hasWidePanels || true, // Default to wide panels
@@ -139,27 +244,28 @@ export const getLayoutsForPanelCount = (panelCount, aspectRatioId = 'square') =>
       return renderLayoutGrid(layoutConfig, theme, imageCount || layout.panels);
     }
   }));
-  
-  // Update recommended layouts for each panel count based on preference for tall/square and wide panel ratios
-  if (category === 'portrait' || category === 'square') {
-    if (adjustedPanelCount === 3) {
-      recommendedLayouts[3] = ['3-rows', 'main-with-two-bottom', '3-columns']; 
-    } else if (adjustedPanelCount === 4) {
-      recommendedLayouts[4] = ['grid-2x2', 'big-and-3-bottom', '4-rows'];
-    } else if (adjustedPanelCount === 5) {
-      recommendedLayouts[5] = ['5-rows', 'featured-top-with-4-below', '5-columns'];
-    }
-  }
-  
+
   // Sort layouts with new priority system:
-  // 1. Recommended status
-  // 2. Panels with wider aspect ratios 
-  // 3. Equal-sized panels as tiebreaker
-  // 4. Style category
+  // 1. Explicit default by aspect/category direction
+  // 2. Category-specific recommendation rank
+  // 3. Panels with wider aspect ratios
+  // 4. Equal-sized panels as tiebreaker
+  // 5. Style category
   return mappedLayouts.sort((a, b) => {
-    // First sort by recommended status
-    if (a.recommended && !b.recommended) return -1;
-    if (!a.recommended && b.recommended) return 1;
+    if (preferredDefaultLayoutId) {
+      if (a.id === preferredDefaultLayoutId && b.id !== preferredDefaultLayoutId) return -1;
+      if (b.id === preferredDefaultLayoutId && a.id !== preferredDefaultLayoutId) return 1;
+    }
+
+    const aRecommendedRank = recommendedRankMap.has(a.id)
+      ? recommendedRankMap.get(a.id)
+      : Number.MAX_SAFE_INTEGER;
+    const bRecommendedRank = recommendedRankMap.has(b.id)
+      ? recommendedRankMap.get(b.id)
+      : Number.MAX_SAFE_INTEGER;
+    if (aRecommendedRank !== bRecommendedRank) {
+      return aRecommendedRank - bRecommendedRank;
+    }
     
     // Then prioritize layouts with wider panel aspect ratios  
     if (a.hasWidePanels && !b.hasWidePanels) return -1;
@@ -186,16 +292,25 @@ export const createAutoLayout = (imageCount, aspectRatio, theme, aspectRatioPres
   const adjustedCount = Math.min(Math.max(normalizedImageCount, 1), 5);
   
   // Find closest aspect ratio preset
-  const closestAspectRatio = aspectRatioPresets.find(preset => preset.value === aspectRatio) || 
-                            aspectRatioPresets.find(preset => preset.id === 'square');
+  const targetRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+  const validPresets = (aspectRatioPresets || []).filter((preset) => (
+    preset?.id !== 'custom' && Number.isFinite(preset?.value) && preset.value > 0
+  ));
+  const closestAspectRatio = validPresets.reduce((closestPreset, preset) => {
+    if (!closestPreset) return preset;
+    const currentDistance = Math.abs(preset.value - targetRatio);
+    const bestDistance = Math.abs(closestPreset.value - targetRatio);
+    return currentDistance < bestDistance ? preset : closestPreset;
+  }, validPresets[0] || null) || aspectRatioPresets.find(preset => preset.id === 'square');
   const aspectRatioId = closestAspectRatio?.id || 'square';
-  const category = getAspectRatioCategory(aspectRatioId);
   
-  // Get the first (highest priority) layout for this panel count and aspect ratio category
-  if (adjustedCount >= 1 && layoutDefinitions[adjustedCount]?.[category]?.length > 0) {
-    const bestLayout = layoutDefinitions[adjustedCount][category][0];
-    const layoutConfig = bestLayout.getLayoutConfig();
-    return renderLayoutGrid(layoutConfig, theme, imageCount);
+  const rankedLayouts = getLayoutsForPanelCount(
+    adjustedCount,
+    aspectRatioId,
+    aspectRatioId === 'custom' ? targetRatio : null
+  );
+  if (rankedLayouts.length > 0) {
+    return rankedLayouts[0].renderPreview(targetRatio, theme, imageCount);
   }
   
   // Fallback to basic grid for unexpected panel counts (should never happen with our constraints)

@@ -11,9 +11,23 @@ export const MAX_COLLAGE_IMAGES = 5;
 const createPanelIds = (panelCount: number): string[] =>
   Array.from({ length: Math.max(1, panelCount) }, (_, idx) => `panel-${idx + 1}`);
 
-const chooseTemplateId = (panelCount: number, aspectRatio: AspectRatio = 'portrait'): string | null => {
+const normalizeCustomAspectRatio = (value: unknown): number | undefined => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return undefined;
+  return Math.max(0.1, Math.min(10, numericValue));
+};
+
+const chooseTemplateId = (
+  panelCount: number,
+  aspectRatio: AspectRatio = 'portrait',
+  customAspectRatio?: number
+): string | null => {
   try {
-    const templates = getLayoutsForPanelCount(Math.max(1, panelCount || 1), aspectRatio as string);
+    const templates = getLayoutsForPanelCount(
+      Math.max(1, panelCount || 1),
+      aspectRatio as string,
+      aspectRatio === 'custom' ? customAspectRatio : undefined
+    );
     return templates?.[0]?.id || null;
   } catch (_) {
     return null;
@@ -23,11 +37,16 @@ const chooseTemplateId = (panelCount: number, aspectRatio: AspectRatio = 'portra
 const isTemplateIdCompatible = (
   templateId: string | null | undefined,
   panelCount: number,
-  aspectRatio: AspectRatio = 'portrait'
+  aspectRatio: AspectRatio = 'portrait',
+  customAspectRatio?: number
 ): boolean => {
   if (!templateId) return false;
   try {
-    const templates = getLayoutsForPanelCount(Math.max(1, panelCount || 1), aspectRatio as string);
+    const templates = getLayoutsForPanelCount(
+      Math.max(1, panelCount || 1),
+      aspectRatio as string,
+      aspectRatio === 'custom' ? customAspectRatio : undefined
+    );
     return templates?.some((template) => template.id === templateId) || false;
   } catch (_) {
     return false;
@@ -91,13 +110,15 @@ export function normalizeSnapshot(
   const panelIds = createPanelIds(desiredPanelCount);
 
   const selectedAspectRatio = (snapshot?.selectedAspectRatio || aspectRatio || 'portrait') as AspectRatio;
+  const customAspectRatio = normalizeCustomAspectRatio(snapshot?.customAspectRatio);
   const selectedTemplateId = isTemplateIdCompatible(
     snapshot?.selectedTemplateId,
     desiredPanelCount,
-    selectedAspectRatio
+    selectedAspectRatio,
+    customAspectRatio
   )
     ? snapshot?.selectedTemplateId || null
-    : chooseTemplateId(desiredPanelCount, selectedAspectRatio);
+    : chooseTemplateId(desiredPanelCount, selectedAspectRatio, customAspectRatio);
 
   return {
     version: snapshot?.version || 1,
@@ -108,6 +129,7 @@ export function normalizeSnapshot(
     stickers: cleanStickerLayers(snapshot?.stickers),
     selectedTemplateId: selectedTemplateId || null,
     selectedAspectRatio,
+    customAspectRatio,
     panelCount: desiredPanelCount,
     borderThickness: snapshot?.borderThickness ?? 'medium',
     borderColor: snapshot?.borderColor ?? '#FFFFFF',
@@ -157,10 +179,11 @@ export function appendImageToSnapshot(
   const selectedTemplateId = isTemplateIdCompatible(
     base.selectedTemplateId,
     desiredPanelCount,
-    base.selectedAspectRatio
+    base.selectedAspectRatio,
+    base.customAspectRatio
   )
     ? base.selectedTemplateId || null
-    : chooseTemplateId(desiredPanelCount, base.selectedAspectRatio);
+    : chooseTemplateId(desiredPanelCount, base.selectedAspectRatio, base.customAspectRatio);
 
   const panelTexts: Record<string, any> = { ...(base.panelTexts || {}) };
   if (image.subtitle && image.subtitleShowing) {
@@ -202,7 +225,7 @@ export function replaceImageInSnapshot(
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
 
   const selectedTemplateId =
-    base.selectedTemplateId || chooseTemplateId(base.panelCount, base.selectedAspectRatio);
+    base.selectedTemplateId || chooseTemplateId(base.panelCount, base.selectedAspectRatio, base.customAspectRatio);
 
   const panelTexts: Record<string, any> = { ...(base.panelTexts || {}) };
   const newSubtitle = image.subtitle && image.subtitleShowing ? String(image.subtitle) : null;

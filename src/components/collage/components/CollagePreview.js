@@ -7,10 +7,12 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  IconButton,
   Typography,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import PhotoLibraryRoundedIcon from '@mui/icons-material/PhotoLibraryRounded';
 import UploadRoundedIcon from '@mui/icons-material/UploadRounded';
@@ -37,7 +39,11 @@ const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
  * @param {string} selectedAspectRatio - The ID of the selected aspect ratio
  * @returns {number} The aspect ratio value
  */
-const getAspectRatioValue = (selectedAspectRatio) => {
+const getAspectRatioValue = (selectedAspectRatio, customAspectRatio) => {
+  if (selectedAspectRatio === 'custom') {
+    const parsedCustomRatio = Number(customAspectRatio);
+    return Number.isFinite(parsedCustomRatio) && parsedCustomRatio > 0 ? parsedCustomRatio : 1;
+  }
   const aspectRatioPreset = aspectRatioPresets.find(preset => preset.id === selectedAspectRatio);
   return aspectRatioPreset ? aspectRatioPreset.value : 1; // Default to 1 (square) if not found
 };
@@ -50,6 +56,8 @@ const CollagePreview = ({
   canvasResetKey = 0,
   selectedTemplate,
   selectedAspectRatio,
+  customAspectRatio = 1,
+  isSingleImageAutoCustomAspect = false,
   panelCount,
   selectedImages,
   addMultipleImages,
@@ -58,6 +66,12 @@ const CollagePreview = ({
   panelImageMapping,
   panelAutoOpenRequest,
   onPanelAutoOpenHandled,
+  panelTextAutoOpenRequest,
+  onPanelTextAutoOpenHandled,
+  panelTransformAutoOpenRequest,
+  onPanelTransformAutoOpenHandled,
+  panelReorderAutoOpenRequest,
+  onPanelReorderAutoOpenHandled,
   onRemovePanelRequest,
   borderThickness = 0,
   borderColor = '#000000',
@@ -88,6 +102,7 @@ const CollagePreview = ({
   allowHydrationTransformCarry = false,
 }) => {
   const fileInputRef = useRef(null);
+  const previewRootRef = useRef(null);
   const { user, shows } = useContext(UserContext);
   const searchDetailsV2 = useContext(V2SearchContext);
   const isAdmin = user?.['cognito:groups']?.includes('admins');
@@ -105,6 +120,7 @@ const CollagePreview = ({
   const [activePanelIndex, setActivePanelIndex] = useState(null);
   const [activePanelId, setActivePanelId] = useState(null);
   const [isSourceSelectorOpen, setIsSourceSelectorOpen] = useState(false);
+  const [sourceSelectorAnchorPosition, setSourceSelectorAnchorPosition] = useState(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchSelectionBusy, setSearchSelectionBusy] = useState(false);
@@ -156,7 +172,7 @@ const CollagePreview = ({
 
 
   // Get the aspect ratio value
-  const aspectRatioValue = getAspectRatioValue(selectedAspectRatio);
+  const aspectRatioValue = getAspectRatioValue(selectedAspectRatio, customAspectRatio);
 
   const clearActivePanelSelection = () => {
     if (captionDecisionResolveRef.current) {
@@ -169,6 +185,7 @@ const CollagePreview = ({
     setActiveExistingImageIndex(null);
     setActivePanelIndex(null);
     setActivePanelId(null);
+    setSourceSelectorAnchorPosition(null);
   };
 
   const closeCaptionDecision = (shouldUpdateCaption = false) => {
@@ -199,21 +216,52 @@ const CollagePreview = ({
     }
   }, [selectedTemplate]);
 
+  const normalizeAnchorPosition = useCallback((candidate) => {
+    if (!candidate || typeof candidate !== 'object') return null;
+    const left = Number(candidate.left);
+    const top = Number(candidate.top);
+    if (!Number.isFinite(left) || !Number.isFinite(top)) return null;
+    return {
+      left: Math.round(left),
+      top: Math.round(top),
+    };
+  }, []);
+
+  const getFallbackSourceAnchorPosition = useCallback(() => {
+    const rootRect = previewRootRef.current?.getBoundingClientRect?.();
+    if (rootRect) {
+      return {
+        left: Math.round(rootRect.left + (rootRect.width / 2)),
+        top: Math.round(rootRect.top + Math.min(rootRect.height * 0.35, 240)),
+      };
+    }
+    if (typeof window !== 'undefined') {
+      return {
+        left: Math.round(window.innerWidth / 2),
+        top: Math.round(window.innerHeight / 2),
+      };
+    }
+    return { left: 0, top: 0 };
+  }, []);
+
   const openSourceSelectorForActivePanel = useCallback(() => {
     if (hasLibraryAccess) {
       setIsLibraryOpen(false);
       setIsSearchModalOpen(false);
+      setSourceSelectorAnchorPosition((prev) => prev || getFallbackSourceAnchorPosition());
       setIsSourceSelectorOpen(true);
       return;
     }
     fileInputRef.current?.click();
-  }, [hasLibraryAccess]);
+  }, [hasLibraryAccess, getFallbackSourceAnchorPosition]);
 
   // Handle panel click - pro/admin users choose between Library and memeSRC search, others use file picker fallback
-  const handlePanelClick = (index, panelId) => {
+  const handlePanelClick = (index, panelId, panelMeta = null) => {
     debugLog(`Panel clicked: index=${index}, panelId=${panelId}`);
     setActivePanelIndex(index);
     setActivePanelId(panelId);
+    const requestedAnchor = normalizeAnchorPosition(panelMeta?.anchorPosition);
+    setSourceSelectorAnchorPosition(requestedAnchor);
 
     // Determine if the clicked panel currently has an assigned image
     const imageIndex = panelImageMapping?.[panelId];
@@ -829,6 +877,7 @@ const CollagePreview = ({
   const handleChooseSearchSource = () => {
     if (searchSelectionBusy) return;
     setIsSourceSelectorOpen(false);
+    setSourceSelectorAnchorPosition(null);
     setIsLibraryOpen(false);
     setIsSearchModalOpen(true);
   };
@@ -836,6 +885,7 @@ const CollagePreview = ({
   const handleChooseLibrarySource = () => {
     if (searchSelectionBusy) return;
     setIsSourceSelectorOpen(false);
+    setSourceSelectorAnchorPosition(null);
     setIsSearchModalOpen(false);
     setIsLibraryOpen(true);
   };
@@ -843,6 +893,7 @@ const CollagePreview = ({
   const handleChooseDeviceSource = () => {
     if (searchSelectionBusy) return;
     setIsSourceSelectorOpen(false);
+    setSourceSelectorAnchorPosition(null);
     setIsLibraryOpen(false);
     setIsSearchModalOpen(false);
     if (typeof requestAnimationFrame === 'function') {
@@ -878,7 +929,7 @@ const CollagePreview = ({
       Icon: SearchRoundedIcon,
       onClick: handleChooseSearchSource,
       accent: '#91b4ff',
-      tint: 'rgba(148, 163, 184, 0.07)',
+      description: 'Find a frame by quote or scene',
     },
     {
       id: 'library',
@@ -886,7 +937,7 @@ const CollagePreview = ({
       Icon: PhotoLibraryRoundedIcon,
       onClick: handleChooseLibrarySource,
       accent: '#8bd5c9',
-      tint: 'rgba(148, 163, 184, 0.07)',
+      description: 'Use one of your saved images',
     },
     {
       id: 'upload',
@@ -894,18 +945,20 @@ const CollagePreview = ({
       Icon: UploadRoundedIcon,
       onClick: handleChooseDeviceSource,
       accent: '#e8c18d',
-      tint: 'rgba(148, 163, 184, 0.07)',
+      description: 'Pick a new file from this device',
     },
   ];
+  const resolvedSourceAnchorPosition = sourceSelectorAnchorPosition || getFallbackSourceAnchorPosition();
 
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box ref={previewRootRef} sx={{ position: 'relative' }}>
       <CanvasCollagePreview
         key={`canvas-preview-${canvasResetKey}`}
         selectedTemplate={selectedTemplate}
         selectedAspectRatio={selectedAspectRatio}
         panelCount={panelCount}
+        isSingleImageAutoCustomAspect={isSingleImageAutoCustomAspect}
         images={selectedImages}
         onPanelClick={handlePanelClick}
         onRemovePanel={onRemovePanelRequest}
@@ -929,6 +982,12 @@ const CollagePreview = ({
         removeSticker={removeSticker}
         lastUsedTextSettings={lastUsedTextSettings}
         onCaptionEditorVisibleChange={onCaptionEditorVisibleChange}
+        panelTextAutoOpenRequest={panelTextAutoOpenRequest}
+        onPanelTextAutoOpenHandled={onPanelTextAutoOpenHandled}
+        panelTransformAutoOpenRequest={panelTransformAutoOpenRequest}
+        onPanelTransformAutoOpenHandled={onPanelTransformAutoOpenHandled}
+        panelReorderAutoOpenRequest={panelReorderAutoOpenRequest}
+        onPanelReorderAutoOpenHandled={onPanelReorderAutoOpenHandled}
         isGeneratingCollage={isCreatingCollage}
         // Render tracking for autosave thumbnails
         renderSig={renderSig}
@@ -953,117 +1012,57 @@ const CollagePreview = ({
 
       {/* Source selector for pro/admin users */}
       {hasLibraryAccess && (
-        <Dialog
+        <Menu
           open={isSourceSelectorOpen}
           onClose={handleSourceSelectorClose}
-          fullWidth
-          maxWidth="md"
+          anchorReference="anchorPosition"
+          anchorPosition={resolvedSourceAnchorPosition}
+          disableScrollLock
           PaperProps={{
             sx: {
-              borderRadius: { xs: 3, sm: 4 },
-              mx: { xs: 1.25, sm: 2 },
-              width: 'calc(100% - 20px)',
-              maxWidth: 900,
-              backgroundImage: 'linear-gradient(180deg, #161616 0%, #0b0b0b 100%)',
-              border: '1px solid rgba(148,163,184,0.24)',
+              minWidth: { xs: 232, sm: 260 },
+              borderRadius: 2.5,
+              border: '1px solid rgba(148,163,184,0.28)',
+              background: 'linear-gradient(180deg, rgba(19,19,19,0.98) 0%, rgba(12,12,12,0.98) 100%)',
               color: '#f8fafc',
+              boxShadow: '0 14px 30px rgba(2,6,23,0.46)',
             },
           }}
+          MenuListProps={{
+            sx: { py: 0.75 },
+          }}
         >
-          <DialogTitle sx={{ pr: 6, fontWeight: 800, color: '#f8fafc' }}>
-            Add or replace image
-            <IconButton
-              aria-label="close"
-              onClick={handleSourceSelectorClose}
-              sx={{ position: 'absolute', right: 8, top: 8, color: 'rgba(248,250,252,0.92)' }}
-              disabled={searchSelectionBusy}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={{ pt: 0.5, pb: 2.25 }}>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
-                gap: 1.25,
-              }}
-            >
-              {sourceOptions.map((option) => {
-                const Icon = option.Icon;
-                return (
-                  <Button
-                    key={option.id}
-                    onClick={option.onClick}
-                    disabled={searchSelectionBusy}
-                    sx={{
-                      p: 0,
-                      position: 'relative',
-                      textTransform: 'none',
-                      borderRadius: 2.5,
-                      overflow: 'hidden',
-                      justifyContent: 'stretch',
-                      alignItems: 'stretch',
-                      border: '1px solid rgba(148,163,184,0.2)',
-                      background: 'linear-gradient(180deg, rgba(30,30,30,0.97) 0%, rgba(16,16,16,0.98) 100%)',
-                      color: '#f8fafc',
-                      minHeight: { xs: 88, sm: 96, md: 116 },
-                      boxShadow: '0 8px 18px rgba(2,6,23,0.28)',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        inset: 0,
-                        background: `linear-gradient(120deg, ${option.tint}, rgba(15,23,42,0))`,
-                        pointerEvents: 'none',
-                      },
-                      '&:hover': {
-                        transform: 'translateY(-1px)',
-                        boxShadow: '0 12px 22px rgba(2,6,23,0.38)',
-                        borderColor: 'rgba(148,163,184,0.34)',
-                        background: 'linear-gradient(180deg, rgba(38,38,38,0.98) 0%, rgba(22,22,22,0.98) 100%)',
-                      },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: '100%',
-                        px: 1.5,
-                        py: { xs: 1.5, md: 1.75 },
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.25,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '50%',
-                          flexShrink: 0,
-                          display: 'grid',
-                          placeItems: 'center',
-                          color: option.accent,
-                          bgcolor: 'rgba(2,6,23,0.58)',
-                          border: '1px solid rgba(148,163,184,0.34)',
-                        }}
-                      >
-                        <Icon fontSize="small" />
-                      </Box>
-                      <Box sx={{ minWidth: 0, textAlign: 'left' }}>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ fontWeight: 800, lineHeight: 1.25, fontSize: { xs: '0.95rem', sm: '1rem' } }}
-                        >
-                          {option.title}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Button>
-                );
-              })}
-            </Box>
-          </DialogContent>
-        </Dialog>
+          {sourceOptions.map((option) => {
+            const Icon = option.Icon;
+            return (
+              <MenuItem
+                key={option.id}
+                onClick={option.onClick}
+                disabled={searchSelectionBusy}
+                sx={{
+                  gap: 1,
+                  mx: 0.5,
+                  my: 0.25,
+                  borderRadius: 1.5,
+                  alignItems: 'flex-start',
+                  '&:hover': {
+                    backgroundColor: 'rgba(148,163,184,0.12)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 32, color: option.accent, mt: 0.15 }}>
+                  <Icon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={option.title}
+                  secondary={option.description}
+                  primaryTypographyProps={{ fontWeight: 700, color: '#f8fafc' }}
+                  secondaryTypographyProps={{ fontSize: '0.75rem', color: 'rgba(203,213,225,0.8)' }}
+                />
+              </MenuItem>
+            );
+          })}
+        </Menu>
       )}
 
       {/* My Library selection dialog for frame add/replace */}
@@ -1169,6 +1168,8 @@ const CollagePreview = ({
 CollagePreview.propTypes = {
   selectedTemplate: PropTypes.object,
   selectedAspectRatio: PropTypes.string,
+  customAspectRatio: PropTypes.number,
+  isSingleImageAutoCustomAspect: PropTypes.bool,
   panelCount: PropTypes.number,
   selectedImages: PropTypes.array,
   addMultipleImages: PropTypes.func.isRequired,
@@ -1181,6 +1182,24 @@ CollagePreview.propTypes = {
     panelIndex: PropTypes.number,
   }),
   onPanelAutoOpenHandled: PropTypes.func,
+  panelTextAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTextAutoOpenHandled: PropTypes.func,
+  panelTransformAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelTransformAutoOpenHandled: PropTypes.func,
+  panelReorderAutoOpenRequest: PropTypes.shape({
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    panelId: PropTypes.string,
+    panelIndex: PropTypes.number,
+  }),
+  onPanelReorderAutoOpenHandled: PropTypes.func,
   onRemovePanelRequest: PropTypes.func,
   borderThickness: PropTypes.number,
   borderColor: PropTypes.string,
