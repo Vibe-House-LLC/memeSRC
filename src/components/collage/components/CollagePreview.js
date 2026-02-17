@@ -24,10 +24,17 @@ import { LibraryPickerDialog } from '../../library';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { UserContext } from '../../../UserContext';
-import { resizeImage } from '../../../utils/library/resizeImage';
-import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 import { V2SearchContext } from '../../../contexts/v2-search-context';
 import { parsePanelIndexFromId } from '../utils/panelId';
+import {
+  buildImageObjectFromFile,
+  createBlobUrlTracker,
+  isBlobUrl,
+  normalizeImageFromBlob,
+  revokeImageObjectUrls,
+  toDataUrl,
+  yieldFrames,
+} from '../utils/imagePipeline';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
@@ -154,23 +161,6 @@ const CollagePreview = ({
     }
   }, [onPanelSourceDialogOpenChange]);
   
-  // Helper: revoke blob: URLs to avoid memory leaks
-  const revokeIfBlobUrl = (url) => {
-    try {
-      if (typeof url === 'string' && url.startsWith('blob:') && typeof URL !== 'undefined' && URL.revokeObjectURL) {
-        URL.revokeObjectURL(url);
-      }
-    } catch (_) {
-      // no-op
-    }
-  };
-  const revokeImageObjectUrls = (imageObj) => {
-    if (!imageObj) return;
-    revokeIfBlobUrl(imageObj.originalUrl);
-    revokeIfBlobUrl(imageObj.displayUrl);
-  };
-
-
   // Get the aspect ratio value
   const aspectRatioValue = getAspectRatioValue(selectedAspectRatio, customAspectRatio);
 
@@ -338,14 +328,6 @@ const CollagePreview = ({
     onPanelAutoOpenHandled,
   ]);
 
-  // Helper: convert Blob to data URL
-  const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-
   // Request to edit image for a specific panel
   const handleEditImageRequest = async (index, panelId, meta) => {
     try {
@@ -363,7 +345,7 @@ const CollagePreview = ({
       const getOriginalSrc = async () => {
         let src = imageObj.originalUrl || imageObj.displayUrl;
         if (libKey) {
-          try { const blob = await getFromLibrary(libKey, { level: 'private' }); src = await blobToDataUrl(blob); } catch (_) {}
+          try { const blob = await getFromLibrary(libKey, { level: 'private' }); src = await toDataUrl(blob); } catch (_) {}
         }
         return src;
       };
@@ -468,20 +450,7 @@ const CollagePreview = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || activePanelIndex === null) return;
 
-    // Helper: resize then produce a data URL
-    const toDataUrl = (blob) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    // Track blob: URLs created during this handler so we can revoke on failure
-    const tempBlobUrls = [];
-    const trackBlobUrl = (u) => {
-      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
-      return u;
-    };
-    const isBlobUrl = (value) => typeof value === 'string' && value.startsWith('blob:');
+    const blobUrlTracker = createBlobUrlTracker();
 
     const sanitizeFilename = (value) => String(value || '')
       .replace(/\.[^/.]+$/, '')
@@ -491,53 +460,41 @@ const CollagePreview = ({
       .slice(0, 48);
 
     const getImageObject = async (file, index) => {
-      try {
-        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
-        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
-        const metadata = {
-          source: 'device-upload',
-        };
+      const normalized = await buildImageObjectFromFile(file, {
+        trackBlobUrl: blobUrlTracker.track,
+      });
+      const { originalUrl, displayUrl, uploadBlob } = normalized;
+      const metadata = {
+        source: 'device-upload',
+      };
 
-        if (hasLibraryAccess) {
-          try {
-            const safeBaseName = sanitizeFilename(file?.name) || 'upload';
-            const filename = `${safeBaseName}-${Date.now()}-${index + 1}`;
-            const libraryMetadata = {
-              tags: ['upload'],
-              description: '',
-            };
-            const libraryKey = await saveImageToLibrary(uploadBlob, filename, {
-              level: 'private',
-              metadata: libraryMetadata,
-            });
-            if (libraryKey) {
-              metadata.libraryKey = libraryKey;
-            }
-          } catch (libraryError) {
-            console.warn('Failed to save uploaded device image to library', libraryError);
+      if (hasLibraryAccess && uploadBlob) {
+        try {
+          const safeBaseName = sanitizeFilename(file?.name) || 'upload';
+          const filename = `${safeBaseName}-${Date.now()}-${index + 1}`;
+          const libraryMetadata = {
+            tags: ['upload'],
+            description: '',
+          };
+          const libraryKey = await saveImageToLibrary(uploadBlob, filename, {
+            level: 'private',
+            metadata: libraryMetadata,
+          });
+          if (libraryKey) {
+            metadata.libraryKey = libraryKey;
           }
+        } catch (libraryError) {
+          console.warn('Failed to save uploaded device image to library', libraryError);
         }
-
-        if (!metadata.libraryKey) {
-          metadata.sourceUrl = isBlobUrl(originalUrl) ? await toDataUrl(uploadBlob) : originalUrl;
-        }
-
-        return { originalUrl, displayUrl, metadata };
-      } catch (_) {
-        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
-        return {
-          originalUrl: dataUrl,
-          displayUrl: dataUrl,
-          metadata: {
-            source: 'device-upload',
-            sourceUrl: dataUrl,
-          },
-        };
       }
+
+      if (!metadata.libraryKey) {
+        const sourceBlob = uploadBlob || file;
+        metadata.sourceUrl = isBlobUrl(originalUrl) ? await toDataUrl(sourceBlob) : originalUrl;
+      }
+
+      return { originalUrl, displayUrl, metadata };
     };
-    const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
 
     // Debug selected template and active panel
     debugLog("File upload for panel:", {
@@ -575,8 +532,7 @@ const CollagePreview = ({
       // Process files sequentially with small yields to keep UI responsive
       const imageObjs = [];
       for (let i = 0; i < files.length; i += 1) {
-        await nextFrame();
-        await nextFrame();
+        await yieldFrames(2);
         // eslint-disable-next-line no-await-in-loop
         const obj = await getImageObject(files[i], i);
         imageObjs.push(obj);
@@ -626,7 +582,9 @@ const CollagePreview = ({
       console.error("Error loading files:", error);
     } finally {
       if (!committed) {
-        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+        blobUrlTracker.revokeAll();
+      } else {
+        blobUrlTracker.clear();
       }
     }
     
@@ -669,20 +627,7 @@ const CollagePreview = ({
     setSearchSelectionBusy(true);
 
     const clickedPanelId = activePanelId || resolvePanelIdFromIndex(activePanelIndex);
-
-    // Normalize selected frame URL to upload/editor-sized image blobs for canvas safety.
-    const toDataUrl = (blob) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    // Track blob: URLs created while normalizing; revoke them if we fail to commit
-    const tempBlobUrls = [];
-    const trackBlobUrl = (u) => {
-      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
-      return u;
-    };
+    const blobUrlTracker = createBlobUrlTracker();
     const normalizeText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
     const selectedSubtitle = normalizeText(selected?.subtitle);
     const subtitleFallback = normalizeText(selected?.metadata?.defaultCaption);
@@ -714,14 +659,11 @@ const CollagePreview = ({
       }
     }
 
-    const buildNormalizedFromBlob = async (blob) => {
-      // Create upload-sized and editor-sized JPEGs from the source blob
-      const uploadBlob = await resizeImage(blob, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-      const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
-      const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-      const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
-      return { originalUrl, displayUrl, sourceBlob: blob };
-    };
+    const buildNormalizedFromBlob = async (blob) => (
+      normalizeImageFromBlob(blob, {
+        trackBlobUrl: blobUrlTracker.track,
+      })
+    );
     const ensureNormalized = async (item) => {
       const srcUrl = item?.originalUrl || item?.displayUrl || item?.url || item;
       const libraryKey = item?.metadata?.libraryKey;
@@ -832,7 +774,9 @@ const CollagePreview = ({
       }
     } finally {
       if (!committed) {
-        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+        blobUrlTracker.revokeAll();
+      } else {
+        blobUrlTracker.clear();
       }
       clearActivePanelSelection();
       setSearchSelectionBusy(false);

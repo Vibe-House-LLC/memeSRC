@@ -25,29 +25,17 @@ import {
 } from '@mui/icons-material';
 import { LibraryPickerDialog } from '../../library';
 import { UserContext } from '../../../UserContext';
-import { resizeImage } from '../../../utils/library/resizeImage';
-import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
+import {
+  buildImageObjectFromFile,
+  createBlobUrlTracker,
+  revokeImageObjectUrls,
+  yieldFrames,
+} from '../utils/imagePipeline';
 
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
 const debugLog = (...args) => { if (DEBUG_MODE) console.log(...args); };
-
-// Helper: revoke blob: URLs to avoid memory leaks
-const revokeIfBlobUrl = (url) => {
-  try {
-    if (typeof url === 'string' && url.startsWith('blob:') && typeof URL !== 'undefined' && URL.revokeObjectURL) {
-      URL.revokeObjectURL(url);
-    }
-  } catch (_) {
-    // no-op
-  }
-};
-const revokeImageObjectUrls = (imageObj) => {
-  if (!imageObj) return;
-  revokeIfBlobUrl(imageObj.originalUrl);
-  revokeIfBlobUrl(imageObj.displayUrl);
-};
 
 // Styled components similar to CollageSettingsStep
 const HorizontalScroller = styled(Box)(({ theme }) => ({
@@ -281,36 +269,17 @@ const BulkUploadSection = ({
       return;
     }
 
-    // Helper: resize then produce a data URL
-    const toDataUrl = (blob) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-    // Track any blob: URLs created during processing so we can clean them up if the operation fails
-    const tempBlobUrls = [];
-    const trackBlobUrl = (u) => {
-      if (typeof u === 'string' && u.startsWith('blob:')) tempBlobUrls.push(u);
-      return u;
-    };
+    const blobUrlTracker = createBlobUrlTracker();
 
     const getImageObject = async (file) => {
-      try {
-        // Create upload-sized JPEG
-        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-        const originalUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(uploadBlob)) : await toDataUrl(uploadBlob);
-        // Create editor-sized JPEG from the upload-sized blob (saves work vs original)
-        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        const displayUrl = (typeof URL !== 'undefined' && URL.createObjectURL) ? trackBlobUrl(URL.createObjectURL(editorBlob)) : await toDataUrl(editorBlob);
-        return { originalUrl, displayUrl };
-      } catch (_) {
-        // Fallback: just return the original as both
-        const dataUrl = (typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob) ? trackBlobUrl(URL.createObjectURL(file)) : await toDataUrl(file);
-        return { originalUrl: dataUrl, displayUrl: dataUrl };
-      }
+      const normalized = await buildImageObjectFromFile(file, {
+        trackBlobUrl: blobUrlTracker.track,
+      });
+      return {
+        originalUrl: normalized.originalUrl,
+        displayUrl: normalized.displayUrl,
+      };
     };
-    const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
 
     debugLog(`Bulk uploading ${files.length} files...`);
 
@@ -321,8 +290,7 @@ const BulkUploadSection = ({
       for (let i = 0; i < files.length; i += 1) {
         // Yield to allow paint/input between heavy operations
         // Two frames helps noticeably on slower devices
-        await nextFrame();
-        await nextFrame();
+        await yieldFrames(2);
         // eslint-disable-next-line no-await-in-loop
         const obj = await getImageObject(files[i]);
         imageObjs.push(obj);
@@ -408,7 +376,9 @@ const BulkUploadSection = ({
       console.error("Error loading files:", error);
     } finally {
       if (!committed) {
-        try { tempBlobUrls.forEach(u => URL.revokeObjectURL(u)); } catch {}
+        blobUrlTracker.revokeAll();
+      } else {
+        blobUrlTracker.clear();
       }
     }
 
@@ -600,35 +570,25 @@ const BulkUploadSection = ({
     const files = Array.from(event.target.files || []);
     if (files.length === 0 || !selectedPanelForAction) return;
 
-    // Helper function to load a single file and return a Promise with the data URL
-    const toDataUrl = (blob) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    const blobUrlTracker = createBlobUrlTracker();
     const getImageObject = async (file) => {
-      try {
-        const uploadBlob = await resizeImage(file, UPLOAD_IMAGE_MAX_DIMENSION_PX);
-        const originalUrl = await toDataUrl(uploadBlob);
-        const editorBlob = await resizeImage(uploadBlob, EDITOR_IMAGE_MAX_DIMENSION_PX);
-        const displayUrl = await toDataUrl(editorBlob);
-        return { originalUrl, displayUrl };
-      } catch (_) {
-        const dataUrl = await toDataUrl(file);
-        return { originalUrl: dataUrl, displayUrl: dataUrl };
-      }
+      const normalized = await buildImageObjectFromFile(file, {
+        trackBlobUrl: blobUrlTracker.track,
+      });
+      return {
+        originalUrl: normalized.originalUrl,
+        displayUrl: normalized.displayUrl,
+      };
     };
-    const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 0)));
 
     debugLog(`Uploading ${files.length} files to specific panel: ${selectedPanelForAction.panelId}`);
 
+    let committed = false;
     try {
       // Process files sequentially with small yields to keep UI responsive
       const imageObjs = [];
       for (let i = 0; i < files.length; i += 1) {
-        await nextFrame();
-        await nextFrame();
+        await yieldFrames(2);
         // eslint-disable-next-line no-await-in-loop
         const obj = await getImageObject(files[i]);
         imageObjs.push(obj);
@@ -657,12 +617,14 @@ const BulkUploadSection = ({
           if (imageObjs.length > 1) {
             await addMultipleImages(imageObjs.slice(1));
           }
+          committed = true;
         } else {
           // Fallback: add all images and update mapping
           await addMultipleImages(imageObjs);
           const newMapping = { ...panelImageMapping };
           newMapping[selectedPanelForAction.panelId] = selectedImages.length;
           updatePanelImageMapping(newMapping);
+          committed = true;
         }
 
         debugLog(`Replaced image in panel ${selectedPanelForAction.panelId}`);
@@ -681,11 +643,18 @@ const BulkUploadSection = ({
 
         // If there are more images, they'll be available for assignment to other panels
         updatePanelImageMapping(newMapping);
+        committed = true;
 
         debugLog(`Assigned image to specific panel. Updated mapping:`, newMapping);
       }
     } catch (error) {
       console.error("Error loading files for specific panel:", error);
+    } finally {
+      if (!committed) {
+        blobUrlTracker.revokeAll();
+      } else {
+        blobUrlTracker.clear();
+      }
     }
 
     // Reset file input

@@ -13,6 +13,17 @@ import {
   detectBorderZonesFromPanelRects,
   findBorderZoneByEdgeId,
 } from '../utils/borderZones';
+import {
+  clampRectRatio,
+  getPanelOrderIndex,
+  isCustomLayoutCompatible as isCustomLayoutCompatibleShared,
+  parseGridToRects,
+} from '../utils/layoutGeometry';
+import {
+  getLineStartX,
+  getTextBlockLeft,
+  normalizeTextAlign as normalizeTextAlignValue,
+} from '../utils/textLayout';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const normalizeAngleDeg = (value) => {
@@ -270,11 +281,6 @@ const normalizeFontWeightValue = (fontWeight) => {
   return String(fontWeight);
 };
 
-const normalizeTextAlignValue = (value) => {
-  if (value === 'left' || value === 'center' || value === 'right') return value;
-  return 'center';
-};
-
 const normalizeTextBoxWidthPercent = (value, fallback = TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
@@ -295,20 +301,6 @@ const resolveTextBoxWidthPercent = (panelText, lastUsedTextSettings) => normaliz
 const resolveTextBoxWidthPx = (panel, panelText, lastUsedTextSettings) => (
   getTextBoxWidthPx(panel?.width, resolveTextBoxWidthPercent(panelText, lastUsedTextSettings))
 );
-
-const getLineStartX = (textAlign, anchorX, lineWidth) => {
-  const align = normalizeTextAlignValue(textAlign);
-  if (align === 'left') return anchorX;
-  if (align === 'right') return anchorX - lineWidth;
-  return anchorX - (lineWidth / 2);
-};
-
-const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
-  const align = normalizeTextAlignValue(textAlign);
-  if (align === 'left') return anchorX;
-  if (align === 'right') return anchorX - blockWidth;
-  return anchorX - (blockWidth / 2);
-};
 
 const areNumbersClose = (a, b, epsilon = 0.2) => Math.abs((a || 0) - (b || 0)) <= epsilon;
 
@@ -563,59 +555,6 @@ const createLayoutConfig = (template, panelCount) => {
   }
 };
 
-/**
- * Helper function to parse CSS grid template areas string
- */
-const parseGridTemplateAreas = (gridTemplateAreas) => {
-  if (!gridTemplateAreas) return {};
-  
-  const areas = {};
-  
-  // Split by quotes to get individual rows
-  // Handle both 'row1' 'row2' and "row1" "row2" formats
-  const cleanString = gridTemplateAreas.trim();
-  let rows;
-  
-  if (cleanString.includes('" "')) {
-    // Format: "main main" "left right"
-    rows = cleanString.split('" "').map(row => 
-      row.replace(/"/g, '').trim().split(/\s+/)
-    );
-  } else if (cleanString.includes("' '")) {
-    // Format: 'main main' 'left right'
-    rows = cleanString.split("' '").map(row => 
-      row.replace(/'/g, '').trim().split(/\s+/)
-    );
-  } else {
-    // Single row or space-separated format
-    rows = [cleanString.replace(/['"]/g, '').trim().split(/\s+/)];
-  }
-  
-  // Find the bounds of each named area
-  rows.forEach((row, rowIndex) => {
-    row.forEach((areaName, colIndex) => {
-      if (areaName !== '.' && areaName !== '') {
-        if (!areas[areaName]) {
-          areas[areaName] = {
-            rowStart: rowIndex,
-            rowEnd: rowIndex,
-            colStart: colIndex,
-            colEnd: colIndex
-          };
-        } else {
-          // Extend the area bounds
-          areas[areaName].rowStart = Math.min(areas[areaName].rowStart, rowIndex);
-          areas[areaName].rowEnd = Math.max(areas[areaName].rowEnd, rowIndex);
-          areas[areaName].colStart = Math.min(areas[areaName].colStart, colIndex);
-          areas[areaName].colEnd = Math.max(areas[areaName].colEnd, colIndex);
-        }
-      }
-    });
-  });
-  
-  return areas;
-};
-
 const quantizeLayoutCoord = (value) => {
   if (!Number.isFinite(value)) return value;
   return Math.round(value / LAYOUT_COORD_QUANTUM_PX) * LAYOUT_COORD_QUANTUM_PX;
@@ -625,18 +564,6 @@ const areQuantizedLayoutCoordsEqual = (a, b) => (
   quantizeLayoutCoord(a) === quantizeLayoutCoord(b)
 );
 
-const getPanelOrderIndex = (panel, fallbackIndex = 0) => {
-  const explicitIndex = Number(panel?.index);
-  if (Number.isFinite(explicitIndex)) return explicitIndex;
-  const panelId = String(panel?.panelId || '');
-  const idMatch = panelId.match(/^panel-(\d+)$/);
-  if (idMatch) {
-    return Math.max(0, parseInt(idMatch[1], 10) - 1);
-  }
-  return fallbackIndex;
-};
-
-const clampRectRatio = (value) => clamp(Number(value), 0, 1);
 const roundRectRatio = (value) => Number(clampRectRatio(value).toFixed(7));
 
 const buildPanelRectLayoutFromRects = (
@@ -730,208 +657,6 @@ const detectBorderZones = (_layoutConfig, containerWidth, containerHeight, borde
       hitPaddingPx: 8,
     },
   });
-};
-
-/**
- * Helper function to parse CSS grid template and convert to panel rectangles
- */
-const parseGridToRects = (layoutConfig, containerWidth, containerHeight, panelCount, borderPixels) => {
-  const rects = [];
-
-  if (Array.isArray(layoutConfig?.panelRects) && layoutConfig.panelRects.length > 0) {
-    const inset = Math.max(0, Number(borderPixels) || 0);
-    const interiorLeft = inset;
-    const interiorTop = inset;
-    const interiorRight = Math.max(interiorLeft + 1, containerWidth - inset);
-    const interiorBottom = Math.max(interiorTop + 1, containerHeight - inset);
-    const interiorWidth = Math.max(1, interiorRight - interiorLeft);
-    const interiorHeight = Math.max(1, interiorBottom - interiorTop);
-
-    const explicitRects = layoutConfig.panelRects
-      .slice(0, Math.max(1, panelCount || 1))
-      .map((panelRect, fallbackIndex) => {
-        const panelId = panelRect?.panelId || `panel-${fallbackIndex + 1}`;
-        const index = getPanelOrderIndex(panelRect, fallbackIndex);
-        const xRatio = clampRectRatio(panelRect?.x);
-        const yRatio = clampRectRatio(panelRect?.y);
-        const widthRatio = clampRectRatio(panelRect?.width);
-        const heightRatio = clampRectRatio(panelRect?.height);
-        const left = interiorLeft + (xRatio * interiorWidth);
-        const top = interiorTop + (yRatio * interiorHeight);
-        const right = clamp(interiorLeft + ((xRatio + widthRatio) * interiorWidth), interiorLeft, interiorRight);
-        const bottom = clamp(interiorTop + ((yRatio + heightRatio) * interiorHeight), interiorTop, interiorBottom);
-        const width = right - left;
-        const height = bottom - top;
-        if (width <= BORDER_ZONE_INTERVAL_EPSILON_PX || height <= BORDER_ZONE_INTERVAL_EPSILON_PX) return null;
-        return {
-          x: left,
-          y: top,
-          width,
-          height,
-          panelId,
-          index,
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.index - b.index);
-
-    if (explicitRects.length > 0) {
-      return explicitRects;
-    }
-  }
-  
-  // Calculate the available space (subtract borders)
-  const totalPadding = borderPixels * 2;
-  const availableWidth = containerWidth - totalPadding;
-  const availableHeight = containerHeight - totalPadding;
-  
-  // Parse grid template columns/rows to get exact dimensions and track sizes
-  let columns = 1;
-  let rows = 1;
-  let columnSizes = [1]; // Default: single column taking full width
-  let rowSizes = [1];    // Default: single row taking full height
-  
-  // Parse columns
-  if (layoutConfig.gridTemplateColumns) {
-    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
-      const repeatMatch = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
-      if (repeatMatch) {
-        columns = parseInt(repeatMatch[1], 10);
-        columnSizes = Array(columns).fill(1); // All equal size
-      }
-    } else {
-      // Parse individual fr units like "2fr 1fr" or "1fr 1fr 1fr"
-      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        columns = frMatches.length;
-        columnSizes = frMatches.map(match => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-  
-  // Parse rows
-  if (layoutConfig.gridTemplateRows) {
-    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
-      const repeatMatch = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
-      if (repeatMatch) {
-        rows = parseInt(repeatMatch[1], 10);
-        rowSizes = Array(rows).fill(1); // All equal size
-      }
-    } else {
-      // Parse individual fr units like "2fr 1fr" or "1fr 1fr 1fr"
-      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        rows = frMatches.length;
-        rowSizes = frMatches.map(match => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-  
-  // Calculate total fractional units
-  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
-  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
-  
-  // Calculate gaps - only between panels, not at edges
-  const horizontalGaps = Math.max(0, columns - 1) * borderPixels;
-  const verticalGaps = Math.max(0, rows - 1) * borderPixels;
-  
-  // Calculate base unit sizes
-  const columnFrUnit = (availableWidth - horizontalGaps) / totalColumnFr;
-  const rowFrUnit = (availableHeight - verticalGaps) / totalRowFr;
-  
-  // Helper function to calculate cumulative position and size for a cell
-  const getCellDimensions = (col, row) => {
-    // Calculate X position: sum of all previous column widths + gaps
-    let x = borderPixels;
-    for (let c = 0; c < col; c += 1) {
-      x += columnSizes[c] * columnFrUnit + borderPixels;
-    }
-    
-    // Calculate Y position: sum of all previous row heights + gaps  
-    let y = borderPixels;
-    for (let r = 0; r < row; r += 1) {
-      y += rowSizes[r] * rowFrUnit + borderPixels;
-    }
-    
-    // Calculate current cell dimensions
-    const width = columnSizes[col] * columnFrUnit;
-    const height = rowSizes[row] * rowFrUnit;
-    
-    return { x, y, width, height };
-  };
-
-  if (layoutConfig.areas && layoutConfig.areas.length > 0 && layoutConfig.gridTemplateAreas) {
-    // Use grid template areas - need to parse the actual grid areas
-    const gridAreas = parseGridTemplateAreas(layoutConfig.gridTemplateAreas);
-    
-    layoutConfig.areas.slice(0, panelCount).forEach((areaName, index) => {
-      const areaInfo = gridAreas[areaName];
-      if (areaInfo) {
-        // Calculate position and size based on grid area bounds
-        let x = borderPixels;
-        let y = borderPixels;
-        let width = 0;
-        let height = 0;
-        
-                 // Calculate X position and width
-         for (let c = 0; c < areaInfo.colStart; c += 1) {
-           x += columnSizes[c] * columnFrUnit + borderPixels;
-         }
-         for (let c = areaInfo.colStart; c <= areaInfo.colEnd; c += 1) {
-           width += columnSizes[c] * columnFrUnit;
-         }
-         // Add gaps between columns within the area
-         if (areaInfo.colEnd > areaInfo.colStart) {
-           width += (areaInfo.colEnd - areaInfo.colStart) * borderPixels;
-         }
-         
-         // Calculate Y position and height
-         for (let r = 0; r < areaInfo.rowStart; r += 1) {
-           y += rowSizes[r] * rowFrUnit + borderPixels;
-         }
-         for (let r = areaInfo.rowStart; r <= areaInfo.rowEnd; r += 1) {
-           height += rowSizes[r] * rowFrUnit;
-         }
-         // Add gaps between rows within the area
-         if (areaInfo.rowEnd > areaInfo.rowStart) {
-           height += (areaInfo.rowEnd - areaInfo.rowStart) * borderPixels;
-         }
-        
-        rects.push({
-          x,
-          y,
-          width,
-          height,
-          panelId: `panel-${index + 1}`,
-          index
-        });
-      }
-    });
-  } else {
-    // Use items array or simple grid
-    for (let i = 0; i < panelCount; i += 1) {
-      const col = i % columns;
-      const row = Math.floor(i / columns);
-      const { x, y, width, height } = getCellDimensions(col, row);
-      
-      rects.push({
-        x,
-        y,
-        width,
-        height,
-        panelId: `panel-${i + 1}`,
-        index: i
-      });
-    }
-  }
-  
-  return rects;
 };
 
 /**
@@ -1193,42 +918,14 @@ const CanvasCollagePreview = ({
     [initialCustomLayout]
   );
   const prevInjectedLayoutSignatureRef = useRef(injectedLayoutSignature);
-  const countGridTracks = useCallback((template) => {
-    if (typeof template !== 'string' || template.trim().length === 0) return 0;
-    const expanded = template.replace(/repeat\((\d+)\s*,\s*([^)]+)\)/gi, (_, count, body) => {
-      const n = Math.max(0, parseInt(count, 10) || 0);
-      if (n === 0) return '';
-      const token = body.trim();
-      return Array.from({ length: n }).map(() => token).join(' ');
-    });
-    return expanded
-      .split(/\s+/)
-      .filter((token) => token.length > 0)
-      .length;
-  }, []);
-  const isCustomLayoutCompatible = useCallback((layout, count) => {
-    try {
-      if (!layout || typeof layout !== 'object') return false;
-      const needed = Math.max(1, count || 1);
-      if (Array.isArray(layout.panelRects)) return layout.panelRects.length >= needed;
-      if (Array.isArray(layout.areas)) return layout.areas.length >= needed;
-      if (Array.isArray(layout.items)) return layout.items.length >= needed;
-      const cols = countGridTracks(layout.gridTemplateColumns);
-      const rows = countGridTracks(layout.gridTemplateRows);
-      if (cols > 0 && rows > 0) {
-        return cols * rows >= needed;
-      }
-      return false;
-    } catch (_) { return false; }
-  }, [countGridTracks]);
   useEffect(() => {
     if (prevLayoutKeyRef.current !== customLayoutKey) {
       // Apply provided layout only if it's compatible; otherwise reset to base
-      const next = isCustomLayoutCompatible(initialCustomLayout, panelCount) ? (initialCustomLayout || null) : null;
+      const next = isCustomLayoutCompatibleShared(initialCustomLayout, panelCount) ? (initialCustomLayout || null) : null;
       setCustomLayoutConfig(next);
       prevLayoutKeyRef.current = customLayoutKey;
     }
-  }, [customLayoutKey, initialCustomLayout, panelCount, isCustomLayoutCompatible]);
+  }, [customLayoutKey, initialCustomLayout, panelCount]);
 
   // If a custom layout is provided after mount (e.g., load sequence), adopt it once
   useEffect(() => {
@@ -1238,10 +935,10 @@ const CanvasCollagePreview = ({
       setCustomLayoutConfig(null);
       return;
     }
-    if (isCustomLayoutCompatible(initialCustomLayout, panelCount)) {
+    if (isCustomLayoutCompatibleShared(initialCustomLayout, panelCount)) {
       setCustomLayoutConfig(initialCustomLayout);
     }
-  }, [injectedLayoutSignature, initialCustomLayout, panelCount, isCustomLayoutCompatible]);
+  }, [injectedLayoutSignature, initialCustomLayout, panelCount]);
 
   // Long-press (press-and-hold) hint state
   const [saveHintOpen, setSaveHintOpen] = useState(false);

@@ -7,6 +7,9 @@
 import { layoutDefinitions } from '../config/layouts';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
+import { parseGridToRects, isCustomLayoutCompatible } from './layoutGeometry';
+import { getLineStartX, getTextBlockLeft, normalizeTextAlign } from './textLayout';
+import { toDataUrl } from './imagePipeline';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const TOP_CAPTION_PANEL_ID = '__top-caption__';
@@ -25,47 +28,6 @@ const TOP_CAPTION_DEFAULTS = {
   captionSpacingY: 0,
   backgroundColor: '#ffffff',
 };
-
-const normalizeTextAlign = (value) => {
-  if (value === 'left' || value === 'center' || value === 'right') return value;
-  return 'center';
-};
-
-const getLineStartX = (textAlign, anchorX, lineWidth) => {
-  const align = normalizeTextAlign(textAlign);
-  if (align === 'left') return anchorX;
-  if (align === 'right') return anchorX - lineWidth;
-  return anchorX - (lineWidth / 2);
-};
-
-const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
-  const align = normalizeTextAlign(textAlign);
-  if (align === 'left') return anchorX;
-  if (align === 'right') return anchorX - blockWidth;
-  return anchorX - (blockWidth / 2);
-};
-
-// Determine if a persisted custom layout is compatible with the requested panel count
-function isCustomLayoutCompatible(customLayout, panelCount) {
-  try {
-    if (!customLayout || typeof customLayout !== 'object') return false;
-    if (Array.isArray(customLayout.panelRects)) {
-      return customLayout.panelRects.length >= Math.max(1, panelCount || 1);
-    }
-    // Prefer explicit areas length when present
-    if (Array.isArray(customLayout.areas)) {
-      return customLayout.areas.length >= Math.max(1, panelCount || 1);
-    }
-    // Fallback to items array length if provided
-    if (Array.isArray(customLayout.items)) {
-      return customLayout.items.length >= Math.max(1, panelCount || 1);
-    }
-    // If neither is present, be conservative and treat as incompatible
-    return false;
-  } catch (_) {
-    return false;
-  }
-}
 
 // Create layout config by id, optionally using a persisted custom layout
 function createLayoutConfigById(templateId, panelCount, customLayout) {
@@ -116,192 +78,6 @@ function createLayoutConfigById(templateId, panelCount, customLayout) {
   };
 }
 
-// Parse grid-template-areas string into named area bounds (mirrors preview logic)
-function parseGridTemplateAreas(gridTemplateAreas) {
-  if (!gridTemplateAreas) return {};
-  const areas = {};
-  const rows = gridTemplateAreas
-    .replace(/"/g, '\'')
-    .split("'")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    .map((row) => row.split(/\s+/));
-  rows.forEach((row, rowIndex) => {
-    row.forEach((areaName, colIndex) => {
-      if (areaName !== '.' && areaName !== '') {
-        if (!areas[areaName]) {
-          areas[areaName] = { rowStart: rowIndex, rowEnd: rowIndex, colStart: colIndex, colEnd: colIndex };
-        } else {
-          areas[areaName].rowStart = Math.min(areas[areaName].rowStart, rowIndex);
-          areas[areaName].rowEnd = Math.max(areas[areaName].rowEnd, rowIndex);
-          areas[areaName].colStart = Math.min(areas[areaName].colStart, colIndex);
-          areas[areaName].colEnd = Math.max(areas[areaName].colEnd, colIndex);
-        }
-      }
-    });
-  });
-  return areas;
-}
-
-function getPanelOrderIndex(panelRect, fallbackIndex = 0) {
-  const explicitIndex = Number(panelRect?.index);
-  if (Number.isFinite(explicitIndex)) return explicitIndex;
-  const panelId = String(panelRect?.panelId || '');
-  const idMatch = panelId.match(/^panel-(\d+)$/);
-  if (idMatch) {
-    return Math.max(0, parseInt(idMatch[1], 10) - 1);
-  }
-  return fallbackIndex;
-}
-
-function clampRectRatio(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.max(0, Math.min(1, numeric));
-}
-
-// Convert layoutConfig to panel rectangles, honoring borders and template areas (mirrors preview logic)
-function parseGridToRects(layoutConfig, componentWidth, componentHeight, panelCount, borderPixels) {
-  if (Array.isArray(layoutConfig?.panelRects) && layoutConfig.panelRects.length > 0) {
-    const inset = Math.max(0, Number(borderPixels) || 0);
-    const interiorLeft = inset;
-    const interiorTop = inset;
-    const interiorRight = Math.max(interiorLeft + 1, componentWidth - inset);
-    const interiorBottom = Math.max(interiorTop + 1, componentHeight - inset);
-    const interiorWidth = Math.max(1, interiorRight - interiorLeft);
-    const interiorHeight = Math.max(1, interiorBottom - interiorTop);
-
-    const rects = layoutConfig.panelRects
-      .slice(0, Math.max(1, panelCount || 1))
-      .map((panelRect, fallbackIndex) => {
-        const panelId = panelRect?.panelId || `panel-${fallbackIndex + 1}`;
-        const index = getPanelOrderIndex(panelRect, fallbackIndex);
-        const xRatio = clampRectRatio(panelRect?.x);
-        const yRatio = clampRectRatio(panelRect?.y);
-        const widthRatio = clampRectRatio(panelRect?.width);
-        const heightRatio = clampRectRatio(panelRect?.height);
-        const x = interiorLeft + (xRatio * interiorWidth);
-        const y = interiorTop + (yRatio * interiorHeight);
-        const right = Math.max(x, Math.min(interiorRight, interiorLeft + ((xRatio + widthRatio) * interiorWidth)));
-        const bottom = Math.max(y, Math.min(interiorBottom, interiorTop + ((yRatio + heightRatio) * interiorHeight)));
-        const width = right - x;
-        const height = bottom - y;
-        if (width <= 0.25 || height <= 0.25) return null;
-        return { x, y, width, height, panelId, index };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.index - b.index);
-
-    if (rects.length > 0) return rects;
-  }
-
-  // Determine columns/rows and their fractional sizes
-  let columns = 1;
-  let rows = 1;
-  let columnSizes = [1];
-  let rowSizes = [1];
-
-  if (layoutConfig.gridTemplateColumns) {
-    if (layoutConfig.gridTemplateColumns.includes('repeat(')) {
-      const m = layoutConfig.gridTemplateColumns.match(/repeat\((\d+),/);
-      if (m) {
-        columns = parseInt(m[1], 10);
-        columnSizes = Array(columns).fill(1);
-      }
-    } else {
-      const frMatches = layoutConfig.gridTemplateColumns.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        columns = frMatches.length;
-        columnSizes = frMatches.map((match) => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-
-  if (layoutConfig.gridTemplateRows) {
-    if (layoutConfig.gridTemplateRows.includes('repeat(')) {
-      const m = layoutConfig.gridTemplateRows.match(/repeat\((\d+),/);
-      if (m) {
-        rows = parseInt(m[1], 10);
-        rowSizes = Array(rows).fill(1);
-      }
-    } else {
-      const frMatches = layoutConfig.gridTemplateRows.match(/(\d*\.?\d*)fr/g);
-      if (frMatches) {
-        rows = frMatches.length;
-        rowSizes = frMatches.map((match) => {
-          const value = match.replace('fr', '');
-          return value === '' ? 1 : parseFloat(value);
-        });
-      }
-    }
-  }
-
-  // Account for borders as gaps between cells and outer padding
-  const horizontalGaps = Math.max(0, columnSizes.length - 1) * borderPixels;
-  const verticalGaps = Math.max(0, rowSizes.length - 1) * borderPixels;
-  const availableWidth = componentWidth - borderPixels * 2 - horizontalGaps;
-  const availableHeight = componentHeight - borderPixels * 2 - verticalGaps;
-  const totalColumnFr = columnSizes.reduce((sum, size) => sum + size, 0);
-  const totalRowFr = rowSizes.reduce((sum, size) => sum + size, 0);
-  const columnFrUnit = availableWidth / totalColumnFr;
-  const rowFrUnit = availableHeight / totalRowFr;
-
-  const rects = [];
-
-  // Helper to compute rect at grid cell
-  const getRectForCell = (colStart, colEnd, rowStart, rowEnd) => {
-    let x = borderPixels;
-    for (let c = 0; c < colStart; c += 1) {
-      x += columnSizes[c] * columnFrUnit + borderPixels;
-    }
-    let y = borderPixels;
-    for (let r = 0; r < rowStart; r += 1) {
-      y += rowSizes[r] * rowFrUnit + borderPixels;
-    }
-    let width = 0;
-    for (let c = colStart; c < colEnd; c += 1) {
-      width += columnSizes[c] * columnFrUnit;
-      if (c < colEnd - 1) width += borderPixels;
-    }
-    let height = 0;
-    for (let r = rowStart; r < rowEnd; r += 1) {
-      height += rowSizes[r] * rowFrUnit;
-      if (r < rowEnd - 1) height += borderPixels;
-    }
-    return { x, y, width, height };
-  };
-
-  // Prefer named grid areas if provided
-  if (layoutConfig.areas && layoutConfig.areas.length > 0 && layoutConfig.gridTemplateAreas) {
-    const gridAreas = parseGridTemplateAreas(layoutConfig.gridTemplateAreas);
-    layoutConfig.areas.slice(0, panelCount).forEach((areaName, index) => {
-      const areaInfo = gridAreas[areaName];
-      if (areaInfo) {
-        const { x, y, width, height } = getRectForCell(
-          areaInfo.colStart,
-          areaInfo.colEnd + 1,
-          areaInfo.rowStart,
-          areaInfo.rowEnd + 1
-        );
-        rects.push({ x, y, width, height, panelId: `panel-${index + 1}`, index });
-      }
-    });
-  } else {
-    // Fallback: sequential mapping across rows/cols
-    for (let i = 0; i < Math.min(panelCount, columns * rows); i += 1) {
-      const col = i % columns;
-      const row = Math.floor(i / columns);
-      const { x, y, width, height } = getRectForCell(col, col + 1, row, row + 1);
-      rects.push({ x, y, width, height, panelId: `panel-${i + 1}`, index: i });
-    }
-  }
-
-  return rects;
-}
-
 function normalizeBorderThickness(value) {
   // Accept numeric percent values directly
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -335,12 +111,7 @@ async function loadImageFromRef(ref) {
   if (ref?.libraryKey) {
     try {
       const blob = await getFromLibrary(ref.libraryKey);
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      const dataUrl = await toDataUrl(blob);
       return await loadImage(dataUrl);
     } catch (_) {
       // fallback to url if available
@@ -484,7 +255,14 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
   }
 
   const layoutConfig = createLayoutConfigById(snap.selectedTemplateId, panelCount, snap.customLayout);
-  const rects = parseGridToRects(layoutConfig, width, imageAreaHeight, panelCount, borderPixels).map((rect) => ({
+  const rects = parseGridToRects(
+    layoutConfig,
+    width,
+    imageAreaHeight,
+    panelCount,
+    borderPixels,
+    { limitSequentialToGridCells: true }
+  ).map((rect) => ({
     ...rect,
     y: rect.y + topCaptionHeight,
   }));
