@@ -1,11 +1,11 @@
-import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useState } from 'react'
+import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { TwitterPicker } from 'react-color';
 import MuiAlert from '@mui/material/Alert';
-import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Button, ButtonGroup, Card, CircularProgress, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Fab, Grid, IconButton, LinearProgress, List, ListItem, ListItemIcon, ListItemText, Popover, Slider, Snackbar, Stack, Tab, Tabs, TextField, Typography, useTheme } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -39,7 +39,7 @@ import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
 import ImageEditorControls from '../components/ImageEditorControls';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
-import { CLASSIC_ERASER_DEFAULT_PROMPT, runClassicInpaintLocally } from '../utils/comfyClassicInpaint';
+import { CLASSIC_ERASER_DEFAULT_PROMPT, runClassicInpaintLocallyVariations } from '../utils/comfyClassicInpaint';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -84,6 +84,8 @@ const StyledCardMedia = styled('img')`
 
 const MAGIC_IMAGE_SIZE = 1024;
 const CLASSIC_LOCAL_INPAINT_FORCE_SQUARE = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_FORCE_SQUARE === 'true';
+const CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_BACKGROUND_COLOR || 'red';
+const CLASSIC_LOCAL_INPAINT_VARIATIONS = 1;
 
 
 
@@ -169,6 +171,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // const images = Array(5).fill("https://placekitten.com/350/350");
   // const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
   const [returnedImages, setReturnedImages] = useState([]);
+  const [pendingClassicVariation, setPendingClassicVariation] = useState(null);
+  const pendingClassicVariationTimerRef = useRef(null);
 
 
   const handleSubtitlesExpand = () => {
@@ -182,6 +186,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const handleSnackbarClose = () => {
     setSnackBarOpen(false);
   }
+
+  useEffect(() => () => {
+    if (pendingClassicVariationTimerRef.current) {
+      window.clearInterval(pendingClassicVariationTimerRef.current);
+      pendingClassicVariationTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     setFineTuningValue(searchDetails.fineTuningFrame);
@@ -819,6 +830,99 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   }
 
 
+  const stopPendingClassicVariationProgress = () => {
+    if (pendingClassicVariationTimerRef.current) {
+      window.clearInterval(pendingClassicVariationTimerRef.current);
+      pendingClassicVariationTimerRef.current = null;
+    }
+  };
+
+  const startPendingClassicVariationProgress = () => {
+    stopPendingClassicVariationProgress();
+    const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setPendingClassicVariation({ id: pendingId, progress: 4 });
+    pendingClassicVariationTimerRef.current = window.setInterval(() => {
+      setPendingClassicVariation((previous) => {
+        if (!previous || previous.id !== pendingId) return previous;
+        const remaining = 96 - previous.progress;
+        const increment = Math.max(1, Math.round(remaining * 0.12));
+        return { ...previous, progress: Math.min(96, previous.progress + increment) };
+      });
+    }, 450);
+
+    return pendingId;
+  };
+
+  const buildLocalClassicInpaintPayload = () => {
+    const originalHeight = editor.canvas.height;
+    const originalWidth = editor.canvas.width;
+    const exportScale = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
+      ? Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight)
+      : (MAGIC_IMAGE_SIZE / Math.max(originalWidth, originalHeight));
+    const targetWidth = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
+      ? MAGIC_IMAGE_SIZE
+      : Math.max(1, Math.round(originalWidth * exportScale));
+    const targetHeight = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
+      ? MAGIC_IMAGE_SIZE
+      : Math.max(1, Math.round(originalHeight * exportScale));
+    const pathScale = Math.min(targetWidth / originalWidth, targetHeight / originalHeight);
+    const pathOffsetX = (targetWidth - originalWidth * pathScale) / 2;
+    const pathOffsetY = (targetHeight - originalHeight * pathScale) / 2;
+
+    const tempCanvasDrawing = new fabric.Canvas();
+    tempCanvasDrawing.setWidth(targetWidth);
+    tempCanvasDrawing.setHeight(targetHeight);
+    tempCanvasDrawing.backgroundColor = CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR;
+
+    editor.canvas.getObjects().forEach((obj) => {
+      if (obj instanceof fabric.Path) {
+        const path = obj.toObject();
+        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
+        newPath.scale(pathScale);
+        newPath.set({ left: newPath.left * pathScale + pathOffsetX, top: newPath.top * pathScale + pathOffsetY });
+        tempCanvasDrawing.add(newPath);
+      }
+    });
+
+    const dataURLDrawing = tempCanvasDrawing.toDataURL({
+      format: 'png',
+      left: 0,
+      top: 0,
+      width: tempCanvasDrawing.getWidth(),
+      height: tempCanvasDrawing.getHeight(),
+    });
+
+    const backgroundImage = editor.canvas.backgroundImage;
+    const imageElement = backgroundImage?.getElement?.();
+    if (!imageElement) {
+      throw new Error('Unable to access background image for classic inpaint.');
+    }
+
+    const imageWidth = backgroundImage.width || imageElement.naturalWidth || imageElement.width || originalWidth;
+    const imageHeight = backgroundImage.height || imageElement.naturalHeight || imageElement.height || originalHeight;
+    const imageScale = Math.min(targetWidth / imageWidth, targetHeight / imageHeight);
+    const imageOffsetX = (targetWidth - imageWidth * imageScale) / 2;
+    const imageOffsetY = (targetHeight - imageHeight * imageScale) / 2;
+
+    const bgCanvas = document.createElement('canvas');
+    bgCanvas.width = targetWidth;
+    bgCanvas.height = targetHeight;
+    const bgCtx = bgCanvas.getContext('2d');
+    if (!bgCtx) {
+      throw new Error('Unable to prepare background image for classic inpaint.');
+    }
+    bgCtx.fillStyle = CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR;
+    bgCtx.fillRect(0, 0, targetWidth, targetHeight);
+    bgCtx.drawImage(imageElement, imageOffsetX, imageOffsetY, imageWidth * imageScale, imageHeight * imageScale);
+    const dataURLBgImage = bgCanvas.toDataURL('image/png');
+
+    return {
+      imageDataUrl: dataURLBgImage,
+      maskDataUrl: dataURLDrawing,
+      prompt: (typeof magicPrompt === 'string' && magicPrompt.trim().length > 0) ? magicPrompt : CLASSIC_ERASER_DEFAULT_PROMPT,
+    };
+  };
+
   const exportDrawing = async () => {
     if (!editor?.canvas?.backgroundImage) {
       setSeverity('error');
@@ -830,75 +934,13 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     setLoadingInpaintingResult(true)
     window.scrollTo(0, 0);
     try {
-      const originalHeight = editor.canvas.height;
-      const originalWidth = editor.canvas.width;
-      const exportScale = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
-        ? Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight)
-        : (MAGIC_IMAGE_SIZE / Math.max(originalWidth, originalHeight));
-      const targetWidth = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
-        ? MAGIC_IMAGE_SIZE
-        : Math.max(1, Math.round(originalWidth * exportScale));
-      const targetHeight = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
-        ? MAGIC_IMAGE_SIZE
-        : Math.max(1, Math.round(originalHeight * exportScale));
-      const pathScale = Math.min(targetWidth / originalWidth, targetHeight / originalHeight);
-      const pathOffsetX = (targetWidth - originalWidth * pathScale) / 2;
-      const pathOffsetY = (targetHeight - originalHeight * pathScale) / 2;
-
-      const tempCanvasDrawing = new fabric.Canvas();
-      tempCanvasDrawing.setWidth(targetWidth);
-      tempCanvasDrawing.setHeight(targetHeight);
-      tempCanvasDrawing.backgroundColor = 'black';
-
-      editor.canvas.getObjects().forEach((obj) => {
-        if (obj instanceof fabric.Path) {
-          const path = obj.toObject();
-          const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-          newPath.scale(pathScale);
-          newPath.set({ left: newPath.left * pathScale + pathOffsetX, top: newPath.top * pathScale + pathOffsetY });
-          tempCanvasDrawing.add(newPath);
-        }
-      });
-
-      const dataURLDrawing = tempCanvasDrawing.toDataURL({
-        format: 'png',
-        left: 0,
-        top: 0,
-        width: tempCanvasDrawing.getWidth(),
-        height: tempCanvasDrawing.getHeight(),
-      });
-
-      const backgroundImage = editor.canvas.backgroundImage;
-      const imageElement = backgroundImage?.getElement?.();
-      if (!imageElement) {
-        throw new Error('Unable to access background image for classic inpaint.');
-      }
-
-      const imageWidth = backgroundImage.width || imageElement.naturalWidth || imageElement.width || originalWidth;
-      const imageHeight = backgroundImage.height || imageElement.naturalHeight || imageElement.height || originalHeight;
-      const imageScale = Math.min(targetWidth / imageWidth, targetHeight / imageHeight);
-      const imageOffsetX = (targetWidth - imageWidth * imageScale) / 2;
-      const imageOffsetY = (targetHeight - imageHeight * imageScale) / 2;
-
-      const bgCanvas = document.createElement('canvas');
-      bgCanvas.width = targetWidth;
-      bgCanvas.height = targetHeight;
-      const bgCtx = bgCanvas.getContext('2d');
-      if (!bgCtx) {
-        throw new Error('Unable to prepare background image for classic inpaint.');
-      }
-      bgCtx.fillStyle = 'black';
-      bgCtx.fillRect(0, 0, targetWidth, targetHeight);
-      bgCtx.drawImage(imageElement, imageOffsetX, imageOffsetY, imageWidth * imageScale, imageHeight * imageScale);
-      const dataURLBgImage = bgCanvas.toDataURL('image/png');
-
-      const outputDataUrl = await runClassicInpaintLocally({
-        imageDataUrl: dataURLBgImage,
-        maskDataUrl: dataURLDrawing,
-        prompt: (typeof magicPrompt === 'string' && magicPrompt.trim().length > 0) ? magicPrompt : CLASSIC_ERASER_DEFAULT_PROMPT,
-      });
-      setReturnedImages((prev) => [...prev, outputDataUrl]);
-      setOpenSelectResult(true);
+      stopPendingClassicVariationProgress();
+      setPendingClassicVariation(null);
+      const payload = buildLocalClassicInpaintPayload();
+      const outputDataUrls = await runClassicInpaintLocallyVariations({ ...payload, variations: CLASSIC_LOCAL_INPAINT_VARIATIONS });
+      setReturnedImages(outputDataUrls);
+      setSelectedImage(outputDataUrls[0]);
+      setOpenSelectResult(outputDataUrls.length > 0);
     } catch (error) {
       console.error(error);
       setSeverity('error');
@@ -909,8 +951,33 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     }
   };
 
+  const handleAddLocalClassicVariation = async () => {
+    if (loadingInpaintingResult || pendingClassicVariation) return;
+
+    try {
+      startPendingClassicVariationProgress();
+      const payload = buildLocalClassicInpaintPayload();
+      const outputDataUrls = await runClassicInpaintLocallyVariations({ ...payload, variations: 1 });
+      const nextImage = outputDataUrls?.[0];
+      if (nextImage) {
+        setReturnedImages((previous) => [...previous, nextImage]);
+        setSelectedImage((previous) => previous || nextImage);
+      }
+    } catch (error) {
+      console.error(error);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while generating another variation.');
+      setOpen(true);
+    } finally {
+      stopPendingClassicVariationProgress();
+      setPendingClassicVariation(null);
+    }
+  };
+
   const handleAddCanvasBackground = (imgUrl) => {
     try {
+      stopPendingClassicVariationProgress();
+      setPendingClassicVariation(null);
       setOpenSelectResult(false);
 
       fabric.Image.fromURL(imgUrl, (returnedImage) => {
@@ -957,6 +1024,8 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   const handleSelectResultCancel = () => {
+    stopPendingClassicVariationProgress();
+    setPendingClassicVariation(null);
     setSelectedImage()
     setReturnedImages([])
     setOpenSelectResult(false)
@@ -2063,7 +2132,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
       >
         <DialogTitle id="alert-dialog-title">
           {"Magic Results"}
-          <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
+          <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Create another variation to add more options.</div>
         </DialogTitle>
         <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
           <Grid container>
@@ -2108,6 +2177,44 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                 </div>
               </Grid>
             ))}
+            {pendingClassicVariation && (
+              <Grid
+                item xs={variationDisplayColumns === 2 ? 6 : 12}
+                key={pendingClassicVariation.id}
+                style={{ padding: '5px' }}
+              >
+                <div style={{
+                  position: 'relative',
+                  border: '2px dashed #9e9e9e',
+                  borderRadius: '4px'
+                }}>
+                  <Box
+                    sx={{
+                      width: '100%',
+                      aspectRatio: `${editorAspectRatio}/1`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 1,
+                      px: 2,
+                      backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                    }}
+                  >
+                    <CircularProgress size={28} />
+                    <Typography variant="body2">Generating variation...</Typography>
+                    <LinearProgress
+                      variant="determinate"
+                      value={Math.max(0, Math.min(100, pendingClassicVariation.progress))}
+                      sx={{ width: '100%', maxWidth: 260, borderRadius: '999px', height: 8 }}
+                    />
+                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                      {Math.round(Math.max(0, Math.min(100, pendingClassicVariation.progress)))}%
+                    </Typography>
+                  </Box>
+                </div>
+              </Grid>
+            )}
           </Grid>
         </DialogContent>
         <DialogActions style={{ padding: '8px 16px' }}>
@@ -2122,14 +2229,21 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
             Cancel
           </Button>
           <Button
-            disabled={!selectedImage}
+            disabled={loadingInpaintingResult || Boolean(pendingClassicVariation)}
+            variant='outlined'
+            onClick={handleAddLocalClassicVariation}
+          >
+            Add variation
+          </Button>
+          <Button
+            disabled={!selectedImage || loadingInpaintingResult}
             onClick={() => { handleAddCanvasBackground(selectedImage) }}
             variant='contained'
             style={{
               backgroundColor: 'limegreen',
               color: 'white',
-              opacity: selectedImage ? 1 : 0.5, // Adjust opacity based on selectedImage
-              cursor: selectedImage ? 'pointer' : 'not-allowed', // Change cursor style
+              opacity: selectedImage && !loadingInpaintingResult ? 1 : 0.5,
+              cursor: selectedImage && !loadingInpaintingResult ? 'pointer' : 'not-allowed',
             }}
           >
             Apply

@@ -55,7 +55,7 @@ import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
-import { CLASSIC_ERASER_DEFAULT_PROMPT, runClassicInpaintLocally } from '../utils/comfyClassicInpaint';
+import { CLASSIC_ERASER_DEFAULT_PROMPT, runClassicInpaintLocallyVariations } from '../utils/comfyClassicInpaint';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -100,6 +100,7 @@ const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
 const MAGIC_MAX_REFERENCES = 4;
 const CLASSIC_LOCAL_INPAINT_FORCE_SQUARE = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_FORCE_SQUARE === 'true';
 const CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_BACKGROUND_COLOR || 'red';
+const CLASSIC_LOCAL_INPAINT_VARIATIONS = 1;
 const DEFAULT_RATE_LIMIT = 100;
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
 
@@ -196,7 +197,10 @@ const MagicResultOption = ({
   isDimmed,
   onSelect,
   aspectRatio,
+  pending = false,
+  progress = 0,
 }) => {
+  const isPending = Boolean(pending);
   const intentMeta = useMemo(
     () => ({
       ...baseMeta,
@@ -204,8 +208,9 @@ const MagicResultOption = ({
       position: index,
       magicResultSelected: Boolean(isSelected),
       magicResultHasImage: Boolean(image),
+      magicResultPending: isPending,
     }),
-    [baseMeta, image, index, isSelected]
+    [baseMeta, image, index, isPending, isSelected]
   );
 
   const intentHandlers = useTrackImageSaveIntent(intentMeta);
@@ -214,30 +219,57 @@ const MagicResultOption = ({
     <Grid
       item
       xs={columns === 2 ? 6 : 12}
-      onClick={onSelect}
-      style={{ padding: '5px' }}
+      onClick={isPending ? undefined : onSelect}
+      style={{ padding: '5px', cursor: isPending ? 'default' : 'pointer' }}
     >
       <div
         style={{
           position: 'relative',
-          border: isSelected ? '2px solid green' : '2px solid lightgray',
+          border: isPending ? '2px dashed #9e9e9e' : isSelected ? '2px solid green' : '2px solid lightgray',
           borderRadius: '4px',
         }}
       >
-        <img
-          src={image}
-          alt="placeholder"
-          draggable
-          {...intentHandlers}
-          style={{
-            width: '100%',
-            aspectRatio: `${aspectRatio}/1`,
-            objectFit: 'cover',
-            objectPosition: 'center',
-            filter: isDimmed ? 'brightness(50%)' : 'none',
-          }}
-        />
-        {isSelected && (
+        {isPending ? (
+          <Box
+            sx={{
+              width: '100%',
+              aspectRatio: `${aspectRatio}/1`,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              px: 2,
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <CircularProgress size={28} />
+            <Typography variant="body2">Generating variation...</Typography>
+            <LinearProgress
+              variant="determinate"
+              value={Math.max(0, Math.min(100, progress))}
+              sx={{ width: '100%', maxWidth: 260, borderRadius: '999px', height: 8 }}
+            />
+            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+              {Math.round(Math.max(0, Math.min(100, progress)))}%
+            </Typography>
+          </Box>
+        ) : (
+          <img
+            src={image}
+            alt="placeholder"
+            draggable
+            {...intentHandlers}
+            style={{
+              width: '100%',
+              aspectRatio: `${aspectRatio}/1`,
+              objectFit: 'cover',
+              objectPosition: 'center',
+              filter: isDimmed ? 'brightness(50%)' : 'none',
+            }}
+          />
+        )}
+        {isSelected && !isPending && (
           <Fab
             size='small'
             style={{
@@ -380,6 +412,7 @@ const EditorPage = ({ shows }) => {
   // const images = Array(5).fill("https://placekitten.com/350/350");
   // const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
   const [returnedImages, setReturnedImages] = useState([]);
+  const [pendingClassicVariation, setPendingClassicVariation] = useState(null);
 
   const magicPromptInputRef = useRef();
   const magicReferenceInputRef = useRef();
@@ -396,6 +429,7 @@ const EditorPage = ({ shows }) => {
   const formatSyncRafRef = useRef(null);
   const pendingFormatSyncRef = useRef(null);
   const pendingMagicResumeRef = useRef(null);
+  const pendingClassicVariationTimerRef = useRef(null);
   const skipNextDefaultFrameRef = useRef(false);
   const skipNextDefaultSubtitleRef = useRef(false);
 
@@ -427,6 +461,13 @@ const EditorPage = ({ shows }) => {
   const [rateLimitDialogOpen, setRateLimitDialogOpen] = useState(false);
 
   const SELECTION_CACHE_TTL_MS = 15000;
+
+  useEffect(() => () => {
+    if (pendingClassicVariationTimerRef.current) {
+      window.clearInterval(pendingClassicVariationTimerRef.current);
+      pendingClassicVariationTimerRef.current = null;
+    }
+  }, []);
 
   // Animated placeholder effect for magic prompt
   const shouldAnimateMagicPlaceholder = editorTool === 'magicEraser' && promptEnabled === 'edit';
@@ -2158,6 +2199,49 @@ const EditorPage = ({ shows }) => {
     });
   };
 
+  const stopPendingClassicVariationProgress = () => {
+    if (pendingClassicVariationTimerRef.current) {
+      window.clearInterval(pendingClassicVariationTimerRef.current);
+      pendingClassicVariationTimerRef.current = null;
+    }
+  };
+
+  const startPendingClassicVariationProgress = () => {
+    stopPendingClassicVariationProgress();
+    const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setPendingClassicVariation({ id: pendingId, progress: 4 });
+    pendingClassicVariationTimerRef.current = window.setInterval(() => {
+      setPendingClassicVariation((previous) => {
+        if (!previous || previous.id !== pendingId) return previous;
+        const remaining = 96 - previous.progress;
+        const increment = Math.max(1, Math.round(remaining * 0.12));
+        return { ...previous, progress: Math.min(96, previous.progress + increment) };
+      });
+    }, 450);
+
+    return pendingId;
+  };
+
+  const buildLocalClassicInpaintPayload = () => {
+    const { dataUrl: dataURLBgImage, width: exportWidth, height: exportHeight } = buildBackgroundDataUrl({
+      forceSquare: CLASSIC_LOCAL_INPAINT_FORCE_SQUARE,
+    });
+    const dataURLDrawing = buildMaskDataUrl({
+      targetWidth: exportWidth,
+      targetHeight: exportHeight,
+    });
+
+    if (!dataURLBgImage || !dataURLDrawing) {
+      throw new Error('Unable to prepare local classic inpaint request.');
+    }
+
+    return {
+      imageDataUrl: dataURLBgImage,
+      maskDataUrl: dataURLDrawing,
+      prompt: (typeof magicPrompt === 'string' && magicPrompt.trim().length > 0) ? magicPrompt : CLASSIC_ERASER_DEFAULT_PROMPT,
+    };
+  };
+
   const exportDrawing = async () => {
     if (!editor?.canvas?.backgroundImage) {
       setSeverity('error');
@@ -2169,26 +2253,14 @@ const EditorPage = ({ shows }) => {
     setLoadingInpaintingResult(true);
     window.scrollTo(0, 0);
     try {
-      const { dataUrl: dataURLBgImage, width: exportWidth, height: exportHeight } = buildBackgroundDataUrl({
-        forceSquare: CLASSIC_LOCAL_INPAINT_FORCE_SQUARE,
-      });
-      const dataURLDrawing = buildMaskDataUrl({
-        targetWidth: exportWidth,
-        targetHeight: exportHeight,
-      });
+      stopPendingClassicVariationProgress();
+      setPendingClassicVariation(null);
+      const payload = buildLocalClassicInpaintPayload();
+      const outputDataUrls = await runClassicInpaintLocallyVariations({ ...payload, variations: CLASSIC_LOCAL_INPAINT_VARIATIONS });
 
-      if (!dataURLBgImage || !dataURLDrawing) {
-        throw new Error('Unable to prepare local classic inpaint request.');
-      }
-
-      const outputDataUrl = await runClassicInpaintLocally({
-        imageDataUrl: dataURLBgImage,
-        maskDataUrl: dataURLDrawing,
-        prompt: (typeof magicPrompt === 'string' && magicPrompt.trim().length > 0) ? magicPrompt : CLASSIC_ERASER_DEFAULT_PROMPT,
-      });
-
-      setReturnedImages((prev) => [...prev, outputDataUrl]);
-      setOpenSelectResult(true);
+      setReturnedImages(outputDataUrls);
+      setSelectedImage(outputDataUrls[0]);
+      setOpenSelectResult(outputDataUrls.length > 0);
     } catch (error) {
       console.error(error);
       setSeverity('error');
@@ -2196,6 +2268,29 @@ const EditorPage = ({ shows }) => {
       setOpen(true);
     } finally {
       setLoadingInpaintingResult(false);
+    }
+  };
+
+  const handleAddLocalClassicVariation = async () => {
+    if (loadingInpaintingResult || pendingClassicVariation) return;
+
+    try {
+      startPendingClassicVariationProgress();
+      const payload = buildLocalClassicInpaintPayload();
+      const outputDataUrls = await runClassicInpaintLocallyVariations({ ...payload, variations: 1 });
+      const nextImage = outputDataUrls?.[0];
+      if (nextImage) {
+        setReturnedImages((previous) => [...previous, nextImage]);
+        setSelectedImage((previous) => previous || nextImage);
+      }
+    } catch (error) {
+      console.error(error);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while generating another variation.');
+      setOpen(true);
+    } finally {
+      stopPendingClassicVariationProgress();
+      setPendingClassicVariation(null);
     }
   };
 
@@ -2321,6 +2416,8 @@ const EditorPage = ({ shows }) => {
   const handleAddCanvasBackground = (imgUrl, options = {}) => {
     const { skipHistory = false } = options;
     try {
+      stopPendingClassicVariationProgress();
+      setPendingClassicVariation(null);
       setOpenSelectResult(false);
 
       fabric.Image.fromURL(imgUrl, (returnedImage) => {
@@ -2524,6 +2621,8 @@ const EditorPage = ({ shows }) => {
   }, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectResultCancel = () => {
+    stopPendingClassicVariationProgress();
+    setPendingClassicVariation(null);
     setSelectedImage()
     setReturnedImages([])
     setOpenSelectResult(false)
@@ -5764,7 +5863,7 @@ const EditorPage = ({ shows }) => {
       >
         <DialogTitle id="alert-dialog-title">
           {"Magic Results"}
-          <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Pick the best variation:</div>
+          <div style={{ fontSize: '0.8em', marginTop: '5px' }}>Create another variation to add more options.</div>
         </DialogTitle>
         <DialogContent style={{ padding: 0 }}>  {/* Reduced padding */}
           <Grid container>
@@ -5781,6 +5880,21 @@ const EditorPage = ({ shows }) => {
                 aspectRatio={editorAspectRatio}
               />
             ))}
+            {pendingClassicVariation && (
+              <MagicResultOption
+                key={pendingClassicVariation.id}
+                baseMeta={editorImageIntentBaseMeta}
+                image={null}
+                index={returnedImages.length}
+                columns={variationDisplayColumns}
+                isSelected={false}
+                isDimmed={false}
+                onSelect={() => {}}
+                aspectRatio={editorAspectRatio}
+                pending
+                progress={pendingClassicVariation.progress}
+              />
+            )}
           </Grid>
         </DialogContent>
         <DialogActions style={{ padding: '8px 16px' }}>
@@ -5795,14 +5909,21 @@ const EditorPage = ({ shows }) => {
             Cancel
           </Button>
           <Button
-            disabled={!selectedImage}
+            disabled={loadingInpaintingResult || Boolean(pendingClassicVariation)}
+            variant='outlined'
+            onClick={handleAddLocalClassicVariation}
+          >
+            Add variation
+          </Button>
+          <Button
+            disabled={!selectedImage || loadingInpaintingResult}
             onClick={() => { handleAddCanvasBackground(selectedImage) }}
             variant='contained'
             style={{
               backgroundColor: 'limegreen',
               color: 'white',
-              opacity: selectedImage ? 1 : 0.5, // Adjust opacity based on selectedImage
-              cursor: selectedImage ? 'pointer' : 'not-allowed', // Change cursor style
+              opacity: selectedImage && !loadingInpaintingResult ? 1 : 0.5,
+              cursor: selectedImage && !loadingInpaintingResult ? 'pointer' : 'not-allowed',
             }}
           >
             Apply

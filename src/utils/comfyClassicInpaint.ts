@@ -2,7 +2,7 @@ const DEFAULT_COMFYUI_URL = process.env.REACT_APP_COMFYUI_URL || 'http://192.168
 const DEFAULT_INPUT_FILENAME = 'flux_fill_inpaint_input.png';
 const DEFAULT_MASK_FILENAME = 'flux_fill_inpaint_mask.png';
 const DEFAULT_MASK_BACKGROUND_COLOR = process.env.REACT_APP_LOCAL_CLASSIC_MASK_BACKGROUND_COLOR || 'red';
-export const CLASSIC_ERASER_DEFAULT_PROMPT = 'Everyday scene as cinematic cinestill sample';
+export const CLASSIC_ERASER_DEFAULT_PROMPT = '';
 const WORKFLOW_LOAD_IMAGE_NODE_ID = '17';
 const WORKFLOW_MASK_LOAD_IMAGE_NODE_ID = '18';
 const WORKFLOW_PROMPT_NODE_ID = '47:23';
@@ -48,6 +48,7 @@ export interface RunClassicInpaintLocallyOptions {
   pollIntervalMs?: number;
   maskGrowPx?: number;
   maskFeatherPx?: number;
+  variations?: number;
 }
 
 const COMFY_INPAINT_WORKFLOW_TEMPLATE: ComfyWorkflow = {
@@ -197,6 +198,25 @@ const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
+
+const randomToken = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().replace(/[^a-zA-Z0-9_-]/g, '');
+  }
+  return `${Date.now()}_${Math.floor(Math.random() * 1_000_000_000)}`;
+};
+
+const buildUniqueUploadFilename = (filename: string, suffix: string): string => {
+  const trimmed = String(filename || '').trim() || 'inpaint_input.png';
+  const lastDotIndex = trimmed.lastIndexOf('.');
+  if (lastDotIndex <= 0 || lastDotIndex === trimmed.length - 1) {
+    return `${trimmed}_${suffix}`;
+  }
+
+  const basename = trimmed.slice(0, lastDotIndex);
+  const extension = trimmed.slice(lastDotIndex);
+  return `${basename}_${suffix}${extension}`;
+};
 
 const normalizeComfyUrl = (url: string): string => url.replace(/\/+$/, '');
 
@@ -547,7 +567,7 @@ const uploadInputImage = async (serverUrl: string, imageBlob: Blob, filename: st
   const formData = new FormData();
   formData.append('image', imageBlob, filename);
   formData.append('type', 'input');
-  formData.append('overwrite', 'true');
+  formData.append('overwrite', 'false');
   formData.append('subfolder', '');
 
   const response = await fetch(`${serverUrl}/upload/image`, {
@@ -677,7 +697,15 @@ const fetchOutputImageDataUrl = async (serverUrl: string, imageRef: ComfyImageRe
   return await blobToDataUrl(blob);
 };
 
-export async function runClassicInpaintLocally({
+const normalizeVariationCount = (variations: number | undefined): number => {
+  const parsed = Number(variations);
+  if (!Number.isFinite(parsed)) return 1;
+  const integerValue = Math.floor(parsed);
+  if (integerValue < 1) return 1;
+  return Math.min(integerValue, 8);
+};
+
+export async function runClassicInpaintLocallyVariations({
   imageDataUrl,
   maskDataUrl,
   prompt,
@@ -686,29 +714,45 @@ export async function runClassicInpaintLocally({
   pollIntervalMs = 1000,
   maskGrowPx = DEFAULT_MASK_GROW_PX,
   maskFeatherPx = DEFAULT_MASK_FEATHER_PX,
-}: RunClassicInpaintLocallyOptions): Promise<string> {
+  variations = 1,
+}: RunClassicInpaintLocallyOptions): Promise<string[]> {
   if (!imageDataUrl || !maskDataUrl) {
     throw new Error('Classic inpaint requires both an image and a mask.');
   }
 
+  const variationCount = normalizeVariationCount(variations);
   const serverUrl = normalizeComfyUrl(comfyUiUrl);
   const { blob: sourceInputBlob, width, height } = await composeOpaqueInputBlob(imageDataUrl);
   const maskInputBlob = await composeMaskInputBlob(maskDataUrl, width, height, { maskGrowPx, maskFeatherPx });
-  const uploadedInputFilename = await uploadInputImage(serverUrl, sourceInputBlob, DEFAULT_INPUT_FILENAME);
-  const uploadedMaskFilename = await uploadInputImage(serverUrl, maskInputBlob, DEFAULT_MASK_FILENAME);
+  const uploadToken = randomToken();
+  const sourceUploadFilename = buildUniqueUploadFilename(DEFAULT_INPUT_FILENAME, `input_${uploadToken}`);
+  const maskUploadFilename = buildUniqueUploadFilename(DEFAULT_MASK_FILENAME, `mask_${uploadToken}`);
+  const uploadedInputFilename = await uploadInputImage(serverUrl, sourceInputBlob, sourceUploadFilename);
+  const uploadedMaskFilename = await uploadInputImage(serverUrl, maskInputBlob, maskUploadFilename);
+  const results: string[] = [];
+  for (let index = 0; index < variationCount; index += 1) {
+    const workflow = cloneWorkflowTemplate();
+    setWorkflowPromptText(workflow, prompt);
+    setWorkflowInputFilename(workflow, uploadedInputFilename);
+    setWorkflowMaskFilename(workflow, uploadedMaskFilename);
+    applyRuntimeWorkflowValues(workflow);
 
-  const workflow = cloneWorkflowTemplate();
-  setWorkflowPromptText(workflow, prompt);
-  setWorkflowInputFilename(workflow, uploadedInputFilename);
-  setWorkflowMaskFilename(workflow, uploadedMaskFilename);
-  applyRuntimeWorkflowValues(workflow);
-
-  const promptId = await queuePrompt(serverUrl, workflow);
-  const historyItem = await waitForHistory(serverUrl, promptId, timeoutMs, pollIntervalMs);
-  const firstImageRef = extractFirstOutputImage(historyItem);
-  if (!firstImageRef) {
-    throw new Error('Local ComfyUI finished but returned no output image.');
+    const promptId = await queuePrompt(serverUrl, workflow);
+    const historyItem = await waitForHistory(serverUrl, promptId, timeoutMs, pollIntervalMs);
+    const firstImageRef = extractFirstOutputImage(historyItem);
+    if (!firstImageRef) {
+      throw new Error('Local ComfyUI finished but returned no output image.');
+    }
+    results.push(await fetchOutputImageDataUrl(serverUrl, firstImageRef));
   }
 
-  return await fetchOutputImageDataUrl(serverUrl, firstImageRef);
+  return results;
+}
+
+export async function runClassicInpaintLocally(options: RunClassicInpaintLocallyOptions): Promise<string> {
+  const results = await runClassicInpaintLocallyVariations({ ...options, variations: 1 });
+  if (!results.length) {
+    throw new Error('Local ComfyUI finished but returned no output image.');
+  }
+  return results[0];
 }
