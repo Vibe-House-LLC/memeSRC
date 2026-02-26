@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMe
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight, SwapHoriz } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
@@ -3079,7 +3079,9 @@ const CanvasCollagePreview = ({
     const textAnchorY = getTextAnchorYFromPosition(panel, textPositionY);
     const textBlockY = textAnchorY - actualTextHeight;
 
-    const visualTextWidth = Math.max(1, actualTextWidth);
+    // Keep the editable box tied to the configured text area width (not only rendered glyph width)
+    // so width adjustments are visible and directly manipulable.
+    const visualTextWidth = Math.max(1, actualTextWidth, textBoxWidth);
     const visualTextLeft = getTextBlockLeft(textAlign, textAnchorX, visualTextWidth);
     const controlWidth = Math.max(22, visualTextWidth + (controlPadding * 2));
     const controlHeight = Math.max(22, actualTextHeight + (controlPadding * 2));
@@ -3473,25 +3475,29 @@ const CanvasCollagePreview = ({
     const dx = clientX - interaction.startClientX;
     const dy = clientY - interaction.startClientY;
 
-    if (interaction.mode === 'resize') {
+    if (interaction.mode === 'resize' || interaction.mode === 'resize-width') {
       const safeTextWidth = Math.max(24, panel.width - (TEXT_PADDING_PX * 2));
       const minTextWidth = Math.min(TEXT_LAYER_MIN_BOX_WIDTH_PX, safeTextWidth);
       const startTextBoxWidthPx = Number.isFinite(interaction.startTextBoxWidthPx)
         ? interaction.startTextBoxWidthPx
         : getTextBoxWidthPx(panel.width, interaction.startTextBoxWidthPercent);
-      const nextTextBoxWidthPx = clamp(startTextBoxWidthPx + dx, minTextWidth, safeTextWidth);
+      const widthDelta = interaction.mode === 'resize-width' ? -dx : dx;
+      const nextTextBoxWidthPx = clamp(startTextBoxWidthPx + widthDelta, minTextWidth, safeTextWidth);
       const nextTextBoxWidthPercent = clamp(
         (nextTextBoxWidthPx / safeTextWidth) * 100,
         TEXT_LAYER_MIN_BOX_WIDTH_PERCENT,
         TEXT_LAYER_MAX_BOX_WIDTH_PERCENT,
       );
-      const heightScale = (interaction.startControlHeight + dy) / Math.max(1, interaction.startControlHeight);
-      const fontScale = Math.max(0.25, heightScale);
+      const updates = {
+        textBoxWidthPercent: nextTextBoxWidthPercent,
+      };
+      if (interaction.mode === 'resize') {
+        const heightScale = (interaction.startControlHeight + dy) / Math.max(1, interaction.startControlHeight);
+        const fontScale = Math.max(0.25, heightScale);
+        updates.fontSize = clamp(interaction.startFontSize * fontScale, TEXT_MIN_FONT_SIZE, TEXT_MAX_FONT_SIZE);
+      }
       return {
-        updates: {
-          fontSize: clamp(interaction.startFontSize * fontScale, TEXT_MIN_FONT_SIZE, TEXT_MAX_FONT_SIZE),
-          textBoxWidthPercent: nextTextBoxWidthPercent,
-        },
+        updates,
         snapGuide: null,
       };
     }
@@ -5990,7 +5996,11 @@ const CanvasCollagePreview = ({
                   height: layer.bounds.controlHeight,
                   pointerEvents: 'auto',
                   cursor: textLayerInteraction?.panelId === layer.panelId
-                    ? ((textLayerInteraction?.mode === 'move' || textLayerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
+                    ? (
+                      (textLayerInteraction?.mode === 'move' || textLayerInteraction?.mode === 'rotate')
+                        ? 'grabbing'
+                        : (textLayerInteraction?.mode === 'resize-width' ? 'ew-resize' : 'nwse-resize')
+                    )
                     : (layer.isActive ? 'grab' : 'pointer'),
                   touchAction: layer.isActive ? 'none' : 'pan-y pinch-zoom',
                   border: '1px solid transparent',
@@ -6124,6 +6134,28 @@ const CanvasCollagePreview = ({
                     }}
                   >
                     <Subtitles sx={{ fontSize: actionHandleSize * 0.58 }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize-width')}
+                    sx={{
+                      position: 'absolute',
+                      left: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      bottom: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                      width: handleSize,
+                      height: handleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: 'ew-resize',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <SwapHoriz sx={{ fontSize: handleSize * 0.56, color: '#ffffff' }} />
                   </Box>
                   <Box
                     onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize')}

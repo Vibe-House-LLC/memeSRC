@@ -2115,6 +2115,7 @@ export default function CollagePage() {
     if (textType === 'text-layer' || textType === 'subtitle') {
       const layerId = `${FLOATING_TEXT_LAYER_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const defaultFontSize = Number(lastUsedTextSettings?.fontSize);
+      const defaultTextBoxWidthPercent = Number(lastUsedTextSettings?.textBoxWidthPercent);
       updatePanelText(layerId, {
         content: '',
         rawContent: '',
@@ -2125,7 +2126,9 @@ export default function CollagePage() {
         color: lastUsedTextSettings?.color || '#ffffff',
         strokeWidth: lastUsedTextSettings?.strokeWidth ?? 2,
         textAlign: 'center',
-        textBoxWidthPercent: 75,
+        textBoxWidthPercent: Number.isFinite(defaultTextBoxWidthPercent)
+          ? Math.max(20, Math.min(100, defaultTextBoxWidthPercent))
+          : 90,
         textPositionX: 0,
         textPositionY: 50,
       }, { replace: true });
@@ -3352,17 +3355,6 @@ export default function CollagePage() {
                               >
                                 Close Settings
                               </Button>
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: alpha('#ffffff', 0.88),
-                                  fontWeight: 600,
-                                  letterSpacing: 0.15,
-                                  pointerEvents: 'none',
-                                }}
-                              >
-                                Tap preview to return to editing
-                              </Typography>
                             </Box>
                           </Box>
 
