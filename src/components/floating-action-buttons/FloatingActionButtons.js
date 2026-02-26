@@ -97,7 +97,7 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
     const { openSubscriptionDialog } = useSubscribeDialog();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
-    const hasToolAccess = Boolean(isAdmin || isPro);
+    const hasMagicEditorAccess = Boolean(isAdmin || isPro);
     const toolsButtonRef = useRef(null);
     const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
     const [pendingUpload, setPendingUpload] = useState(null);
@@ -191,7 +191,7 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
 
         if (!file) return;
 
-        if (pendingTool !== 'advanced' && !hasToolAccess) {
+        if (pendingTool !== 'advanced' && !hasMagicEditorAccess) {
             handleRequestProUpsell();
             return;
         }
@@ -271,15 +271,16 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
     const handleCollageClick = () => {
         trackUsageEvent('collage_entry', {
             source: 'FloatingActionButtons',
-            destination: '/projects/new',
-            hasAccess: hasToolAccess,
+            destination: '/projects',
+            hasAccess: isAuthenticated,
         });
-        if (!hasToolAccess) {
-            handleRequestProUpsell();
+        if (!isAuthenticated) {
+            resetUploadState();
+            navigate('/login');
             return;
         }
         resetUploadState();
-        navigate('/projects/new', { state: { startInLibrary: true } });
+        navigate('/projects');
     };
 
     const handleToolSelect = (action) => {
@@ -289,7 +290,7 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
         }
 
         if (action === 'magic') {
-            if (!hasToolAccess) {
+            if (!hasMagicEditorAccess) {
                 handleRequestProUpsell();
                 return;
             }
@@ -404,7 +405,6 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
             action: 'collage',
             label: 'Collage Tool',
             description: 'Create a collage from your images.',
-            isPro: true,
         },
     ];
 

@@ -209,11 +209,11 @@ export default function CollagePage() {
   const { openSubscriptionDialog } = useSubscribeDialog();
   const { clearAll } = useCollage();
   const isAdmin = user?.['cognito:groups']?.includes('admins');
-  const isPro = user?.userDetails?.magicSubscription === "true";
-  const authorized = (isPro || isAdmin);
+  const isAuthenticated = Boolean(user && user !== false);
+  const authorized = isAuthenticated;
   // Access flags
-  const hasLibraryAccess = isAdmin || isPro; // enable library for paid pro users
-  const hasProjectsAccess = isAdmin || isPro; // open projects to paid pro users
+  const hasLibraryAccess = isAuthenticated;
+  const hasProjectsAccess = isAuthenticated;
 
   // Autosave UI state
   const lastSavedSigRef = useRef(null);

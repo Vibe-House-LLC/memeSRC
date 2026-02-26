@@ -23,9 +23,8 @@ export default function ProjectsPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const isAdmin = Boolean((user as any)?.['cognito:groups']?.includes('admins'));
-  const isPro = Boolean((user as any)?.userDetails?.magicSubscription === 'true');
-  const canAccessProjects = isAdmin || isPro;
+  const isAuthenticated = Boolean(user);
+  const canAccessProjects = isAuthenticated;
 
   useEffect(() => {
     return () => {
@@ -33,10 +32,10 @@ export default function ProjectsPage() {
     };
   }, []);
 
-  // Gate this page for non-admins; redirect to single-page collage
+  // Gate this page for unauthenticated users
   useEffect(() => {
     if (!canAccessProjects) {
-      navigate('/collage', { replace: true });
+      navigate('/login', { replace: true });
     }
   }, [canAccessProjects, navigate]);
 
