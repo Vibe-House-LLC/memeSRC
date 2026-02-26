@@ -20,7 +20,6 @@ import TextEditorControls from '../components/TextEditorControls';
 import { LibraryPickerDialog } from '../components/library';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
-import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
@@ -56,23 +55,9 @@ import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
 import { shouldShowAds } from '../utils/adsenseLoader';
 import { isAdPauseActive } from '../utils/adsenseLoader';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
+import { CLASSIC_ERASER_DEFAULT_PROMPT, runClassicInpaintLocally } from '../utils/comfyClassicInpaint';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
-
-// Minimal magic result query to avoid unauthorized user field.
-const getMagicResultLite = /* GraphQL */ `
-  query GetMagicResultLite($id: ID!) {
-    getMagicResult(id: $id) {
-      id
-      prompt
-      results
-      error
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
 
 const ParentContainer = styled('div')`
     height: 100%;
@@ -113,6 +98,8 @@ const MAGIC_IMAGE_SIZE = 1024;
 const MAGIC_RESUME_STORAGE_KEY = 'v2-editor-magic-resume';
 const MAGIC_RESUME_MAX_AGE_MS = 10 * 60 * 1000;
 const MAGIC_MAX_REFERENCES = 4;
+const CLASSIC_LOCAL_INPAINT_FORCE_SQUARE = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_FORCE_SQUARE === 'true';
+const CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_BACKGROUND_COLOR || 'red';
 const DEFAULT_RATE_LIMIT = 100;
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
 
@@ -289,7 +276,7 @@ const EditorPage = ({ shows }) => {
 
   // Get everything ready
   const { fid, editorProjectId, fineTuningIndex, searchTerms } = useParams();
-  const { user, setUser, forceTokenRefresh } = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
   const [imageScale, setImageScale] = useState();
@@ -385,7 +372,6 @@ const EditorPage = ({ shows }) => {
   const [promptEnabled, setPromptEnabled] = useState('edit');
   const [showLegacyTools, setShowLegacyTools] = useState(false);
   // const buttonRef = useRef(null);
-  const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
   const { openSubscriptionDialog } = useSubscribeDialog();
 
   // Image selection stuff
@@ -395,7 +381,6 @@ const EditorPage = ({ shows }) => {
   // const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
   const [returnedImages, setReturnedImages] = useState([]);
 
-  const magicToolsButtonRef = useRef();
   const magicPromptInputRef = useRef();
   const magicReferenceInputRef = useRef();
   const textFieldRefs = useRef({});
@@ -2049,61 +2034,19 @@ const EditorPage = ({ shows }) => {
 
   // ------------------------------------------------------------------------
 
-  const QUERY_INTERVAL = 1000; // Every second
-  const TIMEOUT = 60 * 1000;   // 1 minute
-
-  const spendMagicCredit = useCallback(async () => {
-    try {
-      const currentCredits = user?.userDetails?.credits ?? 0;
-      const newCreditAmount = Math.max(0, currentCredits - 1);
-      setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-      await forceTokenRefresh();
-    } catch (err) {
-      console.error('Failed to refresh credits after magic edit:', err);
-    }
-  }, [forceTokenRefresh, setUser, user]);
-
-  async function checkMagicResult(id) {
-    try {
-      const result = await API.graphql(graphqlOperation(getMagicResultLite, { id }));
-      const rawError = result?.data?.getMagicResult?.error;
-      let normalizedError = rawError;
-      if (typeof rawError === 'string') {
-        try {
-          normalizedError = JSON.parse(rawError);
-          if (typeof normalizedError === 'string') {
-            normalizedError = JSON.parse(normalizedError);
-          }
-        } catch (_) {
-          normalizedError = rawError;
-        }
-      }
-      return {
-        results: result?.data?.getMagicResult?.results,
-        error: normalizedError,
-      };
-    } catch (error) {
-      console.error('Error fetching magic result:', error);
-      const fallbackMessage = error?.errors?.[0]?.message || error?.message || null;
-      return { results: null, error: fallbackMessage ? { message: fallbackMessage, reason: 'fetch_error' } : null };
-    }
-  }
-
   const toggleDrawingMode = (tool) => {
     if (editor) {
-      if (user && user?.userDetails?.credits > 0) {
-        editor.canvas.isDrawingMode = (tool === 'magicEraser');
-        editor.canvas.freeDrawingBrush.width = brushToolSize;
-        editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
-        if (tool !== 'magicEraser') {
-          editor.canvas.getObjects().forEach((obj) => {
-            if (obj instanceof fabric.Path) {
-              editor.canvas.remove(obj)
-            }
-          });
-          setHasFabricPaths(false);
-          addToHistory();
-        }
+      editor.canvas.isDrawingMode = (tool === 'magicEraser');
+      editor.canvas.freeDrawingBrush.width = brushToolSize;
+      editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
+      if (tool !== 'magicEraser') {
+        editor.canvas.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Path) {
+            editor.canvas.remove(obj)
+          }
+        });
+        setHasFabricPaths(false);
+        addToHistory();
       }
     }
     // setDrawingMode((tool === 'magicEraser'))
@@ -2160,7 +2103,7 @@ const EditorPage = ({ shows }) => {
     if (!ctx) {
       throw new Error('Unable to prepare magic edit image.');
     }
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR;
     ctx.fillRect(0, 0, targetWidth, targetHeight);
 
     const drawWidth = visibleWidth * exportScale;
@@ -2170,26 +2113,31 @@ const EditorPage = ({ shows }) => {
 
     ctx.drawImage(imageElement, offsetX, offsetY, drawWidth, drawHeight);
 
-    return { dataUrl: tempCanvas.toDataURL('image/png'), scale: exportScale };
+    return {
+      dataUrl: tempCanvas.toDataURL('image/png'),
+      scale: exportScale,
+      width: targetWidth,
+      height: targetHeight,
+    };
   };
 
-  const buildMaskDataUrl = () => {
+  const buildMaskDataUrl = ({ targetWidth = MAGIC_IMAGE_SIZE, targetHeight = MAGIC_IMAGE_SIZE } = {}) => {
     if (!editor?.canvas) {
       throw new Error('Editor not ready for magic erase.');
     }
 
     const tempCanvasDrawing = new fabric.Canvas();
-    tempCanvasDrawing.setWidth(MAGIC_IMAGE_SIZE);
-    tempCanvasDrawing.setHeight(MAGIC_IMAGE_SIZE);
+    tempCanvasDrawing.setWidth(targetWidth);
+    tempCanvasDrawing.setHeight(targetHeight);
 
-    tempCanvasDrawing.backgroundColor = 'black';
+    tempCanvasDrawing.backgroundColor = CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR;
 
     const originalHeight = editor.canvas.height;
     const originalWidth = editor.canvas.width;
 
-    const scale = Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight);
-    const offsetX = (MAGIC_IMAGE_SIZE - originalWidth * scale) / 2;
-    const offsetY = (MAGIC_IMAGE_SIZE - originalHeight * scale) / 2;
+    const scale = Math.min(targetWidth / originalWidth, targetHeight / originalHeight);
+    const offsetX = (targetWidth - originalWidth * scale) / 2;
+    const offsetY = (targetHeight - originalHeight * scale) / 2;
 
     editor.canvas.getObjects().forEach((obj) => {
       if (obj instanceof fabric.Path) {
@@ -2210,81 +2158,6 @@ const EditorPage = ({ shows }) => {
     });
   };
 
-  const pollMagicResults = (magicResultId) => {
-    const startTime = Date.now();
-
-    const pollInterval = setInterval(async () => {
-      const { results, error } = await checkMagicResult(magicResultId);
-      let parsedError = null;
-      if (error) {
-        parsedError = error;
-        if (typeof error === 'string') {
-          try {
-            parsedError = JSON.parse(error);
-          } catch (_) {
-            parsedError = { message: error };
-          }
-        }
-      }
-      const timedOut = (Date.now() - startTime) >= TIMEOUT;
-      if (results || parsedError || timedOut) {
-        clearInterval(pollInterval);
-        setLoadingInpaintingResult(false);  // Stop the loading spinner
-
-        if (parsedError) {
-          const reason = parsedError?.reason;
-          const model = parsedError?.model;
-          const message = parsedError?.message || 'Magic tools are temporarily unavailable.';
-          setSeverity('error');
-          if (reason === 'moderation' || reason === 'ProviderModeration') {
-            setMessage('Content blocked by moderation.');
-          } else {
-            setMessage(message);
-          }
-          setOpen(true);
-          if (reason === 'rate_limit') {
-            if (model === 'gemini') {
-              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
-            } else {
-            setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
-          }
-        } else if (reason === 'moderation') {
-          console.warn('[V2Editor] Moderation block received', { model });
-        } else if (reason === 'ProviderModeration') {
-          console.warn('[V2Editor] Provider moderation blocked output', { model });
-        }
-      } else if (results) {
-          try {
-            const imageUrls = JSON.parse(results);
-            setReturnedImages((prev) => [...prev, ...imageUrls]);
-            setOpenSelectResult(true);
-            await spendMagicCredit();
-            void refreshRateLimits();
-          } catch (err) {
-            console.error('Error parsing magic results:', err);
-            alert('Error: Unable to parse magic results. Please try again.');
-          }
-        } else {
-          console.error("Timeout reached without fetching magic results.");
-          alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
-        }
-        if (parsedError?.reason === 'rate_limit') {
-          void refreshRateLimits();
-        }
-      }
-    }, QUERY_INTERVAL);
-
-    return pollInterval;
-  };
-
-  const downloadDataURL = (dataURL, fileName) => {
-    const link = document.createElement('a');
-    link.href = dataURL;
-    link.download = fileName;
-    // Simulate a click to start the download
-    link.click();
-  };
-
   const exportDrawing = async () => {
     if (!editor?.canvas?.backgroundImage) {
       setSeverity('error');
@@ -2292,91 +2165,37 @@ const EditorPage = ({ shows }) => {
       setOpen(true);
       return;
     }
-    if (rateLimitState.openaiAvailable === false) {
-      setSeverity('error');
-      setMessage('Classic Magic Tools are temporarily unavailable. Please try again later.');
-      setOpen(true);
-      return;
-    }
 
     setLoadingInpaintingResult(true);
     window.scrollTo(0, 0);
-    const originalCanvas = editor.canvas;
-
     try {
-      const dataURLDrawing = buildMaskDataUrl();
-      const { dataUrl: dataURLBgImage } = buildBackgroundDataUrl();
+      const { dataUrl: dataURLBgImage, width: exportWidth, height: exportHeight } = buildBackgroundDataUrl({
+        forceSquare: CLASSIC_LOCAL_INPAINT_FORCE_SQUARE,
+      });
+      const dataURLDrawing = buildMaskDataUrl({
+        targetWidth: exportWidth,
+        targetHeight: exportHeight,
+      });
 
-      if (dataURLBgImage && dataURLDrawing) {
-        const data = {
-          image: dataURLBgImage,
-          mask: dataURLDrawing,
-          prompt: magicPrompt,
-        };
-
-        try {
-          const response = await API.post('publicapi', '/inpaint', {
-            body: data
-          });
-
-          const {magicResultId} = response;
-
-          if (!magicResultId) {
-            throw new Error('Unable to start magic edit.');
-          }
-
-          pollMagicResults(magicResultId);
-        } catch (error) {
-          setLoadingInpaintingResult(false);
-          const rateLimitReason = error?.response?.data?.error?.reason || error?.response?.data?.error?.code;
-          const rateLimitModel = error?.response?.data?.error?.model;
-          const messageText = error?.message ? error.message.toLowerCase() : '';
-          if (rateLimitReason === 'rate_limit' || messageText.includes('rate limit')) {
-            if (rateLimitModel === 'gemini') {
-              setRateLimitState((prev) => ({ ...prev, nanoAvailable: false, nanoUsage: prev.nanoLimit }));
-            } else {
-              setRateLimitState((prev) => ({ ...prev, openaiAvailable: false, openaiUsage: prev.openaiLimit }));
-            }
-            setSeverity('error');
-            setMessage(rateLimitModel === 'gemini'
-              ? 'Magic Tools are temporarily unavailable. Please try again later.'
-              : 'Classic Magic Tools are temporarily unavailable. Please try again later.');
-            setOpen(true);
-            return;
-          }
-          if (rateLimitReason === 'moderation' || messageText.includes('moderation')) {
-            setSeverity('error');
-            setMessage(error?.response?.data?.error?.message || 'Content was blocked by safety filters.');
-            setOpen(true);
-            return;
-          }
-          if (error.response?.data?.error?.name === "InsufficientCredits") {
-            setSeverity('error');
-            setMessage('Insufficient Credits');
-            setOpen(true);
-            originalCanvas.getObjects().forEach((obj) => {
-              if (obj instanceof fabric.Path) {
-                editor.canvas.remove(obj);
-              }
-            });
-            setHasFabricPaths(false);
-          } else {
-            console.error(error);
-            setSeverity('error');
-            setMessage(error.message || 'An error occurred while applying magic erase.');
-            setOpen(true);
-          }
-          if (error.response?.data) {
-            console.log(error.response.data);
-            alert(`Error: ${JSON.stringify(error.response.data)}`);
-          }
-        }
+      if (!dataURLBgImage || !dataURLDrawing) {
+        throw new Error('Unable to prepare local classic inpaint request.');
       }
+
+      const outputDataUrl = await runClassicInpaintLocally({
+        imageDataUrl: dataURLBgImage,
+        maskDataUrl: dataURLDrawing,
+        prompt: (typeof magicPrompt === 'string' && magicPrompt.trim().length > 0) ? magicPrompt : CLASSIC_ERASER_DEFAULT_PROMPT,
+      });
+
+      setReturnedImages((prev) => [...prev, outputDataUrl]);
+      setOpenSelectResult(true);
     } catch (error) {
-      setLoadingInpaintingResult(false);
+      console.error(error);
       setSeverity('error');
       setMessage(error.message || 'An error occurred while preparing the magic edit.');
       setOpen(true);
+    } finally {
+      setLoadingInpaintingResult(false);
     }
   };
 
@@ -2426,13 +2245,7 @@ const EditorPage = ({ shows }) => {
     }
 
     if (rateLimitState.nanoAvailable === false) {
-      if (rateLimitState.openaiAvailable) {
-        setRateLimitDialogOpen(true);
-      } else {
-        setSeverity('error');
-        setMessage('Magic tools are temporarily unavailable. Please try again later.');
-        setOpen(true);
-      }
+      setRateLimitDialogOpen(true);
       return;
     }
 
@@ -2600,7 +2413,7 @@ const EditorPage = ({ shows }) => {
 
         setEditorTool('captions');
         toggleDrawingMode('captions');
-        setMagicPrompt(promptEnabled === 'edit' ? '' : 'Everyday scene as cinematic cinestill sample');
+        setMagicPrompt(promptEnabled === 'edit' ? '' : CLASSIC_ERASER_DEFAULT_PROMPT);
         // setPromptEnabled('erase');
         if (!skipHistory) {
           addToHistory();
@@ -2949,19 +2762,15 @@ const EditorPage = ({ shows }) => {
     if (promptEnabled === "fill" || promptEnabled === 'edit') {
       setMagicPrompt('')
     } else if (promptEnabled === 'erase') {
-      setMagicPrompt('Everyday scene as cinematic cinestill sample')
+      setMagicPrompt(CLASSIC_ERASER_DEFAULT_PROMPT)
     }
   }, [promptEnabled])
 
   useEffect(() => {
     if (searchParams.has('magicTools', 'true')) {
-      if (!user || user?.userDetails?.credits <= 0) {
-        setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
-        setEditorTool('captions')
-      }
+      setEditorTool('magicEraser');
     }
-
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     if (editorTool === 'magicEraser') {
@@ -2986,10 +2795,8 @@ const EditorPage = ({ shows }) => {
   useEffect(() => {
     if (editorLoaded) {
       if (searchParams.has('magicTools', 'true')) {
-        if (!(!user || user?.userDetails?.credits <= 0)) {
-          setEditorTool('magicEraser');
-          toggleDrawingMode('magicEraser');
-        }
+        setEditorTool('magicEraser');
+        toggleDrawingMode('magicEraser');
       }
     }
   }, [editorLoaded]);
@@ -4416,7 +4223,6 @@ const EditorPage = ({ shows }) => {
                       value="captions"
                     />
                     <Tab
-                      ref={magicToolsButtonRef}
                       style={{
                         opacity: editorTool === "magicEraser" ? 1 : 0.4,
                         color: editorTool === "magicEraser" ? "limegreen" : "white"
@@ -4428,12 +4234,6 @@ const EditorPage = ({ shows }) => {
                         </Box>
                       }
                       value="magicEraser"
-                      onClick={(event) => {
-                        if (!user || user?.userDetails?.credits <= 0) {
-                          setMagicToolsPopoverAnchorEl(event.currentTarget);
-                          setEditorTool('captions')
-                        }
-                      }}
                     />
                   </Tabs>
 
@@ -4708,7 +4508,7 @@ const EditorPage = ({ shows }) => {
                           <Box>
                             {!rateLimitState.nanoAvailable && (
                               <Alert severity="warning" sx={{ mb: 2 }}>
-                                Magic tools are temporarily unavailable. {rateLimitState.openaiAvailable ? 'Switch to classic tools below.' : 'Please try again later.'}
+                                Magic tools are temporarily unavailable. Switch to classic tools below.
                               </Alert>
                             )}
                             {/* Input field comes first */}
@@ -4969,45 +4769,6 @@ const EditorPage = ({ shows }) => {
                               Back to Magic Edit
                             </Button>
 
-                            {!rateLimitState.openaiAvailable && (
-                              <Alert severity="warning" sx={{ mb: 2 }}>
-                                Classic magic tools are temporarily unavailable. Please try again later.
-                              </Alert>
-                            )}
-
-                            {/* Login prompt for unauthenticated users */}
-                            {(!user || user?.userDetails?.credits <= 0) && (
-                              <Box sx={{
-                                p: 2,
-                                borderRadius: 2,
-                                bgcolor: 'rgba(76, 175, 80, 0.08)',
-                                border: '1px solid rgba(76, 175, 80, 0.3)',
-                                mb: 2,
-                                textAlign: 'center'
-                              }}>
-                                <Typography variant="body2" sx={{ mb: 1.5, color: 'rgb(46, 125, 50)', fontWeight: 600 }}>
-                                  {!user ? 'Sign in to use Magic Tools' : 'Get more credits for Magic Tools'}
-                                </Typography>
-                                <Button
-                                  variant="contained"
-                                  fullWidth
-                                  component={Link}
-                                  to="/pro"
-                                  sx={{
-                                    bgcolor: 'rgb(76, 175, 80)',
-                                    color: '#fff',
-                                    fontWeight: 600,
-                                    py: 1,
-                                    '&:hover': {
-                                      bgcolor: 'rgb(56, 142, 60)',
-                                    }
-                                  }}
-                                >
-                                  {!user ? 'Sign In / Sign Up' : 'Get More Credits'}
-                                </Button>
-                              </Box>
-                            )}
-
                             <Box sx={{
                               p: 1.5,
                               borderRadius: 1,
@@ -5045,7 +4806,6 @@ const EditorPage = ({ shows }) => {
                                   setPromptEnabled('erase');
                                   toggleDrawingMode('magicEraser');
                                 }}
-                                disabled={!rateLimitState.openaiAvailable}
                                 sx={{
                                   flex: 1,
                                   py: 1.25,
@@ -5069,7 +4829,6 @@ const EditorPage = ({ shows }) => {
                                   setPromptEnabled('fill');
                                   toggleDrawingMode('magicEraser');
                                 }}
-                                disabled={!rateLimitState.openaiAvailable}
                                 sx={{
                                   flex: 1,
                                   py: 1.25,
@@ -5163,7 +4922,7 @@ const EditorPage = ({ shows }) => {
                               variant='contained'
                               fullWidth
                               size="large"
-                              disabled={!hasFabricPaths || loadingInpaintingResult || !rateLimitState.openaiAvailable}
+                              disabled={!hasFabricPaths || loadingInpaintingResult}
                               onClick={() => {
                                 exportDrawing();
                               }}
@@ -5171,9 +4930,9 @@ const EditorPage = ({ shows }) => {
                               sx={{
                                 py: 1.5,
                                 fontWeight: 600,
-                                backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.main' : 'grey.400',
+                                backgroundColor: hasFabricPaths ? 'primary.main' : 'grey.400',
                                 '&:hover': {
-                                  backgroundColor: hasFabricPaths && rateLimitState.openaiAvailable ? 'primary.dark' : 'grey.400',
+                                  backgroundColor: hasFabricPaths ? 'primary.dark' : 'grey.400',
                                 },
                                 '&.Mui-disabled': {
                                   backgroundColor: 'grey.300',
@@ -5181,7 +4940,7 @@ const EditorPage = ({ shows }) => {
                                 },
                               }}
                             >
-                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? (rateLimitState.openaiAvailable ? 'Apply Changes' : 'Classic Magic Tools are temporarily unavailable') : 'Paint on canvas to start'}
+                              {loadingInpaintingResult ? 'Processing...' : hasFabricPaths ? 'Apply Changes' : 'Paint on canvas to start'}
                             </Button>
                           </Box>
                         </>

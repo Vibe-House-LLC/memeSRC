@@ -4,7 +4,9 @@ import { Helmet } from 'react-helmet-async';
 import { styled } from '@mui/material/styles';
 import { Button, Typography, Container, Slider, Box } from '@mui/material';
 import { fabric } from 'fabric';
-import { API } from 'aws-amplify';
+import { runClassicInpaintLocally } from '../utils/comfyClassicInpaint';
+
+const CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_BACKGROUND_COLOR || 'red';
 
 const StyledContent = styled('div')(({ theme }) => ({
   margin: 'auto',
@@ -62,7 +64,7 @@ export default function InpaintingPage() {
       width: 1024,
       height: 1024,
       selection: false,
-      backgroundColor: 'black',
+      backgroundColor: CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR,
     });
 
     fabricCanvasInstance.current = canvas;
@@ -122,7 +124,7 @@ export default function InpaintingPage() {
       top: 0,
       width: tempCanvasDrawing.getWidth(),
       height: tempCanvasDrawing.getHeight(),
-      fill: 'black',
+      fill: CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR,
       selectable: false,
       evented: false,
     });
@@ -153,12 +155,6 @@ export default function InpaintingPage() {
     if (fabricImage) {
       const dataURLBgImage = fabricImage.toDataURL('image/png');
 
-      const data = {
-        image: dataURLBgImage,
-        mask: dataURLDrawing,
-        prompt: "rainbow",
-      };
-
       // Delay the downloads using setTimeout
       setTimeout(() => {
         downloadDataURL(dataURLBgImage, 'background_image.png');
@@ -169,12 +165,14 @@ export default function InpaintingPage() {
       }, 1000);
 
       try {
-        const response = await API.post('publicapi', '/inpaint', {
-          body: data
+        const outputDataUrl = await runClassicInpaintLocally({
+          imageDataUrl: dataURLBgImage,
+          maskDataUrl: dataURLDrawing,
+          prompt: 'rainbow',
         });
-        setImageSrc(response.imageData);
+        setImageSrc(outputDataUrl);
       } catch (error) {
-        console.log('Error posting to lambda function:', error);
+        console.log('Error running local inpaint workflow:', error);
       }
     }
   };
@@ -206,7 +204,7 @@ export default function InpaintingPage() {
 
       canvas.width = size;
       canvas.height = size;
-      context.fillStyle = 'black';
+      context.fillStyle = CLASSIC_LOCAL_INPAINT_BACKGROUND_COLOR;
       context.fillRect(0, 0, size, size);
       context.drawImage(image, xOffset, yOffset, width, height);
 

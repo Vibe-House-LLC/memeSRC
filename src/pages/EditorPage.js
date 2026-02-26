@@ -1,4 +1,4 @@
-import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { Fragment, forwardRef, memo, useCallback, useContext, useEffect, useState } from 'react'
 import { fabric } from 'fabric';
 import { FabricJSCanvas, useFabricJSEditor } from 'fabricjs-react'
 import { styled } from '@mui/material/styles';
@@ -27,19 +27,19 @@ import ShareIcon from '@mui/icons-material/Share';
 import UndoIcon from '@mui/icons-material/Undo';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
-import { API, Storage, graphqlOperation } from 'aws-amplify';
+import { API, Storage } from 'aws-amplify';
 import { Box } from '@mui/system';
 import { Helmet } from 'react-helmet-async';
 import PropTypes from 'prop-types';
 import TextEditorControls from '../components/TextEditorControls';
 import { SnackbarContext } from '../SnackbarContext';
 import { UserContext } from '../UserContext';
-import { MagicPopupContext } from '../MagicPopupContext';
 import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
 import ImageEditorControls from '../components/ImageEditorControls';
 import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
+import { CLASSIC_ERASER_DEFAULT_PROMPT, runClassicInpaintLocally } from '../utils/comfyClassicInpaint';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -82,6 +82,9 @@ const StyledCardMedia = styled('img')`
   background-color: black;
 `;
 
+const MAGIC_IMAGE_SIZE = 1024;
+const CLASSIC_LOCAL_INPAINT_FORCE_SQUARE = process.env.REACT_APP_LOCAL_CLASSIC_INPAINT_FORCE_SQUARE === 'true';
+
 
 
 const EditorPage = ({ setSeriesTitle, shows }) => {
@@ -94,7 +97,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // console.log(searchDetails.fineTuningFrame)
   // Get everything ready
   const { fid, editorProjectId } = useParams();
-  const { user, setUser } = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const [defaultFrame, setDefaultFrame] = useState(null);
   const [pickingColor, setPickingColor] = useState(false);
   const [imageScale, setImageScale] = useState();
@@ -136,7 +139,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
   const [loadedSeriesTitle, setLoadedSeriesTitle] = useState('_universal');
   // const [drawingMode, setDrawingMode] = useState(false);
-  const [magicPrompt, setMagicPrompt] = useState('Everyday scene as cinematic cinestill sample')  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
+  const [magicPrompt, setMagicPrompt] = useState(CLASSIC_ERASER_DEFAULT_PROMPT)  // , Empty, Nothing, Plain, Vacant, Desolate, Void, Barren, Uninhabited, Abandoned, Unoccupied, Untouched, Clear, Blank, Pristine, Unmarred
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadingInpaintingResult, setLoadingInpaintingResult] = useState(false);
   const { setSeverity, setMessage, setOpen } = useContext(SnackbarContext);
@@ -159,7 +162,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   const [subtitlesExpanded, setSubtitlesExpanded] = useState(false);
   const [promptEnabled, setPromptEnabled] = useState('erase');
   // const buttonRef = useRef(null);
-  const { setMagicToolsPopoverAnchorEl } = useContext(MagicPopupContext)
 
   // Image selection stuff
   const [selectedImage, setSelectedImage] = useState(null);
@@ -168,7 +170,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
   // const isMd = useMediaQuery((theme) => theme.breakpoints.up('md'));
   const [returnedImages, setReturnedImages] = useState([]);
 
-  const magicToolsButtonRef = useRef();
 
   const handleSubtitlesExpand = () => {
     setSubtitlesExpanded(!subtitlesExpanded);
@@ -799,38 +800,19 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
   // ------------------------------------------------------------------------
 
-  const QUERY_INTERVAL = 1000; // Every second
-  const TIMEOUT = 60 * 1000;   // 1 minute
-
-  async function checkMagicResult(id) {
-    try {
-      const result = await API.graphql(graphqlOperation(`query MyQuery {
-            getMagicResult(id: "${id}") {
-              results
-            }
-          }`));
-      return result.data.getMagicResult?.results;
-    } catch (error) {
-      console.error("Error fetching magic result:", error);
-      return null;
-    }
-  }
-
   const toggleDrawingMode = (tool) => {
     if (editor) {
-      if (user && user?.userDetails?.credits > 0) {
-        editor.canvas.isDrawingMode = (tool === 'magicEraser');
-        editor.canvas.freeDrawingBrush.width = brushToolSize;
-        editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
-        if (tool !== 'magicEraser') {
-          editor.canvas.getObjects().forEach((obj) => {
-            if (obj instanceof fabric.Path) {
-              editor.canvas.remove(obj)
-            }
-          });
-          setHasFabricPaths(false);
-          addToHistory();
-        }
+      editor.canvas.isDrawingMode = (tool === 'magicEraser');
+      editor.canvas.freeDrawingBrush.width = brushToolSize;
+      editor.canvas.freeDrawingBrush.color = 'rgba(255, 0, 0, 0.5)';
+      if (tool !== 'magicEraser') {
+        editor.canvas.getObjects().forEach((obj) => {
+          if (obj instanceof fabric.Path) {
+            editor.canvas.remove(obj)
+          }
+        });
+        setHasFabricPaths(false);
+        addToHistory();
       }
     }
     // setDrawingMode((tool === 'magicEraser'))
@@ -838,154 +820,92 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
 
   const exportDrawing = async () => {
+    if (!editor?.canvas?.backgroundImage) {
+      setSeverity('error');
+      setMessage('Load an image before using Magic Eraser.');
+      setOpen(true);
+      return;
+    }
+
     setLoadingInpaintingResult(true)
     window.scrollTo(0, 0);
-    const originalCanvas = editor.canvas;
+    try {
+      const originalHeight = editor.canvas.height;
+      const originalWidth = editor.canvas.width;
+      const exportScale = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
+        ? Math.min(MAGIC_IMAGE_SIZE / originalWidth, MAGIC_IMAGE_SIZE / originalHeight)
+        : (MAGIC_IMAGE_SIZE / Math.max(originalWidth, originalHeight));
+      const targetWidth = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
+        ? MAGIC_IMAGE_SIZE
+        : Math.max(1, Math.round(originalWidth * exportScale));
+      const targetHeight = CLASSIC_LOCAL_INPAINT_FORCE_SQUARE
+        ? MAGIC_IMAGE_SIZE
+        : Math.max(1, Math.round(originalHeight * exportScale));
+      const pathScale = Math.min(targetWidth / originalWidth, targetHeight / originalHeight);
+      const pathOffsetX = (targetWidth - originalWidth * pathScale) / 2;
+      const pathOffsetY = (targetHeight - originalHeight * pathScale) / 2;
 
-    // let fabricImage = null;
+      const tempCanvasDrawing = new fabric.Canvas();
+      tempCanvasDrawing.setWidth(targetWidth);
+      tempCanvasDrawing.setHeight(targetHeight);
+      tempCanvasDrawing.backgroundColor = 'black';
 
-    const tempCanvasDrawing = new fabric.Canvas();
-    tempCanvasDrawing.setWidth(1024);
-    tempCanvasDrawing.setHeight(1024);
-
-    // const solidRect = new fabric.Rect({
-    //     left: 0,
-    //     top: 0,
-    //     width: tempCanvasDrawing.getWidth(),
-    //     height: tempCanvasDrawing.getHeight(),
-    //     fill: 'black',
-    //     selectable: false,
-    //     evented: false,
-    // });
-
-    tempCanvasDrawing.backgroundColor = 'black'
-
-    // tempCanvasDrawing.add(solidRect);
-
-    const originalHeight = editor.canvas.height
-    const originalWidth = editor.canvas.width
-
-    const scale = Math.min(1024 / originalWidth, 1024 / originalHeight);
-    const offsetX = (1024 - originalWidth * scale) / 2;
-    const offsetY = (1024 - originalHeight * scale) / 2;
-
-    originalCanvas.getObjects().forEach((obj) => {
-      if (obj instanceof fabric.Path) {
-        const path = obj.toObject();
-        const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
-        // console.log(path)
-        newPath.scale(scale);
-        newPath.set({ left: newPath.left * scale + offsetX, top: newPath.top * scale + offsetY });
-        tempCanvasDrawing.add(newPath);
-      }
-
-      // if (obj instanceof fabric.Image) {
-      //     fabricImage = obj;
-      // }
-
-
-    });
-
-    const dataURLDrawing = tempCanvasDrawing.toDataURL({
-      format: 'png',
-      left: 0,
-      top: 0,
-      width: tempCanvasDrawing.getWidth(),
-      height: tempCanvasDrawing.getHeight(),
-    });
-    const backgroundImage = { ...editor.canvas.backgroundImage };
-
-    const newBackgroundImage = new fabric.Image(editor.canvas.backgroundImage.getElement())
-
-    // console.log(newBackgroundImage)
-    const imageWidth = backgroundImage.width
-    const imageHeight = backgroundImage.height
-    const imageScale = Math.min(1024 / imageWidth, 1024 / imageHeight);
-    const imageOffsetX = (1024 - imageWidth * imageScale) / 2;
-    const imageOffsetY = (1024 - imageHeight * imageScale) / 2;
-
-    tempCanvasDrawing.clear();
-
-    tempCanvasDrawing.backgroundColor = 'black'
-
-    newBackgroundImage.scale(imageScale)
-    newBackgroundImage.set({ left: imageOffsetX, top: imageOffsetY });
-    tempCanvasDrawing.add(newBackgroundImage)
-    const dataURLBgImage = tempCanvasDrawing.toDataURL('image/png');
-
-
-    // Delay the downloads using setTimeout
-    // setTimeout(() => {
-    //     downloadDataURL(dataURLBgImage, 'background_image.png');
-    // }, 500);
-
-    // setTimeout(() => {
-    //     downloadDataURL(dataURLDrawing, 'drawing.png');
-    // }, 1000);
-
-    if (dataURLBgImage && dataURLDrawing) {
-      //   const dataURLBgImage = fabricImage.toDataURL('image/png');
-
-      const data = {
-        image: dataURLBgImage,
-        mask: dataURLDrawing,
-        prompt: magicPrompt,
-      };
-
-      // Delay the downloads using setTimeout
-      //   setTimeout(() => {
-      //     downloadDataURL(dataURLBgImage, 'background_image.png');
-      //   }, 500);
-
-      //   setTimeout(() => {
-      //     downloadDataURL(dataURLDrawing, 'drawing.png');
-      //   }, 1000);
-
-      try {
-        const response = await API.post('publicapi', '/inpaint', {
-          body: data
-        });
-
-        const {magicResultId} = response;
-
-        const startTime = Date.now();
-
-        const pollInterval = setInterval(async () => {
-          const results = await checkMagicResult(magicResultId);
-          if (results || (Date.now() - startTime) >= TIMEOUT) {
-            clearInterval(pollInterval);
-            setLoadingInpaintingResult(false);  // Stop the loading spinner
-
-            if (results) {
-              const imageUrls = JSON.parse(results);
-              setReturnedImages([...returnedImages, ...imageUrls]);
-              setLoadingInpaintingResult(false);
-              setOpenSelectResult(true);
-              const newCreditAmount = user?.userDetails.credits - 1;
-              setUser({ ...user, userDetails: { ...user?.userDetails, credits: newCreditAmount } });
-            } else {
-              console.error("Timeout reached without fetching magic results.");
-              alert("Error: The request timed out. Please try again.");  // Notify the user about the timeout
-            }
-          }
-        }, QUERY_INTERVAL);
-
-      } catch (error) {
-        setLoadingInpaintingResult(false);
-        if (error.response?.data?.error?.name === "InsufficientCredits") {
-          setSeverity('error');
-          setMessage('Insufficient Credits');
-          setOpen(true);
-          originalCanvas.getObjects().forEach((obj) => {
-            if (obj instanceof fabric.Path) {
-              editor.canvas.remove(obj);
-            }
-          });
-          setHasFabricPaths(false);
+      editor.canvas.getObjects().forEach((obj) => {
+        if (obj instanceof fabric.Path) {
+          const path = obj.toObject();
+          const newPath = new fabric.Path(path.path, { ...path, stroke: 'red', fill: 'transparent', globalCompositeOperation: 'destination-out' });
+          newPath.scale(pathScale);
+          newPath.set({ left: newPath.left * pathScale + pathOffsetX, top: newPath.top * pathScale + pathOffsetY });
+          tempCanvasDrawing.add(newPath);
         }
-        console.log(error.response.data);
-        alert(`Error: ${JSON.stringify(error.response.data)}`);
+      });
+
+      const dataURLDrawing = tempCanvasDrawing.toDataURL({
+        format: 'png',
+        left: 0,
+        top: 0,
+        width: tempCanvasDrawing.getWidth(),
+        height: tempCanvasDrawing.getHeight(),
+      });
+
+      const backgroundImage = editor.canvas.backgroundImage;
+      const imageElement = backgroundImage?.getElement?.();
+      if (!imageElement) {
+        throw new Error('Unable to access background image for classic inpaint.');
       }
+
+      const imageWidth = backgroundImage.width || imageElement.naturalWidth || imageElement.width || originalWidth;
+      const imageHeight = backgroundImage.height || imageElement.naturalHeight || imageElement.height || originalHeight;
+      const imageScale = Math.min(targetWidth / imageWidth, targetHeight / imageHeight);
+      const imageOffsetX = (targetWidth - imageWidth * imageScale) / 2;
+      const imageOffsetY = (targetHeight - imageHeight * imageScale) / 2;
+
+      const bgCanvas = document.createElement('canvas');
+      bgCanvas.width = targetWidth;
+      bgCanvas.height = targetHeight;
+      const bgCtx = bgCanvas.getContext('2d');
+      if (!bgCtx) {
+        throw new Error('Unable to prepare background image for classic inpaint.');
+      }
+      bgCtx.fillStyle = 'black';
+      bgCtx.fillRect(0, 0, targetWidth, targetHeight);
+      bgCtx.drawImage(imageElement, imageOffsetX, imageOffsetY, imageWidth * imageScale, imageHeight * imageScale);
+      const dataURLBgImage = bgCanvas.toDataURL('image/png');
+
+      const outputDataUrl = await runClassicInpaintLocally({
+        imageDataUrl: dataURLBgImage,
+        maskDataUrl: dataURLDrawing,
+        prompt: (typeof magicPrompt === 'string' && magicPrompt.trim().length > 0) ? magicPrompt : CLASSIC_ERASER_DEFAULT_PROMPT,
+      });
+      setReturnedImages((prev) => [...prev, outputDataUrl]);
+      setOpenSelectResult(true);
+    } catch (error) {
+      console.error(error);
+      setSeverity('error');
+      setMessage(error.message || 'An error occurred while applying local classic inpaint.');
+      setOpen(true);
+    } finally {
+      setLoadingInpaintingResult(false);
     }
   };
 
@@ -1020,7 +940,7 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
 
         setEditorTool('captions');
         toggleDrawingMode('captions');
-        setMagicPrompt('Everyday scene as cinematic cinestill sample');
+        setMagicPrompt(CLASSIC_ERASER_DEFAULT_PROMPT);
         // setPromptEnabled('erase');
         addToHistory();
       }, {
@@ -1293,33 +1213,27 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
     if (promptEnabled === "fill") {
       setMagicPrompt('')
     } else {
-      setMagicPrompt('Everyday scene as cinematic cinestill sample')
+      setMagicPrompt(CLASSIC_ERASER_DEFAULT_PROMPT)
     }
   }, [promptEnabled])
 
   useEffect(() => {
-
     if (searchParams.has('magicTools', 'true')) {
-      if (!user || user?.userDetails?.credits <= 0) {
-        setMagicToolsPopoverAnchorEl(magicToolsButtonRef.current);
-        setEditorTool('captions')
-      }
+      setEditorTool('magicEraser');
     }
 
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     setPromptEnabled('erase')
-    setMagicPrompt('Everyday scene as cinematic cinestill sample')
+    setMagicPrompt(CLASSIC_ERASER_DEFAULT_PROMPT)
   }, [editorTool])
 
   useEffect(() => {
     if (editorLoaded) {
       if (searchParams.has('magicTools', 'true')) {
-        if (!(!user || user?.userDetails?.credits <= 0)) {
-          setEditorTool('magicEraser');
-          toggleDrawingMode('magicEraser');
-        }
+        setEditorTool('magicEraser');
+        toggleDrawingMode('magicEraser');
       }
     }
   }, [editorLoaded]);
@@ -1470,7 +1384,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                       value="captions"
                     />
                     <Tab
-                      ref={magicToolsButtonRef}
                       style={{
                         opacity: editorTool === "magicEraser" ? 1 : 0.4,
                         color: editorTool === "magicEraser" ? "limegreen" : "white"
@@ -1482,12 +1395,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
                         </Box>
                       }
                       value="magicEraser"
-                      onClick={(event) => {
-                        if (!user || user?.userDetails?.credits <= 0) {
-                          setMagicToolsPopoverAnchorEl(event.currentTarget);
-                          setEditorTool('captions')
-                        }
-                      }}
                     />
                   </Tabs>
 
