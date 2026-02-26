@@ -164,7 +164,12 @@ export function appendImageToSnapshot(
   }
 
   const nextImages = [...base.images, image];
-  const desiredPanelCount = Math.min(MAX_COLLAGE_IMAGES, Math.max(nextImages.length, 1));
+  // Preserve seeded panel-count defaults for brand-new collages while still
+  // expanding to fit additional images when needed.
+  const desiredPanelCount = Math.min(
+    MAX_COLLAGE_IMAGES,
+    Math.max(base.panelCount || 0, nextImages.length, 1)
+  );
   const panelIds = createPanelIds(desiredPanelCount);
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
 

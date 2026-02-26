@@ -125,6 +125,9 @@ const COLOR_PICKER_SWATCHES = [
   '#F012BE',
 ];
 const COLOR_PICKER_SWATCH_SET = new Set(COLOR_PICKER_SWATCHES.map((color) => color.toLowerCase()));
+const COLLAGE_DEFAULT_ASPECT_RATIO = 'portrait';
+const COLLAGE_DEFAULT_BORDER_THICKNESS = 'medium';
+const COLLAGE_DEFAULT_BORDER_COLOR = '#FFFFFF';
 
 function FontSelector({ selectedFont, onSelectFont, onLowercaseChange }) {
   return (
@@ -1431,6 +1434,73 @@ useEffect(() => {
     }
   }, [addingToCollage, cid, confirmedCid, currentImage, episode, fontFamily, frame, loadedSubtitle, season, showText]);
 
+  const resolveNewCollageDefaults = useCallback(async () => {
+    const fallbackBorderThickness = (() => {
+      try {
+        return localStorage.getItem('meme-src-collage-border-thickness') || COLLAGE_DEFAULT_BORDER_THICKNESS;
+      } catch (_) {
+        return COLLAGE_DEFAULT_BORDER_THICKNESS;
+      }
+    })();
+
+    const fallbackBorderColor = (() => {
+      try {
+        return localStorage.getItem('meme-src-collage-custom-color') || COLLAGE_DEFAULT_BORDER_COLOR;
+      } catch (_) {
+        return COLLAGE_DEFAULT_BORDER_COLOR;
+      }
+    })();
+
+    const fallback = {
+      selectedAspectRatio: COLLAGE_DEFAULT_ASPECT_RATIO,
+      customAspectRatio: undefined,
+      selectedTemplateId: null,
+      borderThickness: fallbackBorderThickness,
+      borderColor: fallbackBorderColor,
+    };
+
+    let recentProject = collageProjects[0] || null;
+    if (!recentProject) {
+      try {
+        const projects = await loadProjects();
+        if (Array.isArray(projects) && projects.length > 0) {
+          recentProject = [...projects].sort((a, b) => {
+            const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+            const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+            return bTime - aTime;
+          })[0] || null;
+        }
+      } catch (_) {
+        recentProject = null;
+      }
+    }
+
+    if (!recentProject?.id) {
+      return fallback;
+    }
+
+    try {
+      const recentSnapshot = await loadCollageSnapshot(recentProject);
+      if (!recentSnapshot) return fallback;
+
+      const parsedCustomAspectRatio = Number(recentSnapshot.customAspectRatio);
+      const customAspectRatio = Number.isFinite(parsedCustomAspectRatio) && parsedCustomAspectRatio > 0
+        ? Math.max(0.1, Math.min(10, parsedCustomAspectRatio))
+        : undefined;
+
+      return {
+        selectedAspectRatio: recentSnapshot.selectedAspectRatio || fallback.selectedAspectRatio,
+        customAspectRatio,
+        selectedTemplateId: recentSnapshot.selectedTemplateId || null,
+        borderThickness: recentSnapshot.borderThickness ?? fallback.borderThickness,
+        borderColor: recentSnapshot.borderColor || fallback.borderColor,
+      };
+    } catch (error) {
+      console.warn('Unable to resolve collage defaults from recent project', error);
+      return fallback;
+    }
+  }, [collageProjects, loadCollageSnapshot]);
+
   const handleCollageNewProject = useCallback(async () => {
     try {
       setAddingToCollage(true);
@@ -1439,9 +1509,29 @@ useEffect(() => {
       const project = await createProject({ name: 'Untitled Meme' });
       const projectId = project?.id;
       if (!projectId) throw new Error('Missing project id for collage project');
+      const defaults = await resolveNewCollageDefaults();
+      const baseSnapshot = {
+        version: 1,
+        images: [],
+        panelImageMapping: {},
+        panelTransforms: {},
+        panelTexts: {},
+        stickers: [],
+        selectedTemplateId: defaults.selectedTemplateId || null,
+        selectedAspectRatio: defaults.selectedAspectRatio || COLLAGE_DEFAULT_ASPECT_RATIO,
+        customAspectRatio: defaults.customAspectRatio,
+        panelCount: 1,
+        borderThickness: defaults.borderThickness,
+        borderColor: defaults.borderColor,
+        customLayout: null,
+      };
       const { snapshot, thumbnail } = await persistCollageSnapshot(
         projectId,
-        appendImageToSnapshot(null, snapshotImageFromPayload(payloadWithKey.imagePayload)).snapshot
+        appendImageToSnapshot(
+          baseSnapshot,
+          snapshotImageFromPayload(payloadWithKey.imagePayload),
+          defaults.selectedAspectRatio || COLLAGE_DEFAULT_ASPECT_RATIO
+        ).snapshot
       );
       const previewImage =
         payloadWithKey.imagePayload?.displayUrl ||
@@ -1476,6 +1566,7 @@ useEffect(() => {
     createProject,
     ensureCollagePayloadHasLibraryKey,
     persistCollageSnapshot,
+    resolveNewCollageDefaults,
     snapshotImageFromPayload,
     trackUsageEvent,
   ]);
