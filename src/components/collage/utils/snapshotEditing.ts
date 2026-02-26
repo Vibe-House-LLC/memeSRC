@@ -83,6 +83,11 @@ const cleanStickerLayers = (stickers: CollageSnapshot['stickers']): NonNullable<
       const widthRaw = Number(sticker.widthPercent);
       const xRaw = Number(sticker.xPercent);
       const yRaw = Number(sticker.yPercent);
+      const opacityRaw = Number(sticker.opacity);
+      const brightnessRaw = Number(sticker.brightness);
+      const contrastRaw = Number(sticker.contrast);
+      const saturationRaw = Number(sticker.saturation);
+      const editedUrl = typeof sticker.editedUrl === 'string' ? sticker.editedUrl : '';
       const next = {
         ...sticker,
         id: (typeof sticker.id === 'string' && sticker.id.trim()) ? sticker.id : `sticker-${index + 1}`,
@@ -91,8 +96,13 @@ const cleanStickerLayers = (stickers: CollageSnapshot['stickers']): NonNullable<
         widthPercent: Number.isFinite(widthRaw) ? widthRaw : 28,
         xPercent: Number.isFinite(xRaw) ? xRaw : 36,
         yPercent: Number.isFinite(yRaw) ? yRaw : 12,
+        opacity: Number.isFinite(opacityRaw) ? Math.max(0, Math.min(1, opacityRaw)) : 1,
+        brightness: Number.isFinite(brightnessRaw) ? Math.max(0, Math.min(200, brightnessRaw)) : 100,
+        contrast: Number.isFinite(contrastRaw) ? Math.max(0, Math.min(200, contrastRaw)) : 100,
+        saturation: Number.isFinite(saturationRaw) ? Math.max(0, Math.min(200, saturationRaw)) : 100,
+        editedUrl,
       };
-      if (!next.libraryKey && !next.url) return null;
+      if (!next.libraryKey && !next.url && !next.editedUrl) return null;
       return next;
     })
     .filter(Boolean) as NonNullable<CollageSnapshot['stickers']>;

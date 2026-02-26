@@ -1,11 +1,13 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
+import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert, Slider, Button, Stack, Dialog } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight, MoreHoriz, Tune, ArrowBack, Close } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
+import { get as getFromLibrary } from '../../../utils/library/storage';
 import { getMetadataForKey } from '../../../utils/library/metadata';
+import { saveImageToLibrary } from '../../../utils/library/saveImageToLibrary';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 import {
   applyBorderDragDelta,
@@ -257,10 +259,77 @@ const BORDER_CENTER_SNAP_THRESHOLD_MAX_PX = 5;
 const BORDER_ZONE_SHOW_HIT_AREA_DEBUG = false;
 const BORDER_DRAG_ACTION_SUPPRESS_MS = 420;
 const LAYOUT_COORD_QUANTUM_PX = 0.001;
+const STICKER_OPACITY_DEFAULT = 1;
+const STICKER_FILTER_DEFAULT = 100;
+const STICKER_OPACITY_MIN = 0;
+const STICKER_OPACITY_MAX = 1;
+const STICKER_FILTER_MIN = 0;
+const STICKER_FILTER_MAX = 200;
+const STICKER_ERASER_MAX_SOURCE_DIMENSION = 2200;
 const BORDER_DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
   try { return localStorage.getItem('meme-src-collage-debug') === '1'; } catch { return false; }
 })();
 const borderDebugLog = (...args) => { if (BORDER_DEBUG_MODE) console.log('[CollageBorder]', ...args); };
+
+const normalizeStickerOpacity = (value, fallback = STICKER_OPACITY_DEFAULT) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return clamp(numeric, STICKER_OPACITY_MIN, STICKER_OPACITY_MAX);
+};
+
+const normalizeStickerFilterValue = (value, fallback = STICKER_FILTER_DEFAULT) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return clamp(numeric, STICKER_FILTER_MIN, STICKER_FILTER_MAX);
+};
+
+const getStickerSourceUrl = (sticker) => {
+  if (!sticker || typeof sticker !== 'object') return '';
+  const editedUrl = typeof sticker.editedUrl === 'string' ? sticker.editedUrl.trim() : '';
+  if (editedUrl) return editedUrl;
+  const originalUrl = typeof sticker.originalUrl === 'string' ? sticker.originalUrl.trim() : '';
+  if (originalUrl) return originalUrl;
+  const thumbnailUrl = typeof sticker.thumbnailUrl === 'string' ? sticker.thumbnailUrl.trim() : '';
+  return thumbnailUrl;
+};
+
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(blob);
+});
+
+const sanitizeStickerFilename = (value) => {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized || 'sticker';
+};
+
+const getStickerEditFilename = (sticker) => {
+  const baseName = sanitizeStickerFilename(
+    sticker?.metadata?.name
+    || sticker?.metadata?.title
+    || sticker?.id
+    || 'sticker',
+  );
+  return `${baseName}-edit-${Date.now()}.png`;
+};
+
+const getStickerDrawStyle = (sticker) => ({
+  opacity: normalizeStickerOpacity(sticker?.opacity, STICKER_OPACITY_DEFAULT),
+  brightness: normalizeStickerFilterValue(sticker?.brightness, STICKER_FILTER_DEFAULT),
+  contrast: normalizeStickerFilterValue(sticker?.contrast, STICKER_FILTER_DEFAULT),
+  saturation: normalizeStickerFilterValue(sticker?.saturation, STICKER_FILTER_DEFAULT),
+});
+
+const buildStickerFilterCss = ({ brightness, contrast, saturation }) => (
+  `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
+);
 
 const normalizeFontWeightValue = (fontWeight) => {
   if (fontWeight === undefined || fontWeight === null) return '400';
@@ -988,6 +1057,7 @@ const CanvasCollagePreview = ({
   const containerRef = useRef(null);
   const [componentWidth, setComponentWidth] = useState(400);
   const [componentHeight, setComponentHeight] = useState(400);
+  const isCompactStickerPanel = componentWidth < 560;
   const [loadedImages, setLoadedImages] = useState({});
   const [loadedStickers, setLoadedStickers] = useState({});
   const [activeStickerId, setActiveStickerId] = useState(null);
@@ -998,12 +1068,32 @@ const CanvasCollagePreview = ({
   const [textLayerSnapGuide, setTextLayerSnapGuide] = useState(null);
   const hasInitializedStickerIdsRef = useRef(false);
   const previousStickerIdsRef = useRef([]);
+  const [stickerToolsOpen, setStickerToolsOpen] = useState(false);
+  const [stickerToolsTargetId, setStickerToolsTargetId] = useState(null);
+  const [stickerEraserOpen, setStickerEraserOpen] = useState(false);
+  const [stickerEraserTargetId, setStickerEraserTargetId] = useState(null);
+  const [stickerEraserLoading, setStickerEraserLoading] = useState(false);
+  const [stickerEraserApplying, setStickerEraserApplying] = useState(false);
+  const [stickerEraserError, setStickerEraserError] = useState('');
+  const [stickerEraserBrushSize, setStickerEraserBrushSize] = useState(40);
+  const [stickerEraserBrushStrength, setStickerEraserBrushStrength] = useState(0.7);
+  const [stickerEraseRestoreLoading, setStickerEraseRestoreLoading] = useState(false);
+  const [stickerSettingsLayout, setStickerSettingsLayout] = useState({
+    top: 12,
+    left: 12,
+    width: 240,
+    maxHeight: 280,
+  });
   const handledTextAutoOpenRequestRef = useRef(null);
   const handledTransformAutoOpenRequestRef = useRef(null);
   const handledReorderAutoOpenRequestRef = useRef(null);
   const stickerDraftsRef = useRef({});
   const pendingStickerPointerRef = useRef(null);
   const stickerRafRef = useRef(null);
+  const stickerEraserCanvasRef = useRef(null);
+  const stickerEraserImageRef = useRef(null);
+  const stickerEraserPointerRef = useRef({ active: false, pointerId: null, x: 0, y: 0 });
+  const stickerSettingsPanelRef = useRef(null);
   const pendingTextLayerPointerRef = useRef(null);
   const textLayerRafRef = useRef(null);
   const textLayerGestureRef = useRef({ moved: false, editorHiddenDuringMove: false });
@@ -1993,7 +2083,7 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     let cancelled = false;
     const loadSticker = (sticker) => new Promise((resolve) => {
-      const src = sticker?.originalUrl || sticker?.thumbnailUrl || '';
+      const src = getStickerSourceUrl(sticker);
       if (!src) {
         resolve({ id: sticker?.id, img: null });
         return;
@@ -2093,6 +2183,16 @@ const CanvasCollagePreview = ({
 
     previousStickerIdsRef.current = stickerIds;
   }, [stickers]);
+
+  const getStickerById = useCallback((stickerId) => {
+    if (!stickerId || !Array.isArray(stickers)) return null;
+    return stickers.find((sticker) => sticker?.id === stickerId) || null;
+  }, [stickers]);
+
+  const stickerToolsTarget = useMemo(
+    () => getStickerById(stickerToolsTargetId),
+    [getStickerById, stickerToolsTargetId]
+  );
 
   const clampStickerWidthPx = useCallback((widthPx, aspectRatio) => {
     const safeAspectRatio = Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
@@ -2198,10 +2298,22 @@ const CanvasCollagePreview = ({
     return clampStickerPositionPx(nextXPx, nextYPx, baseWidthPx, baseHeightPx);
   }, [clampStickerPositionPx, clampStickerWidthPx, componentHeight, componentWidth]);
 
+  const stickerSettingsAnchorRect = useMemo(() => {
+    const anchorId = stickerToolsTargetId;
+    if (!anchorId) return null;
+    const anchorSticker = getStickerById(anchorId);
+    if (!anchorSticker) return null;
+    return getStickerRectPx(anchorSticker);
+  }, [getStickerById, getStickerRectPx, stickerToolsTargetId]);
+
   const handleStickerPointerDown = useCallback((event, sticker, mode = 'move') => {
     if (!sticker?.id || typeof updateSticker !== 'function') return;
     if (Object.values(isTransformMode).some(Boolean)) return;
     if (event?.button !== undefined && event.button !== 0) return;
+    if (stickerToolsOpen) {
+      setStickerToolsOpen(false);
+      setStickerToolsTargetId(null);
+    }
     clearOverlayTouchTapTracker();
     if (activeTextLayerId) {
       setActiveTextLayerId(null);
@@ -2286,6 +2398,7 @@ const CanvasCollagePreview = ({
     updateSticker,
     activeStickerId,
     activeTextLayerId,
+    stickerToolsOpen,
     beginOverlayTouchTapTracking,
     clearOverlayTouchTapTracker,
   ]);
@@ -2309,8 +2422,21 @@ const CanvasCollagePreview = ({
       window.cancelAnimationFrame(stickerRafRef.current);
       stickerRafRef.current = null;
     }
+    if (stickerToolsTargetId === stickerId) {
+      setStickerToolsOpen(false);
+      setStickerToolsTargetId(null);
+    }
+    if (stickerEraserTargetId === stickerId) {
+      stickerEraserPointerRef.current = { active: false, pointerId: null, x: 0, y: 0 };
+      setStickerEraserOpen(false);
+      setStickerEraserTargetId(null);
+      setStickerEraserLoading(false);
+      setStickerEraserApplying(false);
+      setStickerEraseRestoreLoading(false);
+      setStickerEraserError('');
+    }
     removeSticker(stickerId);
-  }, [isTransformMode, removeSticker]);
+  }, [isTransformMode, removeSticker, stickerEraserTargetId, stickerToolsTargetId]);
 
   const clearActiveStickerSelection = useCallback((event, options = {}) => {
     const { suppressEvents = true } = options;
@@ -2326,7 +2452,17 @@ const CanvasCollagePreview = ({
     setSelectedBorderZoneId(null);
     setActiveStickerId(null);
     setStickerInteraction(null);
+    setStickerToolsOpen(false);
+    setStickerToolsTargetId(null);
+    setStickerEraserOpen(false);
+    setStickerEraserTargetId(null);
+    setStickerEraserLoading(false);
+    setStickerEraserApplying(false);
+    setStickerEraseRestoreLoading(false);
+    setStickerEraserError('');
     pendingStickerPointerRef.current = null;
+    stickerEraserPointerRef.current = { active: false, pointerId: null, x: 0, y: 0 };
+    stickerEraserImageRef.current = null;
     if (stickerRafRef.current !== null) {
       window.cancelAnimationFrame(stickerRafRef.current);
       stickerRafRef.current = null;
@@ -2336,7 +2472,17 @@ const CanvasCollagePreview = ({
   useEffect(() => {
     if (!Object.values(isTransformMode).some(Boolean)) return;
     setStickerInteraction(null);
+    setStickerToolsOpen(false);
+    setStickerToolsTargetId(null);
+    setStickerEraserOpen(false);
+    setStickerEraserTargetId(null);
+    setStickerEraserLoading(false);
+    setStickerEraserApplying(false);
+    setStickerEraseRestoreLoading(false);
+    setStickerEraserError('');
     pendingStickerPointerRef.current = null;
+    stickerEraserPointerRef.current = { active: false, pointerId: null, x: 0, y: 0 };
+    stickerEraserImageRef.current = null;
     if (stickerRafRef.current !== null) {
       window.cancelAnimationFrame(stickerRafRef.current);
       stickerRafRef.current = null;
@@ -2347,6 +2493,421 @@ const CanvasCollagePreview = ({
   const handleStickerDone = useCallback((event) => {
     clearActiveStickerSelection(event);
   }, [clearActiveStickerSelection]);
+
+  const handleOpenStickerTools = useCallback((event, stickerId) => {
+    if (!stickerId) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    setStickerEraserError('');
+    setActiveStickerId(stickerId);
+    setStickerToolsTargetId(stickerId);
+    setStickerEraserOpen(false);
+    setStickerEraserTargetId(null);
+    setStickerToolsOpen(true);
+  }, []);
+
+  const handleCloseStickerTools = useCallback(() => {
+    setStickerToolsOpen(false);
+    setStickerToolsTargetId(null);
+    setStickerEraserOpen(false);
+    setStickerEraserTargetId(null);
+  }, []);
+
+  const handleStickerStyleValueChange = useCallback((field, value) => {
+    if (!stickerToolsTargetId || typeof updateSticker !== 'function') return;
+    if (!field) return;
+    updateSticker(stickerToolsTargetId, { [field]: value });
+  }, [stickerToolsTargetId, updateSticker]);
+
+  const handleStickerEraseReset = useCallback(async () => {
+    const targetStickerId = stickerEraserTargetId || stickerToolsTargetId;
+    if (!targetStickerId || typeof updateSticker !== 'function') return;
+    const targetSticker = getStickerById(targetStickerId);
+    const existingMetadata = (
+      targetSticker?.metadata && typeof targetSticker.metadata === 'object'
+    ) ? { ...targetSticker.metadata } : {};
+    const originalLibraryKey = typeof existingMetadata.eraseOriginalLibraryKey === 'string'
+      ? existingMetadata.eraseOriginalLibraryKey.trim()
+      : '';
+
+    if (!originalLibraryKey) {
+      updateSticker(targetStickerId, { editedUrl: '' });
+      return;
+    }
+
+    setStickerEraserError('');
+    setStickerEraseRestoreLoading(true);
+    try {
+      const blob = await getFromLibrary(originalLibraryKey, { level: 'private' });
+      const restoredDataUrl = await blobToDataUrl(blob);
+      const nextMetadata = { ...existingMetadata, libraryKey: originalLibraryKey };
+      delete nextMetadata.eraseOriginalLibraryKey;
+      updateSticker(targetStickerId, {
+        originalUrl: restoredDataUrl,
+        thumbnailUrl: restoredDataUrl,
+        editedUrl: '',
+        metadata: nextMetadata,
+      });
+    } catch (_) {
+      setStickerEraserError('Unable to restore the original sticker right now.');
+    } finally {
+      setStickerEraseRestoreLoading(false);
+    }
+  }, [getStickerById, stickerEraserTargetId, stickerToolsTargetId, updateSticker]);
+
+  const drawStickerIntoEraserCanvas = useCallback((image) => {
+    const canvas = stickerEraserCanvasRef.current;
+    if (!canvas || !image) return false;
+    const sourceWidth = Math.max(1, Number(image.naturalWidth || image.width || 1));
+    const sourceHeight = Math.max(1, Number(image.naturalHeight || image.height || 1));
+    const scale = Math.min(1, STICKER_ERASER_MAX_SOURCE_DIMENSION / Math.max(sourceWidth, sourceHeight));
+    const outputWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const outputHeight = Math.max(1, Math.round(sourceHeight * scale));
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    ctx.clearRect(0, 0, outputWidth, outputHeight);
+    ctx.drawImage(image, 0, 0, outputWidth, outputHeight);
+    return true;
+  }, []);
+
+  const handleOpenStickerEraser = useCallback(() => {
+    if (!stickerToolsTargetId) return;
+    if (stickerEraseRestoreLoading || stickerEraserApplying) return;
+    setStickerEraserTargetId(stickerToolsTargetId);
+    setStickerEraserError('');
+    setStickerToolsOpen(false);
+    setStickerEraserOpen(true);
+  }, [stickerEraseRestoreLoading, stickerEraserApplying, stickerToolsTargetId]);
+
+  const closeStickerEraser = useCallback(() => {
+    stickerEraserPointerRef.current = { active: false, pointerId: null, x: 0, y: 0 };
+    stickerEraserImageRef.current = null;
+    setStickerEraserOpen(false);
+    setStickerEraserTargetId(null);
+    setStickerEraserLoading(false);
+    setStickerEraserApplying(false);
+    setStickerEraserError('');
+  }, []);
+
+  const returnFromStickerEraserToTools = useCallback(() => {
+    if (stickerEraserTargetId) {
+      setStickerToolsTargetId(stickerEraserTargetId);
+      setStickerToolsOpen(true);
+    }
+    closeStickerEraser();
+  }, [closeStickerEraser, stickerEraserTargetId]);
+
+  const resetStickerEraserCanvas = useCallback(() => {
+    if (!stickerEraserImageRef.current) return;
+    drawStickerIntoEraserCanvas(stickerEraserImageRef.current);
+  }, [drawStickerIntoEraserCanvas]);
+
+  const getStickerEraserCanvasPoint = useCallback((clientX, clientY) => {
+    const canvas = stickerEraserCanvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    const normalizedX = (clientX - rect.left) / rect.width;
+    const normalizedY = (clientY - rect.top) / rect.height;
+    return {
+      x: clamp(normalizedX * canvas.width, 0, canvas.width),
+      y: clamp(normalizedY * canvas.height, 0, canvas.height),
+      scale: canvas.width / Math.max(rect.width, 1),
+    };
+  }, []);
+
+  const eraseStickerStroke = useCallback((fromPoint, toPoint) => {
+    const canvas = stickerEraserCanvasRef.current;
+    if (!canvas || !fromPoint || !toPoint) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const strength = clamp(Number(stickerEraserBrushStrength) || 0, 0.05, 1);
+    const strokeWidth = Math.max(2, (Number(stickerEraserBrushSize) || 2) * (toPoint.scale || 1));
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalAlpha = strength;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = strokeWidth;
+    ctx.beginPath();
+    ctx.moveTo(fromPoint.x, fromPoint.y);
+    ctx.lineTo(toPoint.x, toPoint.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(toPoint.x, toPoint.y, strokeWidth / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }, [stickerEraserBrushSize, stickerEraserBrushStrength]);
+
+  const handleStickerEraserPointerDown = useCallback((event) => {
+    if (stickerEraserLoading || stickerEraserApplying) return;
+    if (event?.button !== undefined && event.button !== 0) return;
+    const point = getStickerEraserCanvasPoint(event.clientX, event.clientY);
+    if (!point) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+    stickerEraserPointerRef.current = {
+      active: true,
+      pointerId: event.pointerId,
+      x: point.x,
+      y: point.y,
+    };
+    eraseStickerStroke(point, point);
+    try {
+      if (event?.currentTarget && typeof event.currentTarget.setPointerCapture === 'function' && event.pointerId !== undefined) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
+    } catch (_) {
+      // Ignore pointer capture failures.
+    }
+  }, [eraseStickerStroke, getStickerEraserCanvasPoint, stickerEraserApplying, stickerEraserLoading]);
+
+  const handleStickerEraserPointerMove = useCallback((event) => {
+    const pointerState = stickerEraserPointerRef.current;
+    if (!pointerState.active) return;
+    if (pointerState.pointerId !== undefined && event?.pointerId !== undefined && pointerState.pointerId !== event.pointerId) return;
+    const point = getStickerEraserCanvasPoint(event.clientX, event.clientY);
+    if (!point) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    eraseStickerStroke(
+      { x: pointerState.x, y: pointerState.y, scale: point.scale },
+      point
+    );
+    stickerEraserPointerRef.current = {
+      active: true,
+      pointerId: pointerState.pointerId,
+      x: point.x,
+      y: point.y,
+    };
+  }, [eraseStickerStroke, getStickerEraserCanvasPoint]);
+
+  const handleStickerEraserPointerUp = useCallback((event) => {
+    const pointerState = stickerEraserPointerRef.current;
+    if (!pointerState.active) return;
+    if (pointerState.pointerId !== undefined && event?.pointerId !== undefined && pointerState.pointerId !== event.pointerId) return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    stickerEraserPointerRef.current = {
+      active: false,
+      pointerId: null,
+      x: pointerState.x,
+      y: pointerState.y,
+    };
+  }, []);
+
+  const handleApplyStickerEraser = useCallback(async () => {
+    if (!stickerEraserTargetId || typeof updateSticker !== 'function') return;
+    if (stickerEraserApplying) return;
+    const canvas = stickerEraserCanvasRef.current;
+    if (!canvas) return;
+
+    let editedUrl = '';
+    try {
+      editedUrl = canvas.toDataURL('image/png');
+    } catch (_) {
+      setStickerEraserError('Unable to apply this erase edit.');
+      return;
+    }
+
+    const targetSticker = getStickerById(stickerEraserTargetId);
+    const existingMetadata = (
+      targetSticker?.metadata && typeof targetSticker.metadata === 'object'
+    ) ? { ...targetSticker.metadata } : {};
+    const currentLibraryKey = typeof existingMetadata.libraryKey === 'string'
+      ? existingMetadata.libraryKey.trim()
+      : '';
+    const originalLibraryKey = typeof existingMetadata.eraseOriginalLibraryKey === 'string'
+      ? existingMetadata.eraseOriginalLibraryKey.trim()
+      : currentLibraryKey;
+
+    setStickerEraserApplying(true);
+    setStickerEraserError('');
+    try {
+      const editedLibraryKey = await saveImageToLibrary(
+        editedUrl,
+        getStickerEditFilename(targetSticker),
+        {
+          level: 'private',
+          metadata: {
+            source: 'collage-sticker-erase',
+            edited: true,
+          },
+        },
+      );
+      const nextMetadata = {
+        ...existingMetadata,
+        libraryKey: editedLibraryKey,
+        isFromLibrary: true,
+        source: 'collage-sticker-erase',
+      };
+      if (originalLibraryKey && originalLibraryKey !== editedLibraryKey) {
+        nextMetadata.eraseOriginalLibraryKey = originalLibraryKey;
+      } else {
+        delete nextMetadata.eraseOriginalLibraryKey;
+      }
+      updateSticker(stickerEraserTargetId, {
+        originalUrl: editedUrl,
+        thumbnailUrl: editedUrl,
+        editedUrl: '',
+        metadata: nextMetadata,
+      });
+      if (stickerEraserTargetId) {
+        setStickerToolsTargetId(stickerEraserTargetId);
+        setStickerToolsOpen(true);
+      }
+      closeStickerEraser();
+    } catch (_) {
+      setStickerEraserError('Unable to save this sticker edit to your library.');
+      setStickerEraserApplying(false);
+    }
+  }, [
+    closeStickerEraser,
+    getStickerById,
+    stickerEraserApplying,
+    stickerEraserTargetId,
+    updateSticker,
+  ]);
+
+  useEffect(() => {
+    if (!stickerToolsTargetId) return;
+    if (getStickerById(stickerToolsTargetId)) return;
+    setStickerToolsOpen(false);
+    setStickerToolsTargetId(null);
+  }, [getStickerById, stickerToolsTargetId]);
+
+  useEffect(() => {
+    if (!stickerEraserTargetId) return;
+    if (getStickerById(stickerEraserTargetId)) return;
+    closeStickerEraser();
+  }, [closeStickerEraser, getStickerById, stickerEraserTargetId]);
+
+  useEffect(() => {
+    if (!stickerEraserOpen || !stickerEraserTargetId) return;
+    const targetSticker = getStickerById(stickerEraserTargetId);
+    const sourceUrl = getStickerSourceUrl(targetSticker);
+    if (!sourceUrl) {
+      setStickerEraserError('This sticker is missing image data.');
+      return;
+    }
+
+    let cancelled = false;
+    setStickerEraserLoading(true);
+    setStickerEraserError('');
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      if (cancelled) return;
+      stickerEraserImageRef.current = image;
+      if (!drawStickerIntoEraserCanvas(image)) {
+        window.requestAnimationFrame(() => {
+          if (!cancelled) drawStickerIntoEraserCanvas(image);
+        });
+      }
+      setStickerEraserLoading(false);
+    };
+    image.onerror = () => {
+      if (cancelled) return;
+      setStickerEraserLoading(false);
+      setStickerEraserError('Unable to load sticker for erasing.');
+    };
+    image.src = sourceUrl;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [drawStickerIntoEraserCanvas, getStickerById, stickerEraserOpen, stickerEraserTargetId]);
+
+  const resolveStickerSettingsLayout = useCallback((anchorRect, panelHeightEstimate = 220) => {
+    const safePadding = isCompactStickerPanel ? 6 : 10;
+    const requestedWidth = isCompactStickerPanel
+      ? Math.round(componentWidth * 0.62)
+      : Math.round(componentWidth * 0.42);
+    const minWidth = isCompactStickerPanel ? 182 : 220;
+    const maxWidth = isCompactStickerPanel ? 236 : 320;
+    const availableWidth = Math.max(minWidth, componentWidth - (safePadding * 2));
+    const width = clamp(requestedWidth, minWidth, Math.min(maxWidth, availableWidth));
+    const panelHeight = clamp(
+      Number(panelHeightEstimate) || 220,
+      120,
+      Math.max(120, componentHeight - (safePadding * 2)),
+    );
+    const fallbackAnchor = {
+      x: (componentWidth / 2) - (width / 2),
+      y: Math.max(12, componentHeight * 0.2),
+      width,
+      height: 0,
+    };
+    const anchor = anchorRect || fallbackAnchor;
+    const gap = isCompactStickerPanel ? 6 : 10;
+    const left = clamp(
+      anchor.x + (anchor.width / 2) - (width / 2),
+      safePadding,
+      Math.max(safePadding, componentWidth - width - safePadding),
+    );
+    const preferredTop = anchor.y + anchor.height + gap;
+    let top = clamp(
+      preferredTop,
+      safePadding,
+      Math.max(safePadding, componentHeight - panelHeight - safePadding),
+    );
+
+    const panelBottom = top + panelHeight;
+    const panelRight = left + width;
+    const overlapsSticker = (
+      left < anchor.x + anchor.width
+      && panelRight > anchor.x
+      && top < anchor.y + anchor.height
+      && panelBottom > anchor.y
+    );
+
+    if (overlapsSticker) {
+      const belowTop = anchor.y + anchor.height + gap;
+      const aboveTop = anchor.y - panelHeight - gap;
+      const canPlaceBelow = belowTop + panelHeight <= componentHeight - safePadding;
+      const canPlaceAbove = aboveTop >= safePadding;
+      if (canPlaceBelow) {
+        top = belowTop;
+      } else if (canPlaceAbove) {
+        top = aboveTop;
+      }
+    }
+
+    top = clamp(
+      top,
+      safePadding,
+      Math.max(safePadding, componentHeight - panelHeight - safePadding),
+    );
+    const maxHeight = Math.max(130, componentHeight - top - safePadding);
+    return { top, left, width, maxHeight };
+  }, [componentHeight, componentWidth, isCompactStickerPanel]);
+
+  useLayoutEffect(() => {
+    if (!stickerToolsOpen) return;
+    const panelEl = stickerSettingsPanelRef.current;
+    const measuredHeight = panelEl?.getBoundingClientRect?.().height;
+    const fallbackHeight = isCompactStickerPanel ? 176 : 184;
+    const nextLayout = resolveStickerSettingsLayout(
+      stickerSettingsAnchorRect,
+      Number.isFinite(measuredHeight) ? measuredHeight : fallbackHeight,
+    );
+    setStickerSettingsLayout((prev) => {
+      if (
+        Math.abs((prev?.top || 0) - nextLayout.top) < 0.5
+        && Math.abs((prev?.left || 0) - nextLayout.left) < 0.5
+        && Math.abs((prev?.width || 0) - nextLayout.width) < 0.5
+        && Math.abs((prev?.maxHeight || 0) - nextLayout.maxHeight) < 0.5
+      ) {
+        return prev;
+      }
+      return nextLayout;
+    });
+  }, [
+    isCompactStickerPanel,
+    resolveStickerSettingsLayout,
+    stickerSettingsAnchorRect,
+    stickerToolsOpen,
+  ]);
 
   useEffect(() => {
     if (!stickerInteraction || typeof updateSticker !== 'function') return;
@@ -2764,9 +3325,11 @@ const CanvasCollagePreview = ({
 
         let contextSaved = false;
         try {
+          const stickerStyle = getStickerDrawStyle(sticker);
           ctx.save();
           contextSaved = true;
-          ctx.globalAlpha = stickerPreviewAlpha;
+          ctx.globalAlpha = stickerPreviewAlpha * stickerStyle.opacity;
+          ctx.filter = buildStickerFilterCss(stickerStyle);
           if (Math.abs(stickerRect.angleDeg || 0) > 0.01) {
             const centerX = stickerRect.x + (stickerRect.width / 2);
             const centerY = stickerRect.y + (stickerRect.height / 2);
@@ -5374,7 +5937,7 @@ const CanvasCollagePreview = ({
             if (!sticker?.id) return null;
             const fromCache = loadedStickers[sticker.id];
             if (fromCache) return fromCache;
-            const src = sticker.originalUrl || sticker.thumbnailUrl || '';
+            const src = getStickerSourceUrl(sticker);
             return loadStickerImage(src);
           }));
 
@@ -5385,18 +5948,22 @@ const CanvasCollagePreview = ({
             const rect = getStickerRectPx(sticker, img);
             if (!rect) return;
             try {
+              const stickerStyle = getStickerDrawStyle(sticker);
+              exportCtx.save();
+              exportCtx.globalAlpha = stickerStyle.opacity;
+              exportCtx.filter = buildStickerFilterCss(stickerStyle);
               if (Math.abs(rect.angleDeg || 0) > 0.01) {
                 const centerX = rect.x + (rect.width / 2);
                 const centerY = rect.y + (rect.height / 2);
-                exportCtx.save();
                 exportCtx.translate(centerX, centerY);
                 exportCtx.rotate((rect.angleDeg * Math.PI) / 180);
                 exportCtx.drawImage(img, -(rect.width / 2), -(rect.height / 2), rect.width, rect.height);
-                exportCtx.restore();
-                return;
+              } else {
+                exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
               }
-              exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
+              exportCtx.restore();
             } catch (_) {
+              try { exportCtx.restore(); } catch (_) {}
               // Ignore sticker draw failures so export still succeeds.
             }
           });
@@ -5643,7 +6210,7 @@ const CanvasCollagePreview = ({
     ? stickers
         .map((sticker, index) => {
           if (!sticker?.id) return null;
-          const src = sticker.originalUrl || sticker.thumbnailUrl;
+          const src = getStickerSourceUrl(sticker);
           if (!src) return null;
           const rect = getStickerRectPx(sticker);
           if (!rect) return null;
@@ -5688,6 +6255,18 @@ const CanvasCollagePreview = ({
     })
     .filter(Boolean);
   const textLayers = [...panelTextLayers, ...floatingTextLayers];
+  const stickerToolsStyle = getStickerDrawStyle(stickerToolsTarget);
+  const stickerEraserTarget = getStickerById(stickerEraserTargetId);
+  const stickerEraseStateTarget = stickerEraserTarget || stickerToolsTarget;
+  const stickerHasErasedPixels = Boolean(
+    (typeof stickerEraseStateTarget?.editedUrl === 'string' && stickerEraseStateTarget.editedUrl.trim())
+    || (
+      typeof stickerEraseStateTarget?.metadata?.eraseOriginalLibraryKey === 'string'
+      && stickerEraseStateTarget.metadata.eraseOriginalLibraryKey.trim()
+    )
+  );
+  const stickerEraserTargetName = stickerEraserTarget?.metadata?.name || 'Sticker';
+  const stickerOpacityPercent = Math.round(stickerToolsStyle.opacity * 100);
   const textLayerBoundsByPanelId = textLayers.reduce((next, layer) => {
     if (!layer?.panelId || !layer?.bounds) return next;
     const controlRect = {
@@ -5828,6 +6407,7 @@ const CanvasCollagePreview = ({
               const rotateHandleSize = componentWidth < 560 ? 26 : 20;
               const deleteHandleSize = componentWidth < 560 ? 28 : 22;
               const doneHandleSize = componentWidth < 560 ? 28 : 22;
+              const toolsHandleSize = componentWidth < 560 ? 28 : 22;
 
               return (
                 <Box
@@ -5959,6 +6539,29 @@ const CanvasCollagePreview = ({
                     }}
                   >
                     <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
+                  </Box>
+                  <Box
+                    onPointerDown={(event) => handleOpenStickerTools(event, sticker.id)}
+                    sx={{
+                      position: 'absolute',
+                      left: -(toolsHandleSize * 0.35),
+                      bottom: -(toolsHandleSize * 0.35),
+                      width: toolsHandleSize,
+                      height: toolsHandleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(84, 110, 122, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <MoreHoriz sx={{ fontSize: toolsHandleSize * 0.72 }} />
                   </Box>
                 </Box>
               );
@@ -6517,6 +7120,315 @@ const CanvasCollagePreview = ({
         </Alert>
       </Snackbar>
 
+      {stickerToolsOpen && stickerToolsTarget && (
+        <Box
+          ref={stickerSettingsPanelRef}
+          data-sticker-settings-container
+          sx={{
+            position: 'absolute',
+            top: stickerSettingsLayout.top,
+            left: stickerSettingsLayout.left,
+            width: stickerSettingsLayout.width,
+            zIndex: 45,
+            backgroundColor: 'rgba(0, 0, 0, 0.97)',
+            border: '1px solid rgba(148,163,184,0.35)',
+            borderRadius: 1.5,
+            boxShadow: '0 14px 28px rgba(2, 6, 23, 0.55)',
+            maxHeight: stickerSettingsLayout.maxHeight,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <Box
+            sx={{
+              px: isCompactStickerPanel ? 0.9 : 1.1,
+              py: isCompactStickerPanel ? 0.7 : 0.85,
+              borderBottom: '1px solid rgba(148,163,184,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 0.8,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+              <Tune sx={{ fontSize: 18, color: 'rgba(203,213,225,0.92)' }} />
+              <Typography variant="subtitle2" sx={{ color: '#f8fafc', fontWeight: 700 }}>
+                Sticker settings
+              </Typography>
+            </Box>
+            <Button onClick={handleCloseStickerTools} size="small" sx={{ textTransform: 'none', minWidth: 44 }}>
+              Done
+            </Button>
+          </Box>
+          <Stack spacing={0.9} sx={{ p: isCompactStickerPanel ? 0.9 : 1.1 }}>
+            <Box>
+              <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.88)' }}>
+                Opacity ({stickerOpacityPercent}%)
+              </Typography>
+              <Slider
+                value={stickerOpacityPercent}
+                min={0}
+                max={100}
+                onChange={(_, value) => {
+                  const normalized = Array.isArray(value) ? value[0] : value;
+                  handleStickerStyleValueChange('opacity', Number(normalized) / 100);
+                }}
+                sx={{ color: '#60a5fa', mt: 0.45, mb: 0.1 }}
+              />
+            </Box>
+            <Button
+              onClick={handleOpenStickerEraser}
+              variant="outlined"
+              color="inherit"
+              startIcon={<OpenInFull fontSize="small" />}
+              disabled={stickerEraseRestoreLoading || stickerEraserApplying}
+              sx={{
+                textTransform: 'none',
+                justifyContent: 'flex-start',
+                py: 0.5,
+                minHeight: 36,
+              }}
+            >
+              Open full-screen eraser
+            </Button>
+            {stickerEraserError && (
+              <Typography variant="caption" sx={{ color: '#fda4af', px: 0.25 }}>
+                {stickerEraserError}
+              </Typography>
+            )}
+          </Stack>
+        </Box>
+      )}
+
+      {stickerEraserOpen && (
+        <Dialog
+          fullScreen
+          open={stickerEraserOpen}
+          onClose={() => {
+            if (stickerEraserApplying) return;
+            closeStickerEraser();
+          }}
+          PaperProps={{
+            sx: {
+              backgroundColor: '#05070d',
+              color: '#f8fafc',
+            },
+          }}
+        >
+          <Box
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <Box
+              sx={{
+                px: { xs: 1, sm: 1.4 },
+                py: 1,
+                borderBottom: '1px solid rgba(148,163,184,0.25)',
+                background: 'linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(5,7,13,0.92) 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
+              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ minWidth: 0 }}>
+                <IconButton
+                  onClick={returnFromStickerEraserToTools}
+                  disabled={stickerEraserApplying}
+                  size="small"
+                  sx={{ color: '#e2e8f0' }}
+                >
+                  <ArrowBack fontSize="small" />
+                </IconButton>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ color: '#f8fafc', fontWeight: 700 }} noWrap>
+                    Erase {stickerEraserTargetName}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.8)' }}>
+                    Drag on the sticker to erase details.
+                  </Typography>
+                </Box>
+              </Stack>
+              <Button
+                onClick={closeStickerEraser}
+                size="small"
+                disabled={stickerEraserApplying}
+                startIcon={<Close fontSize="small" />}
+                sx={{ textTransform: 'none', color: '#e2e8f0' }}
+              >
+                Close
+              </Button>
+            </Box>
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                p: { xs: 1, sm: 1.6, md: 2 },
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: 1100,
+                  minHeight: { xs: 240, sm: 320 },
+                  borderRadius: 2,
+                  border: '1px solid rgba(148,163,184,0.28)',
+                  background:
+                    'repeating-conic-gradient(#111827 0% 25%, #0b1220 0% 50%) 50% / 22px 22px',
+                  boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.55)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative',
+                }}
+              >
+                {(stickerEraserLoading || stickerEraserApplying) && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      color: 'rgba(203,213,225,0.86)',
+                      zIndex: 1,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {stickerEraserApplying ? 'Saving edit…' : 'Loading sticker…'}
+                  </Typography>
+                )}
+                <canvas
+                  ref={stickerEraserCanvasRef}
+                  onPointerDown={handleStickerEraserPointerDown}
+                  onPointerMove={handleStickerEraserPointerMove}
+                  onPointerUp={handleStickerEraserPointerUp}
+                  onPointerCancel={handleStickerEraserPointerUp}
+                  onPointerLeave={handleStickerEraserPointerUp}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    touchAction: 'none',
+                    cursor: 'crosshair',
+                    opacity: (stickerEraserLoading || stickerEraserApplying) ? 0.2 : 1,
+                  }}
+                />
+              </Box>
+            </Box>
+            <Box
+              sx={{
+                borderTop: '1px solid rgba(148,163,184,0.24)',
+                backgroundColor: 'rgba(15, 23, 42, 0.88)',
+                p: { xs: 1.2, sm: 1.6 },
+              }}
+            >
+              <Stack spacing={1.1}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.1}>
+                  <Box
+                    sx={{
+                      flex: 1,
+                      border: '1px solid rgba(148,163,184,0.25)',
+                      borderRadius: 1.5,
+                      p: 1,
+                      backgroundColor: 'rgba(2,6,23,0.52)',
+                    }}
+                  >
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.88)' }}>
+                        Brush size
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#bfdbfe', fontWeight: 700 }}>
+                        {Math.round(stickerEraserBrushSize)}px
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      value={stickerEraserBrushSize}
+                      min={4}
+                      max={160}
+                      disabled={stickerEraserLoading || stickerEraserApplying}
+                      onChange={(_, value) => setStickerEraserBrushSize(Array.isArray(value) ? value[0] : value)}
+                      sx={{ color: '#60a5fa', mt: 0.45 }}
+                    />
+                  </Box>
+                  <Box
+                    sx={{
+                      flex: 1,
+                      border: '1px solid rgba(148,163,184,0.25)',
+                      borderRadius: 1.5,
+                      p: 1,
+                      backgroundColor: 'rgba(2,6,23,0.52)',
+                    }}
+                  >
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="caption" sx={{ color: 'rgba(203,213,225,0.88)' }}>
+                        Brush strength
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#fdba74', fontWeight: 700 }}>
+                        {Math.round(stickerEraserBrushStrength * 100)}%
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      value={Math.round(stickerEraserBrushStrength * 100)}
+                      min={5}
+                      max={100}
+                      disabled={stickerEraserLoading || stickerEraserApplying}
+                      onChange={(_, value) => {
+                        const normalized = Array.isArray(value) ? value[0] : value;
+                        setStickerEraserBrushStrength(Number(normalized) / 100);
+                      }}
+                      sx={{ color: '#f97316', mt: 0.45 }}
+                    />
+                  </Box>
+                </Stack>
+                {stickerEraserError && (
+                  <Typography variant="caption" sx={{ color: '#fda4af' }}>
+                    {stickerEraserError}
+                  </Typography>
+                )}
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+                  <Button
+                    onClick={resetStickerEraserCanvas}
+                    color="inherit"
+                    disabled={stickerEraserLoading || stickerEraserApplying}
+                    sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                  >
+                    Reset strokes
+                  </Button>
+                  <Button
+                    onClick={() => { void handleStickerEraseReset(); }}
+                    color="inherit"
+                    disabled={!stickerHasErasedPixels || stickerEraseRestoreLoading || stickerEraserApplying}
+                    sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                  >
+                    {stickerEraseRestoreLoading ? 'Restoring…' : 'Restore original'}
+                  </Button>
+                  <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }} />
+                  <Button
+                    onClick={handleApplyStickerEraser}
+                    variant="contained"
+                    disabled={stickerEraserLoading || stickerEraserApplying}
+                    sx={{ textTransform: 'none', fontWeight: 700, minWidth: 150 }}
+                  >
+                    {stickerEraserApplying ? 'Applying…' : 'Apply erase'}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Box>
+          </Box>
+        </Dialog>
+      )}
       {/* Invisible backdrop for reorder mode - captures clicks outside panels to cancel */}
       {isReorderMode && (
         <Box
@@ -6736,12 +7648,17 @@ CanvasCollagePreview.propTypes = {
       id: PropTypes.string,
       originalUrl: PropTypes.string,
       thumbnailUrl: PropTypes.string,
+      editedUrl: PropTypes.string,
       metadata: PropTypes.object,
       aspectRatio: PropTypes.number,
       angleDeg: PropTypes.number,
       widthPercent: PropTypes.number,
       xPercent: PropTypes.number,
       yPercent: PropTypes.number,
+      opacity: PropTypes.number,
+      brightness: PropTypes.number,
+      contrast: PropTypes.number,
+      saturation: PropTypes.number,
     })
   ),
   updateSticker: PropTypes.func,

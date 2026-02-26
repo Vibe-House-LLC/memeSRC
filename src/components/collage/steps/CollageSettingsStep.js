@@ -1867,7 +1867,7 @@ const CollageLayoutSettings = ({
               const canMoveUp = displayIndex > 0;
               const canMoveDown = displayIndex < stickerLayers.length - 1;
               const layerLabel = `Sticker ${stickerLayers.length - displayIndex}`;
-              const thumbSrc = sticker.thumbnailUrl || sticker.originalUrl || '';
+              const thumbSrc = sticker.editedUrl || sticker.thumbnailUrl || sticker.originalUrl || '';
               return (
                 <Box
                   key={`sticker-layer-row-${sticker.id}`}

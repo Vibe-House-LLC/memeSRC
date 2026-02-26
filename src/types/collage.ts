@@ -25,11 +25,16 @@ export interface CollageStickerRef {
   libraryKey?: string;
   url?: string;
   thumbnailUrl?: string;
+  editedUrl?: string;
   aspectRatio?: number;
   angleDeg?: number;
   widthPercent?: number;
   xPercent?: number;
   yPercent?: number;
+  opacity?: number;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
   metadata?: CollageImageMetadata;
 }
 

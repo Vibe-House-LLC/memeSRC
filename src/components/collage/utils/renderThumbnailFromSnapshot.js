@@ -330,8 +330,14 @@ function normalizeBorderThickness(value) {
 }
 
 async function loadImageFromRef(ref) {
-  // ref may be { libraryKey } or { url }
-  const srcUrl = ref?.url || null;
+  // ref may be { libraryKey } and/or { url, editedUrl }
+  const editedUrl = typeof ref?.editedUrl === 'string' && ref.editedUrl.trim()
+    ? ref.editedUrl
+    : null;
+  const srcUrl = (typeof ref?.url === 'string' && ref.url.trim()) ? ref.url : null;
+  if (editedUrl) {
+    return loadImage(editedUrl);
+  }
   if (ref?.libraryKey) {
     try {
       const blob = await getFromLibrary(ref.libraryKey);
@@ -766,7 +772,9 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     ctx.restore();
   };
 
-  // Draw panels: images and panel-bound captions (to mirror final export)
+  const captionEntries = [];
+
+  // Draw panels: images first (to mirror preview/export compositing)
   rects.forEach(({ x, y, width: w, height: h, panelId }) => {
     const imageIndex = snap.panelImageMapping?.[panelId];
     const hasImage = typeof imageIndex === 'number' && loaded[imageIndex];
@@ -796,11 +804,11 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
         ctx.restore();
       }
-      drawTextLayerInRect({ x, y, width: w, height: h }, panelText);
+      captionEntries.push({ rect: { x, y, width: w, height: h }, panelText });
     }
   });
 
-  // Draw floating text layers anchored to the full collage area (below top caption).
+  // Queue floating text layers anchored to the full collage area (below top caption).
   const floatingTextLayers = (snap.panelTexts && typeof snap.panelTexts === 'object')
     ? Object.entries(snap.panelTexts).filter(([panelId]) => isFloatingTextLayerId(panelId))
     : [];
@@ -812,11 +820,11 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       height: imageAreaHeight,
     };
     floatingTextLayers.forEach(([, panelText]) => {
-      drawTextLayerInRect(floatingRect, panelText);
+      captionEntries.push({ rect: floatingRect, panelText });
     });
   }
 
-  // Draw global sticker overlays (top-most, across the full collage canvas)
+  // Draw global sticker overlays between images and captions.
   const stickerRefs = Array.isArray(snap.stickers) ? snap.stickers : [];
   if (stickerRefs.length > 0) {
     const loadedStickers = await Promise.all(stickerRefs.map(loadImageFromRef));
@@ -834,7 +842,15 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const widthRaw = Number(stickerRef?.widthPercent);
       const xRaw = Number(stickerRef?.xPercent);
       const yRaw = Number(stickerRef?.yPercent);
+      const opacityRaw = Number(stickerRef?.opacity);
+      const brightnessRaw = Number(stickerRef?.brightness);
+      const contrastRaw = Number(stickerRef?.contrast);
+      const saturationRaw = Number(stickerRef?.saturation);
       const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
+      const opacity = Number.isFinite(opacityRaw) ? clamp(opacityRaw, 0, 1) : 1;
+      const brightness = Number.isFinite(brightnessRaw) ? clamp(brightnessRaw, 0, 200) : 100;
+      const contrast = Number.isFinite(contrastRaw) ? clamp(contrastRaw, 0, 200) : 100;
+      const saturation = Number.isFinite(saturationRaw) ? clamp(saturationRaw, 0, 200) : 100;
       const widthPx = clamp((widthPercent / 100) * width, 12, width * 0.98);
       const heightPx = clamp(widthPx / aspectRatio, 12, totalHeight * 0.98);
       const minVisibleX = Math.min(32, widthPx);
@@ -847,22 +863,30 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * totalHeight, minY, maxY);
 
       try {
+        ctx.save();
+        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+        ctx.globalAlpha = opacity;
         if (Math.abs(angleDeg) > 0.01) {
           const centerX = xPx + (widthPx / 2);
           const centerY = yPx + (heightPx / 2);
-          ctx.save();
           ctx.translate(centerX, centerY);
           ctx.rotate((angleDeg * Math.PI) / 180);
           ctx.drawImage(img, -(widthPx / 2), -(heightPx / 2), widthPx, heightPx);
-          ctx.restore();
         } else {
           ctx.drawImage(img, xPx, yPx, widthPx, heightPx);
         }
+        ctx.restore();
       } catch (_) {
+        try { ctx.restore(); } catch (_) {}
         // Ignore sticker draw failures so thumbnail generation still succeeds.
       }
     });
   }
+
+  // Draw captions last so they stay on top of stickers (same as preview/export).
+  captionEntries.forEach(({ rect, panelText }) => {
+    drawTextLayerInRect(rect, panelText);
+  });
 
   return canvas.toDataURL('image/jpeg', 0.92);
 }

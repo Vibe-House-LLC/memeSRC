@@ -143,10 +143,16 @@ export function buildSnapshotFromState({
         id?: string;
         originalUrl?: string;
         thumbnailUrl?: string;
+        editedUrl?: string;
         aspectRatio?: number;
+        angleDeg?: number;
         widthPercent?: number;
         xPercent?: number;
         yPercent?: number;
+        opacity?: number;
+        brightness?: number;
+        contrast?: number;
+        saturation?: number;
         metadata?: { libraryKey?: string; sourceUrl?: string };
       }
   >;
@@ -206,11 +212,16 @@ export function buildSnapshotFromState({
       libraryKey?: string;
       url?: string;
       thumbnailUrl?: string;
+      editedUrl?: string;
       aspectRatio?: number;
       angleDeg?: number;
       widthPercent?: number;
       xPercent?: number;
       yPercent?: number;
+      opacity?: number;
+      brightness?: number;
+      contrast?: number;
+      saturation?: number;
       metadata?: { [key: string]: unknown };
     } = {};
     const isBlobUrl = (value: unknown): value is string => typeof value === 'string' && value.startsWith('blob:');
@@ -239,12 +250,18 @@ export function buildSnapshotFromState({
 
     const originalUrl = sticker?.originalUrl;
     const thumbnailUrl = sticker?.thumbnailUrl;
+    const editedUrl = sticker?.editedUrl;
     const sourceUrlFromMetadata =
       maybeMeta && typeof maybeMeta.sourceUrl === 'string' && maybeMeta.sourceUrl.trim()
         ? maybeMeta.sourceUrl
         : '';
     const persistableOriginal = !isBlobUrl(originalUrl) ? originalUrl : '';
     const persistableThumb = !isBlobUrl(thumbnailUrl) ? thumbnailUrl : '';
+    const persistableEdited = !isBlobUrl(editedUrl) ? editedUrl : '';
+
+    if (typeof persistableEdited === 'string' && persistableEdited.trim()) {
+      ref.editedUrl = persistableEdited;
+    }
 
     if (!ref.libraryKey) {
       ref.url = persistableOriginal || persistableThumb || sourceUrlFromMetadata || originalUrl || thumbnailUrl || '';
@@ -276,6 +293,14 @@ export function buildSnapshotFromState({
     if (Number.isFinite(xPercent)) ref.xPercent = xPercent;
     const yPercent = Number(sticker?.yPercent);
     if (Number.isFinite(yPercent)) ref.yPercent = yPercent;
+    const opacity = Number(sticker?.opacity);
+    if (Number.isFinite(opacity)) ref.opacity = opacity;
+    const brightness = Number(sticker?.brightness);
+    if (Number.isFinite(brightness)) ref.brightness = brightness;
+    const contrast = Number(sticker?.contrast);
+    if (Number.isFinite(contrast)) ref.contrast = contrast;
+    const saturation = Number(sticker?.saturation);
+    if (Number.isFinite(saturation)) ref.saturation = saturation;
 
     return ref;
   });

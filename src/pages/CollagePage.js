@@ -1322,12 +1322,17 @@ export default function CollagePage() {
           id: `sticker-${index + 1}`,
           originalUrl: ref,
           thumbnailUrl: ref,
+          editedUrl: '',
           metadata: {},
           aspectRatio: 1,
           angleDeg: 0,
           widthPercent: 28,
           xPercent: 36,
           yPercent: 12,
+          opacity: 1,
+          brightness: 100,
+          contrast: 100,
+          saturation: 100,
         };
       }
 
@@ -1337,6 +1342,9 @@ export default function CollagePage() {
       }
 
       let resolvedUrl = typeof ref.url === 'string' ? ref.url : '';
+      const editedUrl = (typeof ref.editedUrl === 'string' && ref.editedUrl)
+        ? ref.editedUrl
+        : '';
       if (typeof ref.libraryKey === 'string' && ref.libraryKey) {
         try {
           const blob = await getFromLibrary(ref.libraryKey, { level: 'private' });
@@ -1346,24 +1354,33 @@ export default function CollagePage() {
         }
       }
 
-      if (!resolvedUrl) return null;
+      if (!resolvedUrl && !editedUrl) return null;
 
       const parsedAspectRatio = Number(ref.aspectRatio);
       const parsedAngle = Number(ref.angleDeg);
       const parsedWidth = Number(ref.widthPercent);
       const parsedX = Number(ref.xPercent);
       const parsedY = Number(ref.yPercent);
+      const parsedOpacity = Number(ref.opacity);
+      const parsedBrightness = Number(ref.brightness);
+      const parsedContrast = Number(ref.contrast);
+      const parsedSaturation = Number(ref.saturation);
 
       return {
         id: (typeof ref.id === 'string' && ref.id.trim()) ? ref.id : `sticker-${index + 1}`,
-        originalUrl: resolvedUrl,
-        thumbnailUrl: (typeof ref.thumbnailUrl === 'string' && ref.thumbnailUrl) ? ref.thumbnailUrl : resolvedUrl,
+        originalUrl: resolvedUrl || editedUrl,
+        thumbnailUrl: (typeof ref.thumbnailUrl === 'string' && ref.thumbnailUrl) ? ref.thumbnailUrl : (resolvedUrl || editedUrl),
+        editedUrl,
         metadata,
         aspectRatio: Number.isFinite(parsedAspectRatio) && parsedAspectRatio > 0 ? parsedAspectRatio : 1,
         angleDeg: Number.isFinite(parsedAngle) ? parsedAngle : 0,
         widthPercent: Number.isFinite(parsedWidth) ? parsedWidth : 28,
         xPercent: Number.isFinite(parsedX) ? parsedX : 36,
         yPercent: Number.isFinite(parsedY) ? parsedY : 12,
+        opacity: Number.isFinite(parsedOpacity) ? Math.max(0, Math.min(1, parsedOpacity)) : 1,
+        brightness: Number.isFinite(parsedBrightness) ? Math.max(0, Math.min(200, parsedBrightness)) : 100,
+        contrast: Number.isFinite(parsedContrast) ? Math.max(0, Math.min(200, parsedContrast)) : 100,
+        saturation: Number.isFinite(parsedSaturation) ? Math.max(0, Math.min(200, parsedSaturation)) : 100,
       };
     };
 

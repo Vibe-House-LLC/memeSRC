@@ -142,4 +142,34 @@ describe('collage projects util', () => {
     expect(savedSticker.url).toBe('https://cdn.example.com/sticker.png');
     expect(savedSticker.thumbnailUrl).toBe('https://cdn.example.com/sticker-thumb.png');
   });
+
+  it('persists edited sticker data URLs even when libraryKey exists', () => {
+    const snap = buildSnapshotFromState({
+      selectedImages: [],
+      selectedStickers: [
+        {
+          id: 'sticker-3',
+          originalUrl: 'https://cdn.example.com/sticker.png',
+          editedUrl: 'data:image/png;base64,EDITED',
+          metadata: { libraryKey: 'private/library/sticker-3.png' },
+        },
+      ],
+      panelImageMapping: {},
+      panelTransforms: {},
+      panelTexts: {},
+      selectedTemplate: { id: 't-1' },
+      selectedAspectRatio: 'square',
+      panelCount: 2,
+      borderThickness: 1.5,
+      borderColor: '#fff',
+      customLayout: null,
+      canvasWidth: 1000,
+      canvasHeight: 1000,
+    });
+
+    expect(snap.stickers).toHaveLength(1);
+    const savedSticker = snap.stickers[0];
+    expect(savedSticker.libraryKey).toBe('private/library/sticker-3.png');
+    expect(savedSticker.editedUrl).toBe('data:image/png;base64,EDITED');
+  });
 });

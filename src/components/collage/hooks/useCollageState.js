@@ -32,6 +32,7 @@ const revokeStickerUrls = (stickers) => {
     if (!sticker || typeof sticker !== 'object') return;
     const originalUrl = sticker.originalUrl;
     const thumbnailUrl = sticker.thumbnailUrl;
+    const editedUrl = sticker.editedUrl;
     if (typeof originalUrl === 'string' && originalUrl.startsWith('blob:')) {
       try { URL.revokeObjectURL(originalUrl); } catch (_) { /* noop */ }
     }
@@ -42,12 +43,34 @@ const revokeStickerUrls = (stickers) => {
     ) {
       try { URL.revokeObjectURL(thumbnailUrl); } catch (_) { /* noop */ }
     }
+    if (
+      typeof editedUrl === 'string' &&
+      editedUrl.startsWith('blob:') &&
+      editedUrl !== originalUrl &&
+      editedUrl !== thumbnailUrl
+    ) {
+      try { URL.revokeObjectURL(editedUrl); } catch (_) { /* noop */ }
+    }
   });
 };
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const STICKER_POSITION_MIN = -220;
 const STICKER_POSITION_MAX = 220;
+const STICKER_OPACITY_MIN = 0;
+const STICKER_OPACITY_MAX = 1;
+const STICKER_FILTER_MIN = 0;
+const STICKER_FILTER_MAX = 200;
+const normalizeStickerOpacity = (value, fallback = 1) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return fallback;
+  return clamp(numericValue, STICKER_OPACITY_MIN, STICKER_OPACITY_MAX);
+};
+const normalizeStickerFilterValue = (value, fallback = 100) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return fallback;
+  return clamp(numericValue, STICKER_FILTER_MIN, STICKER_FILTER_MAX);
+};
 const normalizeAngleDeg = (value) => {
   if (!Number.isFinite(value)) return 0;
   let next = value % 360;
@@ -717,6 +740,13 @@ const [borderThickness, setBorderThickness] = useState(() => {
     const widthPercent = Number.isFinite(inputWidthPercent)
       ? clamp(inputWidthPercent, 8, 80)
       : 28;
+    const opacity = normalizeStickerOpacity(stickerInput.opacity, 1);
+    const brightness = normalizeStickerFilterValue(stickerInput.brightness, 100);
+    const contrast = normalizeStickerFilterValue(stickerInput.contrast, 100);
+    const saturation = normalizeStickerFilterValue(stickerInput.saturation, 100);
+    const editedUrl = (typeof stickerInput.editedUrl === 'string' && stickerInput.editedUrl)
+      ? stickerInput.editedUrl
+      : '';
 
     setStickers((prev) => {
       const count = Array.isArray(prev) ? prev.length : 0;
@@ -740,6 +770,11 @@ const [borderThickness, setBorderThickness] = useState(() => {
           widthPercent,
           xPercent: Number.isFinite(xPercentRaw) ? clamp(xPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultXPercent,
           yPercent: Number.isFinite(yPercentRaw) ? clamp(yPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultYPercent,
+          opacity,
+          brightness,
+          contrast,
+          saturation,
+          editedUrl,
         },
       ];
     });
@@ -779,6 +814,21 @@ const [borderThickness, setBorderThickness] = useState(() => {
           next.yPercent = Number.isFinite(yRaw)
             ? clamp(yRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX)
             : sticker.yPercent;
+        }
+        if (updates.opacity !== undefined) {
+          next.opacity = normalizeStickerOpacity(updates.opacity, normalizeStickerOpacity(sticker.opacity, 1));
+        }
+        if (updates.brightness !== undefined) {
+          next.brightness = normalizeStickerFilterValue(updates.brightness, normalizeStickerFilterValue(sticker.brightness, 100));
+        }
+        if (updates.contrast !== undefined) {
+          next.contrast = normalizeStickerFilterValue(updates.contrast, normalizeStickerFilterValue(sticker.contrast, 100));
+        }
+        if (updates.saturation !== undefined) {
+          next.saturation = normalizeStickerFilterValue(updates.saturation, normalizeStickerFilterValue(sticker.saturation, 100));
+        }
+        if (updates.editedUrl !== undefined) {
+          next.editedUrl = typeof updates.editedUrl === 'string' ? updates.editedUrl : '';
         }
         return next;
       });
@@ -1077,7 +1127,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
     panelImageMapping, // Still { panelId: imageIndex }
     panelTransforms, // { panelId: { scaleRatio: number, positionXPercent: number, positionYPercent: number } }
           panelTexts, // NEW: { panelId: { content, fontSize, fontWeight, fontFamily, color, strokeWidth, autoAssigned?, subtitleShowing? } }
-    stickers, // [{ id, originalUrl, thumbnailUrl, metadata, aspectRatio, angleDeg, widthPercent, xPercent, yPercent }]
+    stickers, // [{ id, originalUrl, thumbnailUrl, editedUrl, metadata, aspectRatio, angleDeg, widthPercent, xPercent, yPercent, opacity, brightness, contrast, saturation }]
     lastUsedTextSettings, // NEW: Default text settings for new panels
     selectedTemplate,
     setSelectedTemplate,
