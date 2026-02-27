@@ -113,6 +113,7 @@ export default function Router() {
         { path: 'pro', element: <SiteWideMaintenance><HomePage /></SiteWideMaintenance>, index: true },
         { path: 'search', element: <SiteWideMaintenance><Navigate to='/' /></SiteWideMaintenance> },
         { path: 'edit', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
+        { path: 'edit/new', element: <SiteWideMaintenance><EditorNewProjectPage /></SiteWideMaintenance> },
         { path: 'collage', element: <SiteWideMaintenance><CollagePage /></SiteWideMaintenance> },
         { path: 'collage-legacy', element: <SiteWideMaintenance><CollagePageLegacy /></SiteWideMaintenance> },
         { path: 'projects', element: <SiteWideMaintenance><ProjectsPage /></SiteWideMaintenance> },

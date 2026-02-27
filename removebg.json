@@ -1,0 +1,42 @@
+{
+  "1": {
+    "inputs": {
+      "rem_mode": "RMBG-1.4",
+      "image_output": "Preview",
+      "save_prefix": "ComfyUI",
+      "torchscript_jit": false,
+      "add_background": "none",
+      "refine_foreground": false,
+      "images": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "easy imageRemBg",
+    "_meta": {
+      "title": "Image Remove Bg"
+    }
+  },
+  "2": {
+    "inputs": {
+      "image": "flux_fill_inpaint_input_input_1772149926564_800389219.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "3": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { useContext, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Container, Typography, CardActionArea, Grid, Paper, Input, Chip, Alert, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Box } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -9,15 +9,18 @@ import BasePage from './BasePage';
 import { LibraryPickerDialog } from '../components/library';
 import { UserContext } from '../UserContext';
 import { get as getFromLibrary } from '../utils/library/storage';
+import MagicTextToImagePanel from '../components/magic-editor/MagicTextToImagePanel';
 
 export default function EditorNewProjectPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useContext(UserContext);
   const [uploadChoiceOpen, setUploadChoiceOpen] = useState(false);
   const [pendingUpload, setPendingUpload] = useState(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const fileInputRef = useRef(null);
   const isAuthenticated = Boolean(user && user !== false);
+  const showTextToImagePanel = location.pathname === '/edit/new';
 
   const resetUploadState = () => {
     setUploadChoiceOpen(false);
@@ -82,6 +85,11 @@ export default function EditorNewProjectPage() {
     if (!pendingUpload) return;
     navigate('/magic', { state: { initialSrc: pendingUpload } });
     resetUploadState();
+  };
+
+  const handleOpenTextToImage = () => {
+    if (location.pathname === '/edit/new') return;
+    navigate('/edit/new');
   };
 
   // Rest of your component rendering logic remains the same...
@@ -196,38 +204,47 @@ export default function EditorNewProjectPage() {
           </Grid>
 
           <Grid item xs={12} sm={6} md={4} lg={3}>
-            <Paper
-              elevation={6}
-              sx={{
-                p: 3,
-                position: 'relative', // Make Paper position relative
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-                opacity: 0.5,
-              }}
-            >
-              <Chip 
-                label="coming soon" 
-                color="info" 
-                size="small"
-                sx={{ 
-                  position: 'absolute', // Position chip absolutely
-                  top: 20,  // Adjust as needed
-                  left: 20, // Adjust as needed
-                  fontWeight: 'bold'
-                }} 
-              />
-              <AutoFixHighIcon sx={{ fontSize: 60, mb: 2 }} />
-              <Typography variant="h5" component="div" gutterBottom>
-                Generate Image
-              </Typography>
-              <Typography color="text.secondary">Using memeSRC Magic</Typography>
-            </Paper>
+            <CardActionArea component="div" onClick={handleOpenTextToImage}>
+              <Paper
+                elevation={6}
+                sx={{
+                  p: 3,
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  border: showTextToImagePanel ? '2px solid' : '1px solid',
+                  borderColor: showTextToImagePanel ? 'primary.main' : 'transparent',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Chip
+                  label={showTextToImagePanel ? 'active' : 'new'}
+                  color={showTextToImagePanel ? 'primary' : 'info'}
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    top: 20,
+                    left: 20,
+                    fontWeight: 'bold',
+                  }}
+                />
+                <AutoFixHighIcon sx={{ fontSize: 60, mb: 2 }} />
+                <Typography variant="h5" component="div" gutterBottom>
+                  Generate Image
+                </Typography>
+                <Typography color="text.secondary">Create from text prompts</Typography>
+              </Paper>
+            </CardActionArea>
           </Grid>
         </Grid>
+        {showTextToImagePanel && (
+          <Box sx={{ mt: { xs: 4, md: 6 } }}>
+            <MagicTextToImagePanel />
+          </Box>
+        )}
         <Dialog
           open={uploadChoiceOpen}
           onClose={resetUploadState}

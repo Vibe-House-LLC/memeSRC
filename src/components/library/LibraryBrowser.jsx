@@ -225,9 +225,14 @@ export default function LibraryBrowser({
   // Expose primary/clear actions to parent for external bottom bar control
   useEffect(() => {
     if (typeof exposeActions === 'function') {
-      exposeActions({ primary: handlePrimary, clearSelection: clear });
+      exposeActions({
+        primary: handlePrimary,
+        clearSelection: clear,
+        getSelectedItems: () => selectedItems.slice(),
+        getStorageLevel: () => storageLevel,
+      });
     }
-  }, [exposeActions, handlePrimary, clear]);
+  }, [exposeActions, handlePrimary, clear, selectedItems, storageLevel]);
 
   const handleDelete = useCallback(async (keys) => {
     try {

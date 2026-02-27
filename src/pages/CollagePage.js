@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { useTheme, alpha } from "@mui/material/styles";
-import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { useMediaQuery, Box, Container, Typography, Button, Slide, Stack, Collapse, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, RadioGroup, FormControlLabel, Radio, Grid, Badge, Menu, MenuItem, ListItemIcon, ListItemText, TextField, Switch } from "@mui/material";
 import { Save, Settings, ArrowBack, DeleteForever, ArrowForward, Close, CheckCircle, AddCircleOutlineRounded, ExpandMoreRounded, TextFieldsRounded, StyleRounded, ViewModuleRounded } from "@mui/icons-material";
 import { useNavigate, useLocation, useParams, useBeforeUnload } from 'react-router-dom';
 import { unstable_batchedUpdates } from 'react-dom';
@@ -17,9 +17,17 @@ import { createProject, upsertProject, buildSnapshotFromState, getProject as get
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
 import { get as getFromLibrary } from "../utils/library/storage";
+import { saveImageToLibrary } from "../utils/library/saveImageToLibrary";
+import { runRemoveBackgroundLocally } from "../utils/comfyRemoveBackground";
+import {
+  runMagicStickerLocally,
+  MAGIC_STICKER_STYLE_PRESETS,
+  DEFAULT_MAGIC_STICKER_STYLE_PRESET,
+} from "../utils/comfyMagicSticker";
 import { LibraryPickerDialog } from "../components/library";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
+import MagicStickerGenerationStatus from "../components/collage/components/MagicStickerGenerationStatus";
 import { trackUsageEvent } from "../utils/trackUsageEvent";
 
 // Pure helpers (module scope) to avoid TDZ and keep stable references
@@ -292,9 +300,18 @@ export default function CollagePage() {
   const mobileSettingsPreviewRequestRef = useRef(0);
   const mobileSettingsOpenSigRef = useRef(null);
   const [headerAddMenuAnchorEl, setHeaderAddMenuAnchorEl] = useState(null);
+  const [headerStickerSourceDialogOpen, setHeaderStickerSourceDialogOpen] = useState(false);
   const [headerStickerPickerOpen, setHeaderStickerPickerOpen] = useState(false);
   const [headerStickerPickerBusy, setHeaderStickerPickerBusy] = useState(false);
   const [headerStickerPickerError, setHeaderStickerPickerError] = useState('');
+  const [headerMagicStickerPromptOpen, setHeaderMagicStickerPromptOpen] = useState(false);
+  const [headerMagicStickerPrompt, setHeaderMagicStickerPrompt] = useState('');
+  const [headerMagicStickerStylePreset, setHeaderMagicStickerStylePreset] = useState(DEFAULT_MAGIC_STICKER_STYLE_PRESET);
+  const [headerMagicStickerAdvanced, setHeaderMagicStickerAdvanced] = useState(false);
+  const [headerMagicStickerPositivePrompt, setHeaderMagicStickerPositivePrompt] = useState('');
+  const [headerMagicStickerNegativePrompt, setHeaderMagicStickerNegativePrompt] = useState('');
+  const [headerMagicStickerBusy, setHeaderMagicStickerBusy] = useState(false);
+  const [headerMagicStickerError, setHeaderMagicStickerError] = useState('');
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -2504,6 +2521,25 @@ export default function CollagePage() {
 
   const canManageStickers = Boolean(user) && hasLibraryAccess;
 
+  const normalizeStickerPickerItem = useCallback((selectedItem) => {
+    if (!selectedItem || typeof selectedItem !== 'object') return null;
+    const hasDirectLibraryMetadata = Boolean(selectedItem?.metadata?.libraryKey);
+    if (hasDirectLibraryMetadata || selectedItem?.originalUrl || selectedItem?.displayUrl) {
+      return selectedItem;
+    }
+    const key = typeof selectedItem?.key === 'string' ? selectedItem.key : '';
+    const sourceUrl = selectedItem?.url || null;
+    if (!sourceUrl) return null;
+    return {
+      originalUrl: sourceUrl,
+      displayUrl: sourceUrl,
+      metadata: {
+        ...(selectedItem?.metadata && typeof selectedItem.metadata === 'object' ? selectedItem.metadata : {}),
+        ...(key ? { libraryKey: key, isFromLibrary: true } : {}),
+      },
+    };
+  }, []);
+
   const resolveStickerSource = useCallback(async (selectedItem) => {
     const metadataBase = (selectedItem?.metadata && typeof selectedItem.metadata === 'object')
       ? { ...selectedItem.metadata }
@@ -2566,24 +2602,136 @@ export default function CollagePage() {
     })
   ), []);
 
-  const handleAddStickerFromLibrary = useCallback(async (selectedItem) => {
+  const handleAddStickerFromLibrary = useCallback(async (selectedItem, options = {}) => {
     if (!canManageStickers) {
       setSnackbar({ open: true, message: 'Log in with library access to use stickers.', severity: 'warning' });
       return null;
     }
     if (!selectedItem) return null;
 
-    const { dataUrl, metadata } = await resolveStickerSource(selectedItem);
-    const aspectRatio = await getStickerAspectRatio(dataUrl);
+    const normalizedSelectedItem = normalizeStickerPickerItem(selectedItem);
+    if (!normalizedSelectedItem) {
+      throw new Error('Unable to resolve selected sticker.');
+    }
+
+    const removeBackground = Boolean(options.removeBackground);
+
+    const { dataUrl, metadata } = await resolveStickerSource(normalizedSelectedItem);
+    let stickerDataUrl = dataUrl;
+    let stickerMetadata = metadata;
+
+    if (removeBackground) {
+      const removedBackgroundDataUrl = await runRemoveBackgroundLocally({ imageDataUrl: dataUrl });
+      const sourceLibraryKey = typeof metadata?.libraryKey === 'string' ? metadata.libraryKey : undefined;
+      const savedLibraryKey = await saveImageToLibrary(removedBackgroundDataUrl, 'sticker-remove-background.png', {
+        level: 'private',
+        metadata: {
+          source: 'collage-sticker-remove-background',
+          ...(sourceLibraryKey ? { sourceLibraryKey } : {}),
+        },
+      });
+      stickerDataUrl = removedBackgroundDataUrl;
+      stickerMetadata = {
+        ...metadata,
+        ...(sourceLibraryKey ? { sourceLibraryKey } : {}),
+        libraryKey: savedLibraryKey,
+        isFromLibrary: true,
+        removeBackground: true,
+      };
+    }
+
+    const aspectRatio = await getStickerAspectRatio(stickerDataUrl);
     const stickerId = addSticker({
-      originalUrl: dataUrl,
-      thumbnailUrl: dataUrl,
-      metadata,
+      originalUrl: stickerDataUrl,
+      thumbnailUrl: stickerDataUrl,
+      metadata: stickerMetadata,
       aspectRatio,
       widthPercent: 28,
     });
+    if (removeBackground) {
+      setSnackbar({ open: true, message: 'Background removed and sticker added.', severity: 'success' });
+    }
     return stickerId;
-  }, [addSticker, canManageStickers, getStickerAspectRatio, resolveStickerSource]);
+  }, [addSticker, canManageStickers, getStickerAspectRatio, normalizeStickerPickerItem, resolveStickerSource]);
+
+  const handleAddStickerFromLibraryRemoveBackground = useCallback(
+    async (selectedItem) => await handleAddStickerFromLibrary(selectedItem, { removeBackground: true }),
+    [handleAddStickerFromLibrary]
+  );
+
+  const handleAddMagicStickerFromPrompt = useCallback(async (magicConfig) => {
+    if (!canManageStickers) {
+      setSnackbar({ open: true, message: 'Log in with library access to use stickers.', severity: 'warning' });
+      return null;
+    }
+
+    const request = (magicConfig && typeof magicConfig === 'object')
+      ? magicConfig
+      : { prompt: magicConfig };
+
+    const stylePreset = typeof request.stylePreset === 'string' && request.stylePreset.trim().length > 0
+      ? request.stylePreset
+      : DEFAULT_MAGIC_STICKER_STYLE_PRESET;
+    const advanced = Boolean(request.advanced);
+    const trimmedPrompt = String(request.prompt || '').trim();
+    const trimmedPositivePrompt = String(request.positivePrompt || '').trim();
+    const trimmedNegativePrompt = typeof request.negativePrompt === 'string'
+      ? request.negativePrompt.trim()
+      : undefined;
+
+    if (advanced && !trimmedPositivePrompt) {
+      throw new Error('Magic sticker positive prompt is required.');
+    }
+    if (!advanced && !trimmedPrompt) {
+      throw new Error('Magic sticker prompt is required.');
+    }
+
+    const generatedStickerDataUrl = await runMagicStickerLocally({
+      stylePreset,
+      ...(advanced
+        ? {
+            positivePrompt: trimmedPositivePrompt,
+            negativePrompt: trimmedNegativePrompt ?? '',
+          }
+        : {
+            prompt: trimmedPrompt,
+          }),
+    });
+    const promptMetadata = advanced
+      ? {
+          advanced: true,
+          positivePrompt: trimmedPositivePrompt,
+          negativePrompt: trimmedNegativePrompt ?? '',
+        }
+      : {
+          advanced: false,
+          prompt: trimmedPrompt,
+        };
+    const savedLibraryKey = await saveImageToLibrary(generatedStickerDataUrl, 'magic-sticker.png', {
+      level: 'private',
+      metadata: {
+        source: 'collage-magic-sticker',
+        stylePreset,
+        ...promptMetadata,
+      },
+    });
+    const aspectRatio = await getStickerAspectRatio(generatedStickerDataUrl);
+    const stickerId = addSticker({
+      originalUrl: generatedStickerDataUrl,
+      thumbnailUrl: generatedStickerDataUrl,
+      metadata: {
+        libraryKey: savedLibraryKey,
+        isFromLibrary: true,
+        source: 'magic-sticker',
+        stylePreset,
+        ...promptMetadata,
+      },
+      aspectRatio,
+      widthPercent: 28,
+    });
+    setSnackbar({ open: true, message: 'Magic sticker generated and added.', severity: 'success' });
+    return stickerId;
+  }, [addSticker, canManageStickers, getStickerAspectRatio]);
 
   const openHeaderAddMenu = useCallback((event) => {
     setHeaderAddMenuAnchorEl(event.currentTarget);
@@ -2606,9 +2754,31 @@ export default function CollagePage() {
   const handleHeaderAddSticker = useCallback(() => {
     closeHeaderAddMenu();
     if (!canManageStickers) return;
+    setHeaderStickerSourceDialogOpen(true);
+  }, [canManageStickers, closeHeaderAddMenu]);
+
+  const closeHeaderStickerSourceDialog = useCallback(() => {
+    if (headerStickerPickerBusy || headerMagicStickerBusy) return;
+    setHeaderStickerSourceDialogOpen(false);
+  }, [headerStickerPickerBusy, headerMagicStickerBusy]);
+
+  const openHeaderStickerLibraryPicker = useCallback(() => {
+    setHeaderStickerSourceDialogOpen(false);
     setHeaderStickerPickerError('');
     setHeaderStickerPickerOpen(true);
-  }, [canManageStickers, closeHeaderAddMenu]);
+  }, []);
+
+  const closeHeaderMagicStickerPromptDialog = useCallback(() => {
+    if (headerMagicStickerBusy) return;
+    setHeaderMagicStickerPromptOpen(false);
+    setHeaderMagicStickerError('');
+  }, [headerMagicStickerBusy]);
+
+  const openHeaderMagicStickerPromptDialog = useCallback(() => {
+    setHeaderStickerSourceDialogOpen(false);
+    setHeaderMagicStickerError('');
+    setHeaderMagicStickerPromptOpen(true);
+  }, []);
 
   const handleHeaderAddPanel = useCallback(() => {
     closeHeaderAddMenu();
@@ -2632,6 +2802,75 @@ export default function CollagePage() {
     } catch (error) {
       console.error('Failed to add sticker from header add menu', error);
       setHeaderStickerPickerError('Unable to add that sticker right now.');
+    } finally {
+      setHeaderStickerPickerBusy(false);
+    }
+  }, [canManageStickers, handleAddStickerFromLibrary]);
+
+  const handleHeaderMagicStickerSubmit = useCallback(async () => {
+    if (!canManageStickers || headerMagicStickerBusy) return;
+    const isAdvancedMode = headerMagicStickerAdvanced;
+    const trimmedPrompt = headerMagicStickerPrompt.trim();
+    const trimmedPositivePrompt = headerMagicStickerPositivePrompt.trim();
+
+    if (!isAdvancedMode && !trimmedPrompt) {
+      setHeaderMagicStickerError('Enter a sticker prompt.');
+      return;
+    }
+    if (isAdvancedMode && !trimmedPositivePrompt) {
+      setHeaderMagicStickerError('Enter a positive prompt.');
+      return;
+    }
+
+    setHeaderMagicStickerBusy(true);
+    setHeaderMagicStickerError('');
+    try {
+      await handleAddMagicStickerFromPrompt(
+        isAdvancedMode
+          ? {
+              advanced: true,
+              stylePreset: headerMagicStickerStylePreset,
+              positivePrompt: trimmedPositivePrompt,
+              negativePrompt: headerMagicStickerNegativePrompt,
+            }
+          : {
+              advanced: false,
+              stylePreset: headerMagicStickerStylePreset,
+              prompt: trimmedPrompt,
+            }
+      );
+      setHeaderMagicStickerPrompt('');
+      setHeaderMagicStickerPositivePrompt('');
+      setHeaderMagicStickerNegativePrompt('');
+      setHeaderMagicStickerPromptOpen(false);
+    } catch (error) {
+      console.error('Failed to generate magic sticker from header add menu', error);
+      setHeaderMagicStickerError('Unable to generate a magic sticker right now.');
+    } finally {
+      setHeaderMagicStickerBusy(false);
+    }
+  }, [
+    canManageStickers,
+    handleAddMagicStickerFromPrompt,
+    headerMagicStickerAdvanced,
+    headerMagicStickerBusy,
+    headerMagicStickerNegativePrompt,
+    headerMagicStickerPositivePrompt,
+    headerMagicStickerPrompt,
+    headerMagicStickerStylePreset,
+  ]);
+
+  const handleHeaderStickerRemoveBackgroundSelect = useCallback(async (items) => {
+    if (!canManageStickers) return;
+    if (!Array.isArray(items) || items.length === 0) return;
+    setHeaderStickerPickerBusy(true);
+    setHeaderStickerPickerError('');
+    try {
+      await handleAddStickerFromLibrary(items[0], { removeBackground: true });
+      setHeaderStickerPickerOpen(false);
+    } catch (error) {
+      console.error('Failed to remove sticker background from header add menu', error);
+      setHeaderStickerPickerError('Unable to remove background for that sticker right now.');
     } finally {
       setHeaderStickerPickerBusy(false);
     }
@@ -2683,6 +2922,8 @@ export default function CollagePage() {
     stickers,
     canManageStickers,
     onAddStickerFromLibrary: handleAddStickerFromLibrary,
+    onAddStickerFromLibraryRemoveBackground: handleAddStickerFromLibraryRemoveBackground,
+    onAddMagicStickerFromPrompt: handleAddMagicStickerFromPrompt,
     onMoveSticker: moveSticker,
     onRemoveSticker: removeSticker,
     onMovePanel: handleMovePanel,
@@ -2774,6 +3015,8 @@ export default function CollagePage() {
     onRemovePanelRequest: handleRemovePanelRequest,
     onAddTextRequest: handleAddTextRequested,
     onAddStickerFromLibrary: handleAddStickerFromLibrary,
+    onAddStickerFromLibraryRemoveBackground: handleAddStickerFromLibraryRemoveBackground,
+    onAddMagicStickerFromPrompt: handleAddMagicStickerFromPrompt,
     canManageStickers,
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
@@ -3178,10 +3421,158 @@ export default function CollagePage() {
               </Alert>
             </Snackbar>
 
+            <Dialog
+              open={headerStickerSourceDialogOpen}
+              onClose={closeHeaderStickerSourceDialog}
+              fullWidth
+              maxWidth="xs"
+            >
+              <DialogTitle sx={{ fontWeight: 800 }}>
+                Add a sticker
+              </DialogTitle>
+              <DialogContent>
+                <Typography variant="body2" color="text.secondary">
+                  Pick how you want to create your sticker.
+                </Typography>
+              </DialogContent>
+              <DialogActions sx={{ px: 3, pb: 3 }}>
+                <Box sx={{ width: '100%', display: 'grid', gap: 1 }}>
+                  <Button variant="contained" onClick={openHeaderStickerLibraryPicker} disabled={headerStickerPickerBusy || headerMagicStickerBusy}>
+                    Upload Sticker
+                  </Button>
+                  <Button variant="contained" onClick={openHeaderStickerLibraryPicker} disabled={headerStickerPickerBusy || headerMagicStickerBusy}>
+                    Choose Sticker
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={openHeaderMagicStickerPromptDialog}
+                    disabled={headerStickerPickerBusy || headerMagicStickerBusy}
+                  >
+                    Magic Sticker
+                  </Button>
+                  <Button onClick={closeHeaderStickerSourceDialog} color="inherit" disabled={headerStickerPickerBusy || headerMagicStickerBusy}>
+                    Cancel
+                  </Button>
+                </Box>
+              </DialogActions>
+            </Dialog>
+
+            <Dialog
+              open={headerMagicStickerPromptOpen}
+              onClose={closeHeaderMagicStickerPromptDialog}
+              fullWidth
+              maxWidth="sm"
+            >
+              <DialogTitle sx={{ fontWeight: 800 }}>
+                Magic Sticker
+              </DialogTitle>
+              <DialogContent sx={{ pt: 1.5 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>
+                  Describe your sticker and pick a style, or switch to Advanced for full prompts.
+                </Typography>
+                <TextField
+                  select
+                  fullWidth
+                  label="Style preset"
+                  value={headerMagicStickerStylePreset}
+                  onChange={(event) => setHeaderMagicStickerStylePreset(event.target.value)}
+                  disabled={headerMagicStickerBusy || headerMagicStickerAdvanced}
+                  sx={{ mb: 1.25 }}
+                >
+                  {MAGIC_STICKER_STYLE_PRESETS.map((preset) => (
+                    <MenuItem key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <FormControlLabel
+                  sx={{ mb: 1 }}
+                  control={
+                    <Switch
+                      checked={headerMagicStickerAdvanced}
+                      onChange={(event) => setHeaderMagicStickerAdvanced(event.target.checked)}
+                      disabled={headerMagicStickerBusy}
+                    />
+                  }
+                  label="Advanced prompts"
+                />
+                {headerMagicStickerAdvanced ? (
+                  <>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      autoFocus
+                      label="Positive prompt"
+                      value={headerMagicStickerPositivePrompt}
+                      onChange={(event) => setHeaderMagicStickerPositivePrompt(event.target.value)}
+                      placeholder="Product photo. Neutral lighting. Hand giving the middle finger"
+                      disabled={headerMagicStickerBusy}
+                    />
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      label="Negative prompt"
+                      value={headerMagicStickerNegativePrompt}
+                      onChange={(event) => setHeaderMagicStickerNegativePrompt(event.target.value)}
+                      placeholder="Optional"
+                      disabled={headerMagicStickerBusy}
+                      sx={{ mt: 1 }}
+                    />
+                  </>
+                ) : (
+                  <TextField
+                    fullWidth
+                    autoFocus
+                    value={headerMagicStickerPrompt}
+                    onChange={(event) => setHeaderMagicStickerPrompt(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        void handleHeaderMagicStickerSubmit();
+                      }
+                    }}
+                    placeholder="tophat"
+                    disabled={headerMagicStickerBusy}
+                  />
+                )}
+                <MagicStickerGenerationStatus active={headerMagicStickerBusy} />
+                {headerMagicStickerError ? (
+                  <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                    {headerMagicStickerError}
+                  </Typography>
+                ) : null}
+              </DialogContent>
+              <DialogActions sx={{ px: 3, pb: 3 }}>
+                <Button onClick={closeHeaderMagicStickerPromptDialog} color="inherit" disabled={headerMagicStickerBusy}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => { void handleHeaderMagicStickerSubmit(); }}
+                  disabled={
+                    headerMagicStickerBusy
+                    || (headerMagicStickerAdvanced
+                      ? headerMagicStickerPositivePrompt.trim().length === 0
+                      : headerMagicStickerPrompt.trim().length === 0)
+                  }
+                  startIcon={headerMagicStickerBusy ? <CircularProgress color="inherit" size={16} /> : null}
+                >
+                  {headerMagicStickerBusy ? 'Generating…' : 'Generate Sticker'}
+                </Button>
+              </DialogActions>
+            </Dialog>
+
             <LibraryPickerDialog
               open={headerStickerPickerOpen}
               onClose={closeHeaderStickerPicker}
               title="Choose a sticker from your library"
+              showSelectAction
+              selectActionLabel="Add sticker"
+              onExtraAction={({ selectedItems }) => { void handleHeaderStickerRemoveBackgroundSelect(selectedItems); }}
+              extraActionLabel="Remove background"
               onSelect={(items) => { void handleHeaderStickerSelect(items); }}
               busy={headerStickerPickerBusy}
               errorText={headerStickerPickerError}
@@ -3191,8 +3582,8 @@ export default function CollagePage() {
                 deleteEnabled: false,
                 showActionBar: false,
                 selectionEnabled: true,
-                previewOnClick: true,
-                showSelectToggle: true,
+                previewOnClick: false,
+                showSelectToggle: false,
                 initialSelectMode: true,
               }}
             />

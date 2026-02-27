@@ -31,6 +31,12 @@ type LibraryPickerDialogProps = {
   browserProps?: Record<string, any>;
   showSelectAction?: boolean;
   selectActionLabel?: string;
+  onExtraAction?: (ctx: {
+    selectedItems: any[];
+    clearSelection?: () => void;
+    storageLevel?: string;
+  }) => void | Promise<void>;
+  extraActionLabel?: string;
 };
 
 const defaultBrowserProps = {
@@ -56,29 +62,39 @@ export default function LibraryPickerDialog({
   cancelLabel = 'Cancel',
   showSelectAction = false,
   selectActionLabel = 'Continue',
+  onExtraAction,
+  extraActionLabel = 'Extra action',
   maxWidth = 'md',
   browserProps = {},
 }: LibraryPickerDialogProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const browserActionsRef = React.useRef<{ primary?: () => void | Promise<void> }>({});
+  const browserActionsRef = React.useRef<{
+    primary?: () => void | Promise<void>;
+    clearSelection?: () => void;
+    getSelectedItems?: () => any[];
+    getStorageLevel?: () => string;
+  }>({});
   const [selectionInfo, setSelectionInfo] = React.useState<{ count: number; minSelected: number }>({
     count: 0,
     minSelected: 1,
   });
   const [primaryBusy, setPrimaryBusy] = React.useState(false);
+  const [extraBusy, setExtraBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) {
       browserActionsRef.current = {};
       setSelectionInfo({ count: 0, minSelected: 1 });
       setPrimaryBusy(false);
+      setExtraBusy(false);
     }
   }, [open]);
 
   const minSelected = Number.isFinite(selectionInfo?.minSelected) ? Number(selectionInfo.minSelected) : 1;
   const selectedCount = Number.isFinite(selectionInfo?.count) ? Number(selectionInfo.count) : 0;
-  const isPrimaryDisabled = busy || primaryBusy || selectedCount < Math.max(1, minSelected);
+  const isPrimaryDisabled = busy || primaryBusy || extraBusy || selectedCount < Math.max(1, minSelected);
+  const isExtraDisabled = busy || primaryBusy || extraBusy || selectedCount < Math.max(1, minSelected);
 
   const handlePrimary = React.useCallback(async () => {
     if (isPrimaryDisabled) return;
@@ -91,6 +107,28 @@ export default function LibraryPickerDialog({
       setPrimaryBusy(false);
     }
   }, [isPrimaryDisabled]);
+
+  const handleExtraAction = React.useCallback(async () => {
+    if (isExtraDisabled || typeof onExtraAction !== 'function') return;
+    const selectedItems =
+      typeof browserActionsRef.current?.getSelectedItems === 'function'
+        ? browserActionsRef.current.getSelectedItems() || []
+        : [];
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) return;
+    setExtraBusy(true);
+    try {
+      await onExtraAction({
+        selectedItems,
+        clearSelection: browserActionsRef.current?.clearSelection,
+        storageLevel:
+          typeof browserActionsRef.current?.getStorageLevel === 'function'
+            ? browserActionsRef.current.getStorageLevel()
+            : undefined,
+      });
+    } finally {
+      setExtraBusy(false);
+    }
+  }, [isExtraDisabled, onExtraAction]);
 
   const browserOnSelectionChange = React.useCallback((info: any) => {
     const normalized = {
@@ -114,7 +152,7 @@ export default function LibraryPickerDialog({
     <Dialog
       open={open}
       onClose={() => {
-        if (!busy) onClose();
+        if (!(busy || primaryBusy || extraBusy)) onClose();
       }}
       fullWidth
       maxWidth={maxWidth}
@@ -142,10 +180,10 @@ export default function LibraryPickerDialog({
               edge="end"
               aria-label="close"
               onClick={() => {
-                if (!busy) onClose();
+                if (!(busy || primaryBusy || extraBusy)) onClose();
               }}
               sx={{ color: '#eaeaea' }}
-              disabled={busy}
+              disabled={busy || primaryBusy || extraBusy}
             >
               <CloseIcon />
             </IconButton>
@@ -157,10 +195,10 @@ export default function LibraryPickerDialog({
           <IconButton
             aria-label="close"
             onClick={() => {
-              if (!busy) onClose();
+              if (!(busy || primaryBusy || extraBusy)) onClose();
             }}
             sx={{ position: 'absolute', right: 8, top: 8, color: '#eaeaea' }}
-            disabled={busy}
+            disabled={busy || primaryBusy || extraBusy}
           >
             <CloseIcon />
           </IconButton>
@@ -182,7 +220,7 @@ export default function LibraryPickerDialog({
         ) : null}
       </DialogContent>
       <DialogActions sx={{ padding: isMobile ? '12px' : '16px', bgcolor: '#121212' }}>
-        {busy ? <CircularProgress size={20} sx={{ mr: 'auto' }} /> : null}
+        {(busy || primaryBusy || extraBusy) ? <CircularProgress size={20} sx={{ mr: 'auto' }} /> : null}
         <Box
           sx={{
             width: showSelectAction ? '100%' : (isMobile ? '100%' : 'auto'),
@@ -198,7 +236,7 @@ export default function LibraryPickerDialog({
             variant={showSelectAction ? 'outlined' : 'contained'}
             disableElevation
             fullWidth={isMobile}
-            disabled={busy}
+            disabled={busy || primaryBusy || extraBusy}
             sx={{
               ...(showSelectAction ? { flex: 1 } : {}),
               bgcolor: showSelectAction ? 'transparent' : '#252525',
@@ -220,6 +258,27 @@ export default function LibraryPickerDialog({
             {cancelLabel}
           </Button>
           {showSelectAction ? (
+            <>
+            {typeof onExtraAction === 'function' ? (
+              <Button
+                onClick={() => { void handleExtraAction(); }}
+                variant="contained"
+                color="secondary"
+                disableElevation
+                fullWidth={isMobile}
+                disabled={isExtraDisabled}
+                sx={{
+                  flex: 1,
+                  borderRadius: '8px',
+                  px: isMobile ? 2 : 2.5,
+                  py: isMobile ? 1.25 : 0.75,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                }}
+              >
+                {`${extraActionLabel}${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
+              </Button>
+            ) : null}
             <Button
               onClick={() => { void handlePrimary(); }}
               variant="contained"
@@ -248,6 +307,7 @@ export default function LibraryPickerDialog({
             >
               {`${selectActionLabel}${selectedCount > 0 ? ` (${selectedCount})` : ''}`}
             </Button>
+            </>
           ) : null}
         </Box>
       </DialogActions>

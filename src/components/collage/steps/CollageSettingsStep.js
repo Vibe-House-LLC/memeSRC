@@ -19,7 +19,10 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import {
   KeyboardArrowLeft,
@@ -45,6 +48,8 @@ import {
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
 import { LibraryPickerDialog } from "../../library";
+import MagicStickerGenerationStatus from "../components/MagicStickerGenerationStatus";
+import { MAGIC_STICKER_STYLE_PRESETS, DEFAULT_MAGIC_STICKER_STYLE_PRESET } from "../../../utils/comfyMagicSticker";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -384,6 +389,8 @@ const CollageLayoutSettings = ({
   canManageStickers = false,
   onStickerLibraryOpenChange,
   onAddStickerFromLibrary,
+  onAddStickerFromLibraryRemoveBackground,
+  onAddMagicStickerFromPrompt,
   onMoveSticker,
   onRemoveSticker,
   onMovePanel,
@@ -411,6 +418,15 @@ const CollageLayoutSettings = ({
   const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
   const [stickerError, setStickerError] = useState('');
+  const [stickerSourceDialogOpen, setStickerSourceDialogOpen] = useState(false);
+  const [magicStickerPromptDialogOpen, setMagicStickerPromptDialogOpen] = useState(false);
+  const [magicStickerPrompt, setMagicStickerPrompt] = useState('');
+  const [magicStickerStylePreset, setMagicStickerStylePreset] = useState(DEFAULT_MAGIC_STICKER_STYLE_PRESET);
+  const [magicStickerAdvanced, setMagicStickerAdvanced] = useState(false);
+  const [magicStickerPositivePrompt, setMagicStickerPositivePrompt] = useState('');
+  const [magicStickerNegativePrompt, setMagicStickerNegativePrompt] = useState('');
+  const [magicStickerBusy, setMagicStickerBusy] = useState(false);
+  const [magicStickerError, setMagicStickerError] = useState('');
   const [customRatioWidthInput, setCustomRatioWidthInput] = useState('100');
   const [customRatioHeightInput, setCustomRatioHeightInput] = useState('100');
   const [panelActionAnchorEl, setPanelActionAnchorEl] = useState(null);
@@ -596,12 +612,35 @@ const CollageLayoutSettings = ({
   const openStickerLibrary = () => {
     if (!canManageStickers) return;
     setStickerError('');
-    setStickerLibraryOpen(true);
+    setStickerSourceDialogOpen(true);
   };
 
   const closeStickerLibrary = () => {
     if (stickerLoading) return;
     setStickerLibraryOpen(false);
+  };
+
+  const closeStickerSourceDialog = () => {
+    if (stickerLoading || magicStickerBusy) return;
+    setStickerSourceDialogOpen(false);
+  };
+
+  const closeMagicStickerPromptDialog = () => {
+    if (magicStickerBusy) return;
+    setMagicStickerPromptDialogOpen(false);
+    setMagicStickerError('');
+  };
+
+  const openStickerLibraryPicker = () => {
+    setStickerSourceDialogOpen(false);
+    setStickerError('');
+    setStickerLibraryOpen(true);
+  };
+
+  const openMagicStickerPromptDialog = () => {
+    setStickerSourceDialogOpen(false);
+    setMagicStickerError('');
+    setMagicStickerPromptDialogOpen(true);
   };
 
   const handleStickerLibrarySelect = async (items) => {
@@ -617,6 +656,66 @@ const CollageLayoutSettings = ({
       setStickerError('Unable to add that sticker right now.');
     } finally {
       setStickerLoading(false);
+    }
+  };
+
+  const handleStickerLibraryRemoveBackground = async (items) => {
+    const selected = Array.isArray(items) ? items[0] : null;
+    if (!selected || typeof onAddStickerFromLibraryRemoveBackground !== 'function') return;
+    setStickerLoading(true);
+    setStickerError('');
+    try {
+      await onAddStickerFromLibraryRemoveBackground(selected);
+      setStickerLibraryOpen(false);
+    } catch (error) {
+      console.error('Failed to remove sticker background from library', error);
+      setStickerError('Unable to remove background for that sticker right now.');
+    } finally {
+      setStickerLoading(false);
+    }
+  };
+
+  const handleMagicStickerSubmit = async () => {
+    const canAddMagicSticker = canManageStickers && typeof onAddMagicStickerFromPrompt === 'function';
+    if (!canAddMagicSticker || magicStickerBusy) return;
+    const isAdvancedMode = magicStickerAdvanced;
+    const trimmedPrompt = magicStickerPrompt.trim();
+    const trimmedPositivePrompt = magicStickerPositivePrompt.trim();
+    if (!isAdvancedMode && !trimmedPrompt) {
+      setMagicStickerError('Enter a sticker prompt.');
+      return;
+    }
+    if (isAdvancedMode && !trimmedPositivePrompt) {
+      setMagicStickerError('Enter a positive prompt.');
+      return;
+    }
+
+    setMagicStickerBusy(true);
+    setMagicStickerError('');
+    try {
+      await onAddMagicStickerFromPrompt(
+        isAdvancedMode
+          ? {
+              advanced: true,
+              stylePreset: magicStickerStylePreset,
+              positivePrompt: trimmedPositivePrompt,
+              negativePrompt: magicStickerNegativePrompt,
+            }
+          : {
+              advanced: false,
+              stylePreset: magicStickerStylePreset,
+              prompt: trimmedPrompt,
+            }
+      );
+      setMagicStickerPrompt('');
+      setMagicStickerPositivePrompt('');
+      setMagicStickerNegativePrompt('');
+      setMagicStickerPromptDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to generate magic sticker from settings panel', error);
+      setMagicStickerError('Unable to generate a magic sticker right now.');
+    } finally {
+      setMagicStickerBusy(false);
     }
   };
   
@@ -1949,10 +2048,160 @@ const CollageLayoutSettings = ({
         )}
       </Box>
 
+      <Dialog
+        open={stickerSourceDialogOpen}
+        onClose={closeStickerSourceDialog}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Add a sticker
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Pick how you want to create your sticker.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Box sx={{ width: '100%', display: 'grid', gap: 1 }}>
+            <Button variant="contained" onClick={openStickerLibraryPicker} disabled={stickerLoading || magicStickerBusy}>
+              Upload Sticker
+            </Button>
+            <Button variant="contained" onClick={openStickerLibraryPicker} disabled={stickerLoading || magicStickerBusy}>
+              Choose Sticker
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={openMagicStickerPromptDialog}
+              disabled={!(canManageStickers && typeof onAddMagicStickerFromPrompt === 'function') || stickerLoading || magicStickerBusy}
+            >
+              Magic Sticker
+            </Button>
+            <Button onClick={closeStickerSourceDialog} color="inherit" disabled={stickerLoading || magicStickerBusy}>
+              Cancel
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={magicStickerPromptDialogOpen}
+        onClose={closeMagicStickerPromptDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Magic Sticker
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1.5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.25 }}>
+            Describe your sticker and pick a style, or switch to Advanced for full prompts.
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            label="Style preset"
+            value={magicStickerStylePreset}
+            onChange={(event) => setMagicStickerStylePreset(event.target.value)}
+            disabled={magicStickerBusy || magicStickerAdvanced}
+            sx={{ mb: 1.25 }}
+          >
+            {MAGIC_STICKER_STYLE_PRESETS.map((preset) => (
+              <MenuItem key={preset.id} value={preset.id}>
+                {preset.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <FormControlLabel
+            sx={{ mb: 1 }}
+            control={
+              <Switch
+                checked={magicStickerAdvanced}
+                onChange={(event) => setMagicStickerAdvanced(event.target.checked)}
+                disabled={magicStickerBusy}
+              />
+            }
+            label="Advanced prompts"
+          />
+          {magicStickerAdvanced ? (
+            <>
+              <TextField
+                fullWidth
+                multiline
+                minRows={2}
+                autoFocus
+                label="Positive prompt"
+                value={magicStickerPositivePrompt}
+                onChange={(event) => setMagicStickerPositivePrompt(event.target.value)}
+                placeholder="Product photo. Neutral lighting. tophat"
+                disabled={magicStickerBusy}
+              />
+              <TextField
+                fullWidth
+                multiline
+                minRows={2}
+                label="Negative prompt"
+                value={magicStickerNegativePrompt}
+                onChange={(event) => setMagicStickerNegativePrompt(event.target.value)}
+                placeholder="Optional"
+                disabled={magicStickerBusy}
+                sx={{ mt: 1 }}
+              />
+            </>
+          ) : (
+            <TextField
+              fullWidth
+              autoFocus
+              value={magicStickerPrompt}
+              onChange={(event) => setMagicStickerPrompt(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  void handleMagicStickerSubmit();
+                }
+              }}
+              placeholder="tophat"
+              disabled={magicStickerBusy}
+            />
+          )}
+          <MagicStickerGenerationStatus active={magicStickerBusy} />
+          {magicStickerError ? (
+            <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+              {magicStickerError}
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={closeMagicStickerPromptDialog} color="inherit" disabled={magicStickerBusy}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => { void handleMagicStickerSubmit(); }}
+            disabled={
+              magicStickerBusy
+              || (magicStickerAdvanced
+                ? magicStickerPositivePrompt.trim().length === 0
+                : magicStickerPrompt.trim().length === 0)
+            }
+            startIcon={magicStickerBusy ? <CircularProgress color="inherit" size={16} /> : null}
+          >
+            {magicStickerBusy ? 'Generating…' : 'Generate Sticker'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <LibraryPickerDialog
         open={stickerLibraryOpen}
         onClose={closeStickerLibrary}
         title="Choose a sticker from your library"
+        showSelectAction
+        selectActionLabel="Add sticker"
+        onExtraAction={typeof onAddStickerFromLibraryRemoveBackground === 'function'
+          ? ({ selectedItems }) => { void handleStickerLibraryRemoveBackground(selectedItems); }
+          : undefined}
+        extraActionLabel="Remove background"
         onSelect={(arr) => { void handleStickerLibrarySelect(arr); }}
         busy={stickerLoading}
         errorText={stickerError}
@@ -1962,8 +2211,8 @@ const CollageLayoutSettings = ({
           deleteEnabled: false,
           showActionBar: false,
           selectionEnabled: true,
-          previewOnClick: true,
-          showSelectToggle: true,
+          previewOnClick: false,
+          showSelectToggle: false,
           initialSelectMode: true,
         }}
       />
