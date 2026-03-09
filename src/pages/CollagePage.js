@@ -281,7 +281,6 @@ export default function CollagePage() {
   const [startInLibrary, setStartInLibrary] = useState(false);
   const [isLibraryPickerOpen, setIsLibraryPickerOpen] = useState(false);
   const [isPanelSourceDialogOpen, setIsPanelSourceDialogOpen] = useState(false);
-  const [isStickerLibraryOpen, setIsStickerLibraryOpen] = useState(false);
 
   // State and ref for settings disclosure
   const settingsRef = useRef(null);
@@ -2693,7 +2692,6 @@ export default function CollagePage() {
     onOpenPanelTransform: handlePanelTransformRequestedFromSettings,
     onOpenPanelReorder: handlePanelReorderRequestedFromSettings,
     onRemovePanelRequest: handlePanelRemoveRequestedFromSettings,
-    onStickerLibraryOpenChange: setIsStickerLibraryOpen,
   };
 
   // Handler for when collage is generated - show inline result
@@ -2926,7 +2924,6 @@ export default function CollagePage() {
     && !isCaptionEditorOpen
     && !isLibraryPickerOpen
     && !isPanelSourceDialogOpen
-    && !isStickerLibraryOpen
   );
   const headerAddButtonSx = {
     textTransform: 'none',
