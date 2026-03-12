@@ -25,7 +25,6 @@ import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
-import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import {
@@ -49,12 +48,8 @@ import { get as getFromLibrary } from '../utils/library/storage';
 
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import getV2Metadata from '../utils/getV2Metadata';
-import HomePageBannerAd from '../ads/HomePageBannerAd';
 
 import { calculateEditorSize, getContrastColor, deleteLayer, moveLayerUp } from '../utils/editorFunctions';
-import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import { shouldShowAds } from '../utils/adsenseLoader';
-import { isAdPauseActive } from '../utils/adsenseLoader';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
@@ -4197,7 +4192,6 @@ const EditorPage = ({ shows }) => {
     }
   }, [location.state]);
 
-  const showAds = shouldShowAds(user);
   const layerCardSx = {
     borderRadius: 2,
     border: '1px solid rgba(255, 255, 255, 0.14)',
@@ -4232,23 +4226,6 @@ const EditorPage = ({ shows }) => {
       </Helmet>
       <Container maxWidth='xl' disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
         <ParentContainer sx={{ pt: { xs: 1.5, md: 2 } }} id="parent-container">
-
-          {showAds && (
-            <Grid container>
-              <Grid item xs={12} mb={3}>
-                <center>
-                  <Box>
-                    {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                    <Link to="/pro" style={{ textDecoration: 'none' }}>
-                      <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                        ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                      </Typography>
-                    </Link>
-                  </Box>
-                </center>
-              </Grid>
-            </Grid>
-          )}
 
           <Card sx={{ padding: { xs: 1.5, md: 2 } }}>
             <Grid container spacing={2}>
@@ -5220,14 +5197,6 @@ const EditorPage = ({ shows }) => {
                   </Button>
                 </Grid>
 
-                {user?.userDetails?.subscriptionStatus !== 'active' &&
-                  <Grid item xs={12} my={2}>
-                    <center>
-                        <FixedMobileBannerAd />
-                    </center>
-                  </Grid>
-                }
-
                 {surroundingFrames && surroundingFrames.length > 0 && (
                   <Card sx={{ my: 2 }}>
                     <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -5950,17 +5919,6 @@ const EditorPage = ({ shows }) => {
             onConfirm={handleCollageReplaceConfirm}
             busy={addingToCollage}
           />
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid container>
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <EditorPageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            </Grid>
-          }
         </ParentContainer>
       </Container>
       <Snackbar

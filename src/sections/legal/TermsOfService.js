@@ -145,7 +145,6 @@ memeSRC Pro is a premium subscription service available exclusively to residents
 
 ### Benefits of memeSRC Pro
 As a memeSRC Pro subscriber, you will enjoy the following benefits:
-- **Ad-Free Experience**: Browse and use memeSRC.com without any advertisements.
 - **Priority Support**: Get faster responses and support from our dedicated team.
 - **Early Access to Features**: Gain early access to new features before they are rolled out to all users.
 - **Magic Credits**: Receive a monthly allowance of Magic Credits to use our AI-powered editing tools. These credits are issued monthly and expire at the end of each month. They do not roll over to the next month.
@@ -204,7 +203,7 @@ This indemnification obligation will survive the termination of your account or 
 memeSRC.com may contain links to third-party websites, advertisers, services, special offers, or other events or activities that are not owned or controlled by Vibe House LLC. We do not endorse or assume any responsibility for any such third-party sites, information, materials, products, or services. If you access any third party website, service, or content from memeSRC.com, you do so at your own risk, and you agree that Vibe House LLC will have no liability arising from your use of or access to any third-party website, service, or content.
 
 ### Third-Party Services
-Currently, memeSRC uses services including Google Analytics for website traffic analysis, Google AdSense for advertising, Stripe for payment processing, and Google Forms for surveys and feedback collection. These services collect data as specified in their respective privacy policies and use it to provide valuable insights, targeted advertisements, and secure payment processing, which help improve the functionality and user experience of our website. We do not control these third parties' tracking technologies or how they may be used.
+Currently, memeSRC uses services including Google Analytics for website traffic analysis, Stripe for payment processing, and Google Forms for surveys and feedback collection. These services collect data as specified in their respective privacy policies and use it to provide valuable insights and secure payment processing, which help improve the functionality and user experience of our website. We do not control these third parties' tracking technologies or how they may be used.
 
 ### Disclaimers
 We do not guarantee the accuracy, completeness, or usefulness of any content provided by third parties, nor do we warrant the offerings of any of these entities/individuals or their websites. You acknowledge and agree that Vibe House LLC shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with use of or reliance on any such content, goods, or services available on or through any such third-party sites or services. Your interactions with organizations and/or individuals found on or through the service, including payment and delivery of goods or services, and any other terms, conditions, warranties, or representations associated with such dealings, are solely between you and such organizations and/or individuals.

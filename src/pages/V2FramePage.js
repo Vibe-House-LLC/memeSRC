@@ -51,12 +51,8 @@ import useSearchDetails from '../hooks/useSearchDetails';
 import { fetchFrameInfo, fetchFramesFineTuning, fetchFramesSurroundingPromises } from '../utils/frameHandlerV2';
 import useSearchDetailsV2 from '../hooks/useSearchDetailsV2';
 import getV2Metadata from '../utils/getV2Metadata';
-import FramePageBottomBannerAd from '../ads/FramePageBottomBannerAd';
 import { UserContext } from '../UserContext';
 import { useSubscribeDialog } from '../contexts/useSubscribeDialog';
-import HomePageBannerAd from '../ads/HomePageBannerAd';
-import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import { shouldShowAds } from '../utils/adsenseLoader';
 // Removed collage collector usage
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
@@ -277,8 +273,6 @@ export default function FramePage() {
     setSelectedFrameIndex,
     searchQuery: contextSearchQuery,
   } = useSearchDetailsV2();
-
-  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const throttleTimeoutRef = useRef(null);
   const lastTrackedFrameRef = useRef('');
@@ -2594,9 +2588,6 @@ useEffect(() => {
     setImagesLoaded((prevState) => ({ ...prevState, [frameId]: true }));
   };
 
-
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const showAds = shouldShowAds(user);
   const shouldCollapseEditor = Boolean(addToSelection) || Boolean(collagePreview);
   const showAddToOptions = addToExpanded && !addToSelection && !collagePreview;
   const showLibraryActions = addToSelection === 'library' && savedToLibrary && !collagePreview;
@@ -2674,21 +2665,6 @@ useEffect(() => {
       </Helmet>
 
       <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 }, pt: 0 }}>
-        {showAds && (
-          <Grid item xs={12} mb={3}>
-            <center>
-              <Box>
-                {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                <RouterLink to="/pro" style={{ textDecoration: 'none' }}>
-                  <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                    ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                  </Typography>
-                </RouterLink>
-              </Box>
-            </center>
-          </Grid>
-        )}
-
         <Grid container spacing={2} direction="row" alignItems="center">
 
           <Grid item xs={12} md={6}>
@@ -3304,11 +3280,9 @@ useEffect(() => {
                               scheduleSyncActiveFormats(undefined, rawValue, parsed);
                             }}
                             onFocus={() => {
-                              setTextFieldFocused(true);
                               setSubtitleUserInteracted(true);
                               scheduleSyncActiveFormats();
                             }}
-                            onBlur={() => setTextFieldFocused(false)}
                             InputProps={{
                               style: {
                                 fontFamily,
@@ -3352,11 +3326,6 @@ useEffect(() => {
                           >
                             Clear Caption
                           </Button>
-                        )}
-                        {textFieldFocused && showAds && (
-                          <Box sx={{ mt: 2 }}>
-                            <FixedMobileBannerAd />
-                          </Box>
                         )}
                         {showText &&
                           <>
@@ -3565,17 +3534,7 @@ useEffect(() => {
                 </Stack>
               </Collapse>
             </Stack>
-
           </Grid>
-          {/* {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid item xs={12} my={1}>
-              <center>
-                <Box sx={{ maxWidth: '800px' }}>
-                  <HomePageBannerAd />
-                </Box>
-              </center>
-            </Grid>
-          } */}
           <Grid item xs={12} md={6}>
             <Card sx={{ mt: 0 }}>
               <Accordion expanded={subtitlesExpanded} disableGutters>
@@ -3766,15 +3725,6 @@ useEffect(() => {
               </Button>
             </Grid>
 
-            {user?.userDetails?.subscriptionStatus !== 'active' && (
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px' }}>
-                    <FramePageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            )}
           </Grid>
         </Grid>
       </Container >

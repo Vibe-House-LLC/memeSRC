@@ -18,10 +18,6 @@ import RecommendedFilters from '../components/RecommendedFilters';
 import { getWebsiteSetting } from '../graphql/queries';
 
 import ImageSkeleton from '../components/ImageSkeleton.tsx';
-import SearchPageResultsAd from '../ads/SearchPageResultsAd';
-import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import HomePageBannerAd from '../ads/HomePageBannerAd';
-import { shouldShowAds } from '../utils/adsenseLoader';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
 import Page404 from './Page404';
 import { useSearchSettings } from '../contexts/SearchSettingsContext';
@@ -554,20 +550,6 @@ export default function SearchPage() {
     };
   }, [newResults, videoUrls, cid]);
 
-  const injectAds = (results, adInterval) => {
-    const injectedResults = [];
-
-    for (let i = 0; i < results.length; i += 1) {
-      injectedResults.push(results[i]);
-
-      if ((i + 1) % adInterval === 0 && i !== results.length - 1) {
-        injectedResults.push({ isAd: true });
-      }
-    }
-
-    return injectedResults;
-  };
-
   useEffect(() => {
     const activeCid = resolvedCid;
     const normalizedSearch = (searchQuery || '').trim();
@@ -674,29 +656,13 @@ export default function SearchPage() {
           : Array.isArray(parsedResponse)
             ? parsedResponse
             : [];
-        const adInterval = user?.userDetails?.subscriptionStatus !== 'active' ? 5 : Infinity;
-        const resultsWithAds = injectAds(resultItems, adInterval);
 
         if (isCancelled || latestSearchKeyRef.current !== searchKey) {
           return;
         }
 
         setSearchSuggestions(suggestionList);
-        // setSearchSuggestions([
-        //   {
-        //     "original": "im",
-        //     "suggested": null
-        //   },
-        //   {
-        //     "original": "not",
-        //     "suggested": null
-        //   },
-        //   {
-        //     "original": "redy",
-        //     "suggested": "ready"
-        //   }
-        // ]);
-        setNewResults(resultsWithAds);
+        setNewResults(resultItems);
         setLoadingResults(false);
       } catch (error) {
         if (abortController.signal.aborted || isCancelled) {
@@ -726,9 +692,6 @@ export default function SearchPage() {
 
 
   const [indexFilterQuery, setIndexFilterQuery] = useState('');
-  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const showAds = shouldShowAds(user);
-
   const handleSuggestionClick = (suggestedQueryString) => {
     if (!suggestedQueryString) {
       return;
@@ -758,21 +721,6 @@ export default function SearchPage() {
 
   return (
     <Container maxWidth="xl" disableGutters sx={{ px: { xs: 2, sm: 3, md: 6, lg: 8, xl: 12 } }}>
-      {/* Add the ad section here */}
-      {showAds && (
-        <Box sx={{ width: '100%', mb: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-            <Link to="/pro" style={{ textDecoration: 'none' }}>
-              <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-              </Typography>
-            </Link>
-          </Box>
-        </Box>
-      )}
-
-
       {originalQuery && (
         <Box sx={{ width: '100%', mb: 2 }}>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
@@ -943,43 +891,37 @@ export default function SearchPage() {
 
                     return (
                       <Grid item xs={12} sm={6} md={3} key={index} className="result-item" data-result-index={index}>
-                        {result.isAd ? (
+                        <Link
+                          to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
+                          style={{ textDecoration: 'none' }}
+                        >
                           <StyledCard>
-                            <SearchPageResultsAd />
-                          </StyledCard>
-                        ) : (
-                          <Link
-                            to={`/frame/${result.cid}/${result.season}/${result.episode}/${Math.round(((parseInt(result.start_frame, 10) + parseInt(result.end_frame, 10)) / 2) / 10) * 10}${encodedSearchQuery ? `?searchTerm=${encodedSearchQuery}` : ''}`}
-                            style={{ textDecoration: 'none' }}
-                          >
-                            <StyledCard>
-                              <SearchResultMedia
-                                result={result}
-                                resultId={resultId}
-                                resultIndex={index}
-                                searchTerm={searchQuery}
-                                mediaSrc={videoUrls[resultId]}
-                                isMediaLoaded={isMediaLoaded}
-                                onMediaLoad={() => handleMediaLoad(resultId)}
-                                addVideoRef={addVideoRef}
-                                animationsEnabled={animationsEnabled}
+                            <SearchResultMedia
+                              result={result}
+                              resultId={resultId}
+                              resultIndex={index}
+                              searchTerm={searchQuery}
+                              mediaSrc={videoUrls[resultId]}
+                              isMediaLoaded={isMediaLoaded}
+                              onMediaLoad={() => handleMediaLoad(resultId)}
+                              addVideoRef={addVideoRef}
+                              animationsEnabled={animationsEnabled}
+                            />
+                            <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
+                            <BottomCardLabel>
+                              <Chip
+                                size="small"
+                                label={result.cid}
+                                style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
                               />
-                              <BottomCardCaption>{sanitizedSubtitleText}</BottomCardCaption>
-                              <BottomCardLabel>
-                                <Chip
-                                  size="small"
-                                  label={result.cid}
-                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                                />
-                                <Chip
-                                  size="small"
-                                  label={`S${result.season} E${result.episode}`}
-                                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
-                                />
-                              </BottomCardLabel>
-                            </StyledCard>
-                          </Link>
-                        )}
+                              <Chip
+                                size="small"
+                                label={`S${result.season} E${result.episode}`}
+                                style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)', color: 'white', fontWeight: 'bold' }}
+                              />
+                            </BottomCardLabel>
+                          </StyledCard>
+                        </Link>
                       </Grid>
                     );
                   })}

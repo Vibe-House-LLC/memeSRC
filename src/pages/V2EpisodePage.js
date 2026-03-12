@@ -1,18 +1,14 @@
 // V2EpisodePage.js
 
 import { Buffer } from "buffer";
-import React, { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link as RouterLink, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Typography, Card, CardMedia, CardContent, Button, Grid, Box, Skeleton } from "@mui/material";
 import { Storage } from "aws-amplify";
 import sanitizeHtml from 'sanitize-html';
 import { extractVideoFrames } from '../utils/videoFrameExtractor';
-import { UserContext } from '../UserContext';
 import getV2Metadata from '../utils/getV2Metadata';
 import { useTrackImageSaveIntent } from '../hooks/useTrackImageSaveIntent';
-
-import EpisodePageBannerAd from '../ads/SearchPageBannerAd';
-import EpisodePageResultsAd from '../ads/SearchPageResultsAd';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 
 
@@ -92,7 +88,6 @@ const EpisodeFrameCard = ({ result, frameLink, onLoad, onError, isLoaded, baseMe
 };
 
 export default function V2EpisodePage() {
-  const { user } = useContext(UserContext);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -335,27 +330,6 @@ export default function V2EpisodePage() {
     }
   };
 
-  const injectAds = (results, adInterval) => {
-    // Skip ad injection for active subscribers
-    if (user?.userDetails?.subscriptionStatus === 'active') {
-      return results;
-    }
-
-    const injectedResults = [];
-    for (let i = 0; i < results.length; i += 1) {
-      injectedResults.push(results[i]);
-
-      if ((i + 1) % adInterval === 0 && i !== results.length - 1) {
-        injectedResults.push({ isAd: true });
-      }
-    }
-
-    return injectedResults;
-  };
-
-  const adInterval = 9;
-  const resultsWithAds = injectAds(results, adInterval);
-
   const handleImageLoad = (fid) => {
     setImagesLoaded(prevState => ({ ...prevState, [fid]: true }));
   };
@@ -401,39 +375,26 @@ export default function V2EpisodePage() {
         </Box>
       ) : (
         <Grid container spacing={2}>
-          {resultsWithAds.map((result, index) => {
-            const key = result?.isAd ? `ad-${index}` : result?.fid ?? index;
-
+          {results.map((result, index) => {
+            const key = result?.fid ?? index;
             return (
               <Grid item xs={12} sm={6} md={4} key={key}>
-                {result?.isAd ? (
-                  <Card>
-                    <EpisodePageResultsAd />
-                  </Card>
-                ) : (
-                  <EpisodeFrameCard
-                    result={result}
-                    frameLink={buildFrameLink(result.fid)}
-                    onLoad={() => handleImageLoad(result.fid)}
-                    onError={() => {
-                      console.error(`Failed to load image for frame ${result.fid}`);
-                      handleImageLoad(result.fid);
-                    }}
-                    isLoaded={Boolean(imagesLoaded[result.fid])}
-                    baseMeta={episodeFrameSaveIntentMetaBase}
-                  />
-                )}
+                <EpisodeFrameCard
+                  result={result}
+                  frameLink={buildFrameLink(result.fid)}
+                  onLoad={() => handleImageLoad(result.fid)}
+                  onError={() => {
+                    console.error(`Failed to load image for frame ${result.fid}`);
+                    handleImageLoad(result.fid);
+                  }}
+                  isLoaded={Boolean(imagesLoaded[result.fid])}
+                  baseMeta={episodeFrameSaveIntentMetaBase}
+                />
               </Grid>
             );
           })}
         </Grid>
       )}
-
-        <Box marginTop="20px">
-          {user?.userDetails?.subscriptionStatus !== 'active' && (
-            <EpisodePageBannerAd />
-          )}
-        </Box>
 
       <Box marginTop="20px">
         <Button

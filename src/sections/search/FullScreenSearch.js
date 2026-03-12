@@ -10,14 +10,12 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import { UserContext } from '../../UserContext';
 import useSearchDetails from '../../hooks/useSearchDetails';
 import { searchPropTypes } from './SearchPropTypes';
-import HomePageBannerAd from '../../ads/HomePageBannerAd';
 import useSearchDetailsV2 from '../../hooks/useSearchDetailsV2';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
 import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import FavoriteToggle from '../../components/FavoriteToggle';
 
 import Logo from '../../components/logo';
-import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import { getReleaseType, formatRelativeTimeCompact, formatReleaseDisplay, DISMISSED_VERSION_KEY } from '../../utils/githubReleases';
@@ -27,8 +25,6 @@ import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import { isColorNearBlack } from '../../utils/colors';
 import FeedSection, { resolveUserIdentifier } from './FeedSection';
 import { useSearchSettings } from '../../contexts/SearchSettingsContext';
-import { shouldShowAds } from '../../utils/adsenseLoader';
-import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 
 
 /* --------------------------------- GraphQL -------------------------------- */
@@ -125,12 +121,10 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
   const isFeedEnabled = Boolean(showFeed);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { triggerDialog } = useAdFreeDecember();
 
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
   const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
   const theme = useTheme();
-  const showAd = shouldShowAds(user);
   const { effectiveTheme } = useSearchSettings();
   const searchInputRef = useRef(null);
 
@@ -655,12 +649,9 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
       source: 'UnifiedSearchBar',
       scope,
       showCount: Array.isArray(shows) ? shows.length : 0,
-      hasAd: showAd,
     });
-    // Trigger ad-free dialog after random click
-    triggerDialog();
     loadRandomFrame(scope);
-  }, [currentValueId, loadRandomFrame, shows, showAd, triggerDialog]);
+  }, [currentValueId, loadRandomFrame, shows]);
 
   const handleSelect = useCallback(
     (selectedId) => {
@@ -1166,20 +1157,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
                             {currentThemeBragText}
                           </Typography>
                         </Grid>
-                        {showAd && (
-                          <Grid item xs={12} mt={1}>
-                            <center>
-                              <Box>
-                                {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                                <Link to="/pro" style={{ textDecoration: 'none' }}>
-                                  <Typography variant="body2" textAlign="center" sx={{ marginTop: 1, color: currentThemeFontColor }}>
-                                    ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                                  </Typography>
-                                </Link>
-                              </Box>
-                            </center>
-                          </Grid>
-                        )}
                       </Grid>
                     </Box>
                   </Box>
@@ -1203,7 +1180,6 @@ export default function FullScreenSearch({ searchTerm, setSearchTerm, seriesTitl
             >
               <FloatingActionButtons
                 shows={currentValueId || '_universal'}
-                showAd={showAd}
                 variant="inline"
               />
             </Box>

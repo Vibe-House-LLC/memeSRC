@@ -20,7 +20,6 @@ import { useNavigate } from 'react-router-dom';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
-import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 import { useSubscribeDialog } from '../../contexts/useSubscribeDialog';
 import { LibraryPickerDialog } from '../library';
 import { get as getFromLibrary } from '../../utils/library/storage';
@@ -56,8 +55,8 @@ const StyledButton = styled(LoadingButton)(() => ({
     },
 }));
 
-const StyledLeftFooter = styled('footer')(({ theme, hasAd }) => ({
-    bottom: hasAd ? '50px' : '0',
+const StyledLeftFooter = styled('footer')(({ theme }) => ({
+    bottom: 0,
     left: theme.spacing(3),
     lineHeight: 0,
     position: 'fixed',
@@ -72,8 +71,8 @@ const StyledLeftFooter = styled('footer')(({ theme, hasAd }) => ({
     },
 }));
 
-const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
-    bottom: hasAd ? '50px' : '0',
+const StyledRightFooter = styled('footer')(({ theme }) => ({
+    bottom: 0,
     right: theme.spacing(3),
     lineHeight: 0,
     position: 'fixed',
@@ -88,12 +87,11 @@ const StyledRightFooter = styled('footer')(({ theme, hasAd }) => ({
     },
 }));
 
-function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
+function FloatingActionButtons({ shows, variant = 'fixed' }) {
     const { loadRandomFrame, loadingRandom } = useLoadRandomFrame();
     const navigate = useNavigate();
     const { user, shows: availableShows = [] } = useContext(UserContext);
     const theme = useTheme();
-    const { triggerDialog } = useAdFreeDecember();
     const { openSubscriptionDialog } = useSubscribeDialog();
     const isAdmin = user?.['cognito:groups']?.includes('admins');
     const isPro = user?.userDetails?.magicSubscription === 'true';
@@ -148,12 +146,10 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
     const handleRandomClick = () => {
         const payload = {
             source: 'FloatingActionButtons',
-            hasAd: showAd,
             showCount,
         };
 
         trackUsageEvent('random_frame', payload);
-        triggerDialog();
         loadRandomFrame(targetShow);
     };
 
@@ -588,28 +584,21 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
             sm: 120,
             md: 112,
         };
-        const adExtraHeights = {
-            xs: 72,
-            sm: 64,
-            md: 56,
-        };
-
-        const resolveHeight = (key) => baseHeights[key] + (showAd ? adExtraHeights[key] : 0);
 
         return {
             width: '100%',
             flexShrink: 0,
             pointerEvents: 'none',
-            height: `${resolveHeight('xs')}px`,
+            height: `${baseHeights.xs}px`,
             marginBottom: 'env(safe-area-inset-bottom)',
             [theme.breakpoints.up('sm')]: {
-                height: `${resolveHeight('sm')}px`,
+                height: `${baseHeights.sm}px`,
             },
             [theme.breakpoints.up('md')]: {
-                height: `${resolveHeight('md')}px`,
+                height: `${baseHeights.md}px`,
             },
         };
-    }, [showAd, theme]);
+    }, [theme]);
 
     if (variant === 'inline') {
         return (
@@ -639,16 +628,16 @@ function FloatingActionButtons({ shows, showAd = false, variant = 'fixed' }) {
     }
 
     return (
-        <>
-            {hiddenFileInput}
-            <Box aria-hidden sx={safeAreaSpacerSx} />
-            <StyledLeftFooter className="bottomBtn" hasAd={showAd}>
-                {toolsButton}
-            </StyledLeftFooter>
-            <StyledRightFooter className="bottomBtn" hasAd={showAd}>
-                {randomButton}
-            </StyledRightFooter>
-            {toolsPopover}
+            <>
+                {hiddenFileInput}
+                <Box aria-hidden sx={safeAreaSpacerSx} />
+                <StyledLeftFooter className="bottomBtn">
+                    {toolsButton}
+                </StyledLeftFooter>
+                <StyledRightFooter className="bottomBtn">
+                    {randomButton}
+                </StyledRightFooter>
+                {toolsPopover}
             {libraryDialog}
         </>
     );
@@ -664,7 +653,6 @@ FloatingActionButtons.propTypes = {
             ]),
         ),
     ]).isRequired,
-    showAd: PropTypes.bool,
     variant: PropTypes.oneOf(['fixed', 'inline']),
 };
 

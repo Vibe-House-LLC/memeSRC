@@ -7,7 +7,6 @@ import SiteWideMaintenance from './pages/SiteWideMaintenance';
 import { DialogProvider } from './contexts/SubscribeDialog';
 import { ShowProvider } from './contexts/useShows';
 import { SearchFilterGroupsProvider } from './hooks/useSearchFilterGroups';
-import { AdFreeDecemberProvider } from './contexts/AdFreeDecemberContext';
 
 
 // ----------------------------------------------------------------------
@@ -96,17 +95,15 @@ export default function Router() {
       path: '/',
       element: (
         <GuestAuth>
-          <AdFreeDecemberProvider>
-            <DialogProvider>
-              <MagicPopup>
-                <V2SearchDetailsProvider>
-                  <SearchFilterGroupsProvider>
-                    <DashboardLayout />
-                  </SearchFilterGroupsProvider>
-                </V2SearchDetailsProvider>
-              </MagicPopup>
-            </DialogProvider>
-          </AdFreeDecemberProvider>
+          <DialogProvider>
+            <MagicPopup>
+              <V2SearchDetailsProvider>
+                <SearchFilterGroupsProvider>
+                  <DashboardLayout />
+                </SearchFilterGroupsProvider>
+              </V2SearchDetailsProvider>
+            </MagicPopup>
+          </DialogProvider>
         </GuestAuth>
       ),
       children: [
@@ -158,15 +155,13 @@ export default function Router() {
       path: '/dashboard',
       element: (
         <CheckAuth>
-          <AdFreeDecemberProvider>
-            <DialogProvider>
-              <MagicPopup>
-                <SearchFilterGroupsProvider>
-                  <DashboardLayout />
-                </SearchFilterGroupsProvider>
-              </MagicPopup>
-            </DialogProvider>
-          </AdFreeDecemberProvider>
+          <DialogProvider>
+            <MagicPopup>
+              <SearchFilterGroupsProvider>
+                <DashboardLayout />
+              </SearchFilterGroupsProvider>
+            </MagicPopup>
+          </DialogProvider>
         </CheckAuth>
       ),
       children: [
