@@ -28,7 +28,6 @@ import {
   FormatAlignLeft,
   FormatAlignCenter,
   FormatAlignRight,
-  FormatColorFill,
   Palette,
   SwapHoriz, 
   SwapVert, 
@@ -49,6 +48,10 @@ import {
   toggleStyleInRanges,
   SELECTION_CACHE_TTL_MS,
 } from '../../../utils/inlineFormatting';
+import {
+  TOP_CAPTION_DEFAULT_FONT_SIZE,
+  TOP_CAPTION_DEFAULT_SPACING_Y,
+} from '../constants/topCaptionDefaults';
 
 // Color presets for text colors
 const TEXT_COLOR_PRESETS = [
@@ -61,11 +64,28 @@ const TEXT_COLOR_PRESETS = [
   { color: '#ff00ff', name: 'Magenta' },
   { color: '#00ffff', name: 'Cyan' },
 ];
+const STROKE_COLOR_PRESETS = [
+  { color: '#ffffff', name: 'White' },
+  { color: '#000000', name: 'Black' },
+  { color: '#ff0000', name: 'Red' },
+  { color: '#00ff00', name: 'Green' },
+  { color: '#0000ff', name: 'Blue' },
+  { color: '#ffff00', name: 'Yellow' },
+  { color: '#ff00ff', name: 'Magenta' },
+  { color: '#00ffff', name: 'Cyan' },
+];
+const TOP_CAPTION_BACKGROUND_COLOR_PRESETS = [
+  { color: '#FFFFFF', name: 'White' },
+  { color: '#000000', name: 'Black' },
+  { color: '#FF0000', name: 'Red' },
+  { color: '#0000FF', name: 'Blue' },
+  { color: '#FFFF00', name: 'Yellow' },
+  { color: '#00FF00', name: 'Green' },
+];
 
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
 const DEFAULT_FONT_OPTIONS = ['Arial', 'Impact', 'Georgia', 'Verdana', 'Courier New'];
 const VALID_TEXT_ALIGNMENTS = ['left', 'center', 'right'];
-
 const normalizeTextAlign = (value) => (
   VALID_TEXT_ALIGNMENTS.includes(value) ? value : 'center'
 );
@@ -230,6 +250,23 @@ const isDarkColor = (hexColor) => {
   return brightness < 128;
 };
 
+const getAutoStrokeColorFromTextColor = (textColor) => (
+  isDarkColor(toHexColorInput(textColor, '#ffffff')) ? '#ffffff' : '#000000'
+);
+
+const isTransparentLikeColor = (value) => {
+  if (typeof value !== 'string') return false;
+  const color = value.trim().toLowerCase();
+  if (!color) return false;
+  if (color === 'none') return true;
+  if (color === 'transparent') return true;
+  if (/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^hsla\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^#([0-9a-f]{8})$/i.test(color) && color.slice(7, 9) === '00') return true;
+  if (/^#([0-9a-f]{4})$/i.test(color) && color.slice(4, 5) === '0') return true;
+  return false;
+};
+
 const CaptionEditor = ({
   panelId,
   panelTexts,
@@ -272,14 +309,34 @@ const CaptionEditor = ({
     currentTopCaptionBackgroundColor,
     '#ffffff',
   );
+  const normalizedCurrentTextColor = toHexColorInput(currentTextColor, '#ffffff');
+  const rawCurrentStrokeColor = panelTexts[panelId]?.strokeColor;
+  const hasExplicitStrokeColor = (
+    typeof rawCurrentStrokeColor === 'string' &&
+    rawCurrentStrokeColor.trim().length > 0 &&
+    !isTransparentLikeColor(rawCurrentStrokeColor)
+  );
+  const autoStrokeColor = getAutoStrokeColorFromTextColor(currentTextColor);
+  const currentStrokeColor = hasExplicitStrokeColor ? rawCurrentStrokeColor.trim() : autoStrokeColor;
+  const normalizedCurrentStrokeColor = toHexColorInput(currentStrokeColor, '#000000');
+  const defaultOutlineWidth = showTopCaptionOptions
+    ? 0
+    : Math.max(1, Number(lastUsedTextSettings.strokeWidth) || 2);
+  const currentOutlineWidth = Number.isFinite(Number(panelTexts[panelId]?.strokeWidth))
+    ? Number(panelTexts[panelId]?.strokeWidth)
+    : defaultOutlineWidth;
+  const outlineRestoreWidth = Math.max(1, Number(lastUsedTextSettings.strokeWidth) || 2);
+  const isOutlineDisabled = currentOutlineWidth === 0;
   // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
   const [activeSlider, setActiveSlider] = useState(null);
   const [positioningOnly, setPositioningOnly] = useState(false);
   const [alignmentAnchorEl, setAlignmentAnchorEl] = useState(null);
+  const [colorTargetAnchorEl, setColorTargetAnchorEl] = useState(null);
   // Inline toggle between format controls and color selector
   const [showInlineColor, setShowInlineColor] = useState(false);
+  const [activeInlineColorTarget, setActiveInlineColorTarget] = useState('text');
   
   const textFieldRefs = useRef({});
   const topCaptionBackgroundPickerRef = useRef(null);
@@ -299,14 +356,29 @@ const CaptionEditor = ({
   // State for text color scroll indicators
   const [textColorLeftScroll, setTextColorLeftScroll] = useState(false);
   const [textColorRightScroll, setTextColorRightScroll] = useState(false);
+  const [strokeColorLeftScroll, setStrokeColorLeftScroll] = useState(false);
+  const [strokeColorRightScroll, setStrokeColorRightScroll] = useState(false);
+  const [topCaptionBackgroundLeftScroll, setTopCaptionBackgroundLeftScroll] = useState(false);
+  const [topCaptionBackgroundRightScroll, setTopCaptionBackgroundRightScroll] = useState(false);
   
   // Refs for text color picker
   const textColorScrollerRef = useRef(null);
   const textColorPickerRef = useRef(null);
+  const strokeColorScrollerRef = useRef(null);
+  const strokeColorPickerRef = useRef(null);
+  const topCaptionBackgroundScrollerRef = useRef(null);
   
   // Saved custom text color state
   const [savedCustomTextColor, setSavedCustomTextColor] = useState(() => {
     const storedColor = localStorage.getItem('memeTextCustomColor');
+    return storedColor || '#ffffff';
+  });
+  const [savedCustomStrokeColor, setSavedCustomStrokeColor] = useState(() => {
+    const storedColor = localStorage.getItem('memeTextStrokeCustomColor');
+    return storedColor || '#000000';
+  });
+  const [savedTopCaptionBackgroundColor, setSavedTopCaptionBackgroundColor] = useState(() => {
+    const storedColor = localStorage.getItem('memeTopCaptionBackgroundCustomColor');
     return storedColor || '#ffffff';
   });
 
@@ -356,6 +428,16 @@ const CaptionEditor = ({
 
   // Check if there's a saved custom color that's different from preset colors
   const hasSavedCustomTextColor = savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor);
+  const hasSavedCustomStrokeColor = (
+    savedCustomStrokeColor &&
+    !STROKE_COLOR_PRESETS.some(c => c.color.toLowerCase() === savedCustomStrokeColor.toLowerCase())
+  );
+  const hasSavedCustomTopCaptionBackgroundColor = (
+    savedTopCaptionBackgroundColor &&
+    !TOP_CAPTION_BACKGROUND_COLOR_PRESETS.some(
+      (c) => c.color.toLowerCase() === savedTopCaptionBackgroundColor.toLowerCase()
+    )
+  );
   const requestedFontFamily = panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
   const fontOptions = React.useMemo(
     () => resolveFontOptions(fonts, requestedFontFamily),
@@ -370,6 +452,55 @@ const CaptionEditor = ({
     : currentTextAlign === 'right'
       ? <FormatAlignRight />
       : <FormatAlignCenter />;
+  const defaultPaletteTextColor = toHexColorInput(
+    showTopCaptionOptions ? '#111111' : (lastUsedTextSettings.color || '#ffffff'),
+    '#ffffff',
+  );
+  const hasCustomTextColor = normalizedCurrentTextColor.toLowerCase() !== defaultPaletteTextColor.toLowerCase();
+  const hasActiveColorSelection = (
+    hasCustomTextColor
+    || hasExplicitStrokeColor
+  );
+  const renderColorMenuDot = (color, options = {}) => (
+    <Box
+      sx={{
+        width: 10,
+        height: 10,
+        position: 'relative',
+        flexShrink: 0,
+        mr: 1.25,
+        ...options.sx,
+      }}
+    >
+      <Box
+        sx={{
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          backgroundColor: options.noColor ? '#111111' : color,
+          border: options.noColor
+            ? '1px solid rgba(255,59,48,0.95)'
+            : '1px solid rgba(255,255,255,0.35)',
+          boxSizing: 'border-box',
+        }}
+      />
+      {options.noColor && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 4,
+            left: -1,
+            width: 12,
+            height: 2,
+            borderRadius: 999,
+            backgroundColor: 'rgba(255,59,48,0.95)',
+            transform: 'rotate(-45deg)',
+            transformOrigin: 'center',
+          }}
+        />
+      )}
+    </Box>
+  );
 
   // Calculate responsive dimensions based on panel size with mobile-friendly minimums
   const minPanelSize = Math.min(rect.width, rect.height);
@@ -398,14 +529,59 @@ const CaptionEditor = ({
     checkTextColorScrollPosition();
   }, [checkTextColorScrollPosition]);
 
+  const checkStrokeColorScrollPosition = useCallback(() => {
+    if (!strokeColorScrollerRef.current) return;
+
+    const container = strokeColorScrollerRef.current;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const threshold = 5;
+
+    setStrokeColorLeftScroll(scrollLeft > threshold);
+    setStrokeColorRightScroll(scrollLeft < scrollWidth - clientWidth - threshold);
+  }, []);
+
+  const handleStrokeColorScroll = useCallback(() => {
+    checkStrokeColorScrollPosition();
+  }, [checkStrokeColorScrollPosition]);
+
+  const checkTopCaptionBackgroundScrollPosition = useCallback(() => {
+    if (!topCaptionBackgroundScrollerRef.current) return;
+
+    const container = topCaptionBackgroundScrollerRef.current;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const threshold = 5;
+
+    setTopCaptionBackgroundLeftScroll(scrollLeft > threshold);
+    setTopCaptionBackgroundRightScroll(scrollLeft < scrollWidth - clientWidth - threshold);
+  }, []);
+
+  const handleTopCaptionBackgroundScroll = useCallback(() => {
+    checkTopCaptionBackgroundScrollPosition();
+  }, [checkTopCaptionBackgroundScrollPosition]);
+
   // Handle custom text color selection
   const handleCustomTextColorChange = (e) => {
     const newColor = e.target.value;
     setSavedCustomTextColor(newColor);
     localStorage.setItem('memeTextCustomColor', newColor);
     handleTextChange('color', newColor);
-    // Auto-close color picker after choosing a custom color
-    setShowInlineColor(false);
+  };
+
+  const handleCustomStrokeColorChange = (event) => {
+    const nextColor = event.target.value;
+    if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    setSavedCustomStrokeColor(nextColor);
+    localStorage.setItem('memeTextStrokeCustomColor', nextColor);
+    if (!updatePanelText) return;
+    const currentText = panelTexts[panelId] || {};
+    const updatedText = {
+      ...currentText,
+      strokeColor: nextColor.trim(),
+    };
+    if (currentOutlineWidth === 0) {
+      updatedText.strokeWidth = outlineRestoreWidth;
+    }
+    updatePanelText(panelId, updatedText);
   };
 
   const handleAlignmentMenuOpen = (event) => {
@@ -421,11 +597,57 @@ const CaptionEditor = ({
     setAlignmentAnchorEl(null);
   };
 
-  const handleTopCaptionBackgroundChange = (event) => {
-    const nextColor = event.target.value;
-    if (typeof nextColor === 'string' && nextColor.trim().length > 0) {
-      handleTextChange('backgroundColor', nextColor);
+  const handleColorTargetMenuOpen = useCallback((event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setColorTargetAnchorEl(event.currentTarget);
+  }, []);
+
+  const handleColorTargetMenuClose = useCallback(() => {
+    setColorTargetAnchorEl(null);
+  }, []);
+
+  const handleColorTargetSelect = useCallback((target) => {
+    setActiveInlineColorTarget(target);
+    setShowInlineColor(true);
+    setColorTargetAnchorEl(null);
+  }, []);
+
+  const handleInlineColorBack = useCallback(() => {
+    setShowInlineColor(false);
+    setColorTargetAnchorEl(null);
+  }, []);
+
+  const handleOutlineColorSelect = useCallback((nextColor) => {
+    if (!updatePanelText || typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    const currentText = panelTexts[panelId] || {};
+    const updatedText = {
+      ...currentText,
+      strokeColor: nextColor.trim(),
+    };
+    if (currentOutlineWidth === 0) {
+      updatedText.strokeWidth = outlineRestoreWidth;
     }
+    updatePanelText(panelId, updatedText);
+  }, [currentOutlineWidth, outlineRestoreWidth, panelId, panelTexts, updatePanelText]);
+
+  const handleNoOutlineSelect = useCallback(() => {
+    if (!updatePanelText) return;
+    const currentText = panelTexts[panelId] || {};
+    const updatedText = {
+      ...currentText,
+      strokeWidth: 0,
+    };
+    delete updatedText.strokeColor;
+    updatePanelText(panelId, updatedText, { replace: true });
+  }, [panelId, panelTexts, updatePanelText]);
+
+  const handleCustomTopCaptionBackgroundChange = (event) => {
+    const nextColor = event.target.value;
+    if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    setSavedTopCaptionBackgroundColor(nextColor);
+    localStorage.setItem('memeTopCaptionBackgroundCustomColor', nextColor);
+    handleTextChange('backgroundColor', nextColor);
   };
 
   const handleTextChange = useCallback((property, value, rawValueOverride, parsedOverride) => {
@@ -455,7 +677,9 @@ const CaptionEditor = ({
       if (cleanValue && cleanValue.trim() && !hadPreviousContent && !hasExplicitFontSize) {
         updatedText = {
           ...updatedText,
-          fontSize: lastUsedTextSettings.fontSize || 26
+          fontSize: showTopCaptionOptions
+            ? TOP_CAPTION_DEFAULT_FONT_SIZE
+            : (lastUsedTextSettings.fontSize || 26),
         };
       }
     } else {
@@ -491,7 +715,7 @@ const CaptionEditor = ({
     }
 
     updatePanelText(panelId, updatedText);
-  }, [panelTexts, updatePanelText, panelId, lastUsedTextSettings]);
+  }, [panelTexts, updatePanelText, panelId, lastUsedTextSettings, showTopCaptionOptions]);
 
   // Reset dialog handlers
   const handleResetClick = useCallback((type, propertyName) => {
@@ -510,7 +734,10 @@ const CaptionEditor = ({
       if (hasActualText) {
         handleTextChange(propertyName, undefined);
       } else {
-        handleTextChange(propertyName, lastUsedTextSettings.fontSize || 26);
+        handleTextChange(
+          propertyName,
+          showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26),
+        );
       }
     } else {
       handleTextChange(propertyName, undefined);
@@ -518,7 +745,7 @@ const CaptionEditor = ({
     
     setResetDialogOpen(false);
     setResetDialogData({ type: null, panelId: null, propertyName: null });
-  }, [resetDialogData, handleTextChange, panelTexts, panelId, lastUsedTextSettings]);
+  }, [resetDialogData, handleTextChange, panelTexts, panelId, lastUsedTextSettings, showTopCaptionOptions]);
 
   const handleResetCancel = useCallback(() => {
     setResetDialogOpen(false);
@@ -530,20 +757,29 @@ const CaptionEditor = ({
     const currentValue = panelTexts[panelId]?.[propertyName];
     
     if (propertyName === 'fontSize') {
-      return currentValue === undefined || currentValue === (lastUsedTextSettings.fontSize || 26);
+      const defaultFontSize = showTopCaptionOptions
+        ? TOP_CAPTION_DEFAULT_FONT_SIZE
+        : (lastUsedTextSettings.fontSize || 26);
+      return currentValue === undefined || currentValue === defaultFontSize;
     }
     
     if (propertyName === 'strokeWidth') {
-      const defaultStrokeWidth = lastUsedTextSettings.strokeWidth || 2;
+      const defaultStrokeWidth = showTopCaptionOptions
+        ? 0
+        : (lastUsedTextSettings.strokeWidth || 2);
       return currentValue === undefined || currentValue === defaultStrokeWidth;
     }
 
     if (propertyName === 'captionSpacingY') {
-      return currentValue === undefined || currentValue === 0;
+      return currentValue === undefined || currentValue === (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_SPACING_Y : 0);
     }
 
     if (propertyName === 'backgroundColor') {
       return !hasExplicitTopCaptionBackground;
+    }
+
+    if (propertyName === 'strokeColor') {
+      return !hasExplicitStrokeColor;
     }
     
     if (propertyName === 'textPositionX') {
@@ -562,7 +798,7 @@ const CaptionEditor = ({
     }
     
     return false;
-  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground]);
+  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground, hasExplicitStrokeColor, showTopCaptionOptions]);
 
   // Helper function to get current value for display
   const getCurrentValue = useCallback((propertyName) => {
@@ -579,26 +815,42 @@ const CaptionEditor = ({
         if (panel && calculateOptimalFontSize) {
           baseFontSize = calculateOptimalFontSize(cleanText, panel.width, panel.height);
         } else {
-          baseFontSize = lastUsedTextSettings.fontSize || 26;
+          baseFontSize = showTopCaptionOptions
+            ? TOP_CAPTION_DEFAULT_FONT_SIZE
+            : (lastUsedTextSettings.fontSize || 26);
         }
       } else {
-        baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+        baseFontSize = panelText.fontSize
+          || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
       }
-      
-      return Math.round(baseFontSize * textScaleFactor);
+
+      return showTopCaptionOptions
+        ? Math.round(baseFontSize)
+        : Math.round(baseFontSize * textScaleFactor);
     }
     
     if (propertyName === 'strokeWidth') {
-      return currentValue || lastUsedTextSettings.strokeWidth || 2;
+      if (currentValue !== undefined) {
+        return currentValue;
+      }
+      return showTopCaptionOptions ? 0 : (lastUsedTextSettings.strokeWidth || 2);
     }
 
     if (propertyName === 'captionSpacingY') {
-      const spacingY = currentValue !== undefined ? currentValue : 0;
-      return Math.round(spacingY * textScaleFactor);
+      const spacingY = currentValue !== undefined
+        ? currentValue
+        : (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_SPACING_Y : 0);
+      return showTopCaptionOptions
+        ? Math.round(spacingY)
+        : Math.round(spacingY * textScaleFactor);
     }
 
     if (propertyName === 'backgroundColor') {
       return currentTopCaptionBackgroundColor;
+    }
+
+    if (propertyName === 'strokeColor') {
+      return isOutlineDisabled ? 'None' : (hasExplicitStrokeColor ? currentStrokeColor : 'Default');
     }
     
     if (propertyName === 'textPositionX') {
@@ -628,6 +880,10 @@ const CaptionEditor = ({
     getParsedText,
     topCaptionDefaultBackgroundColor,
     currentTopCaptionBackgroundColor,
+    currentStrokeColor,
+    hasExplicitStrokeColor,
+    isOutlineDisabled,
+    showTopCaptionOptions,
   ]);
 
   const syncActiveFormatsFromSelection = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
@@ -863,7 +1119,7 @@ const CaptionEditor = ({
       }
       window.removeEventListener('resize', handleResize);
     };
-  }, [handleTextColorScroll]);
+  }, [handleTextColorScroll, showInlineColor, activeInlineColorTarget]);
 
   // Ensure scroll indicators settle after mount
   useEffect(() => {
@@ -872,13 +1128,77 @@ const CaptionEditor = ({
       setTimeout(() => handleTextColorScroll(), 200);
       setTimeout(() => handleTextColorScroll(), 500);
     }
-  }, [handleTextColorScroll]);
+  }, [handleTextColorScroll, showInlineColor, activeInlineColorTarget]);
 
   // Re-evaluate indicators when toggling inline color view
   useEffect(() => {
     setTimeout(() => handleTextColorScroll(), 50);
     setTimeout(() => handleTextColorScroll(), 200);
-  }, [showInlineColor, handleTextColorScroll]);
+  }, [showInlineColor, activeInlineColorTarget, handleTextColorScroll]);
+
+  useEffect(() => {
+    const strokeScrollerElement = strokeColorScrollerRef.current;
+
+    if (strokeScrollerElement) {
+      strokeScrollerElement.addEventListener('scroll', handleStrokeColorScroll);
+      setTimeout(() => {
+        handleStrokeColorScroll();
+      }, 100);
+    }
+
+    const handleResize = () => {
+      handleStrokeColorScroll();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (strokeScrollerElement) {
+        strokeScrollerElement.removeEventListener('scroll', handleStrokeColorScroll);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [handleStrokeColorScroll, showInlineColor, activeInlineColorTarget]);
+
+  useEffect(() => {
+    if (strokeColorScrollerRef.current) {
+      setTimeout(() => handleStrokeColorScroll(), 50);
+      setTimeout(() => handleStrokeColorScroll(), 200);
+      setTimeout(() => handleStrokeColorScroll(), 500);
+    }
+  }, [handleStrokeColorScroll, showTopCaptionOptions, showInlineColor, activeInlineColorTarget]);
+
+  useEffect(() => {
+    const backgroundScrollerElement = topCaptionBackgroundScrollerRef.current;
+
+    if (backgroundScrollerElement) {
+      backgroundScrollerElement.addEventListener('scroll', handleTopCaptionBackgroundScroll);
+      setTimeout(() => {
+        handleTopCaptionBackgroundScroll();
+      }, 100);
+    }
+
+    const handleResize = () => {
+      handleTopCaptionBackgroundScroll();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (backgroundScrollerElement) {
+        backgroundScrollerElement.removeEventListener('scroll', handleTopCaptionBackgroundScroll);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [handleTopCaptionBackgroundScroll, showInlineColor, activeInlineColorTarget]);
+
+  useEffect(() => {
+    if (topCaptionBackgroundScrollerRef.current) {
+      setTimeout(() => handleTopCaptionBackgroundScroll(), 50);
+      setTimeout(() => handleTopCaptionBackgroundScroll(), 200);
+      setTimeout(() => handleTopCaptionBackgroundScroll(), 500);
+    }
+  }, [handleTopCaptionBackgroundScroll, showTopCaptionOptions, showInlineColor, activeInlineColorTarget]);
 
   // Effect to update localStorage when custom text color changes
   useEffect(() => {
@@ -891,12 +1211,264 @@ const CaptionEditor = ({
     }
   }, [panelTexts, lastUsedTextSettings, panelId]);
 
+  useEffect(() => {
+    if (!hasExplicitStrokeColor) return;
+    const normalizedStrokeColor = toHexColorInput(rawCurrentStrokeColor, '#000000');
+    const isCustomStrokeColor = !STROKE_COLOR_PRESETS.some(
+      (colorOption) => colorOption.color.toLowerCase() === normalizedStrokeColor.toLowerCase()
+    );
+    if (!isCustomStrokeColor) return;
+    setSavedCustomStrokeColor(normalizedStrokeColor);
+    localStorage.setItem('memeTextStrokeCustomColor', normalizedStrokeColor);
+  }, [hasExplicitStrokeColor, rawCurrentStrokeColor]);
+
+  useEffect(() => {
+    if (!showTopCaptionOptions) return;
+    const isCustomTopCaptionBackground = !TOP_CAPTION_BACKGROUND_COLOR_PRESETS.some(
+      (colorOption) => colorOption.color.toLowerCase() === normalizedTopCaptionBackgroundColor.toLowerCase()
+    );
+    if (!isCustomTopCaptionBackground) return;
+    setSavedTopCaptionBackgroundColor(normalizedTopCaptionBackgroundColor);
+    localStorage.setItem('memeTopCaptionBackgroundCustomColor', normalizedTopCaptionBackgroundColor);
+  }, [normalizedTopCaptionBackgroundColor, showTopCaptionOptions]);
+
   // Focus text field when caption editor opens
   useEffect(() => {
     if (!allowPositioning && positioningOnly) {
       setPositioningOnly(false);
     }
   }, [allowPositioning, positioningOnly]);
+
+  const activeInlineColorConfig = (() => {
+    if (activeInlineColorTarget === 'stroke') {
+      return {
+        scrollerRef: strokeColorScrollerRef,
+        onScroll: handleStrokeColorScroll,
+        leftVisible: strokeColorLeftScroll,
+        rightVisible: strokeColorRightScroll,
+        options: (
+          <>
+            <Tooltip title="No Outline" arrow>
+              <ColorSwatch
+                onClick={handleNoOutlineSelect}
+                selected={isOutlineDisabled}
+                sx={{
+                  background:
+                    'linear-gradient(45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.25) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.25) 75%)',
+                  backgroundSize: '8px 8px',
+                  backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.92)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 6,
+                      left: -1,
+                      width: 16,
+                      height: 2,
+                      borderRadius: 999,
+                      backgroundColor: '#ffffff',
+                      transform: 'rotate(-45deg)',
+                      transformOrigin: 'center',
+                    },
+                  }}
+                />
+              </ColorSwatch>
+            </Tooltip>
+            <Tooltip title="Pick Custom Outline Color" arrow>
+              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <ColorSwatch
+                  onClick={() => strokeColorPickerRef.current && strokeColorPickerRef.current.click()}
+                  selected={false}
+                  sx={{
+                    position: 'relative',
+                    flexShrink: 0,
+                    backgroundColor: savedCustomStrokeColor,
+                    backgroundImage:
+                      'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                    backgroundSize: '8px 8px',
+                    backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                  }}
+                >
+                  <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedCustomStrokeColor) ? '#fff' : '#000' }} />
+                </ColorSwatch>
+                <input
+                  type="color"
+                  value={savedCustomStrokeColor}
+                  onChange={handleCustomStrokeColorChange}
+                  ref={strokeColorPickerRef}
+                  style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                />
+              </Box>
+            </Tooltip>
+            {hasSavedCustomStrokeColor && (
+              <Tooltip title="Custom Outline Color" arrow>
+                <ColorSwatch
+                  onClick={() => handleOutlineColorSelect(savedCustomStrokeColor)}
+                  selected={!isOutlineDisabled && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(savedCustomStrokeColor, '#000000').toLowerCase()}
+                  sx={{ backgroundColor: savedCustomStrokeColor, flexShrink: 0 }}
+                />
+              </Tooltip>
+            )}
+            {STROKE_COLOR_PRESETS.map((colorOption) => (
+              <Tooltip key={`inline-stroke-${colorOption.color}`} title={colorOption.name} arrow>
+                <ColorSwatch
+                  onClick={() => handleOutlineColorSelect(colorOption.color)}
+                  selected={!isOutlineDisabled && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(colorOption.color, '#000000').toLowerCase()}
+                  sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                />
+              </Tooltip>
+            ))}
+          </>
+        ),
+      };
+    }
+
+    if (activeInlineColorTarget === 'background' && showTopCaptionOptions) {
+      return {
+        scrollerRef: topCaptionBackgroundScrollerRef,
+        onScroll: handleTopCaptionBackgroundScroll,
+        leftVisible: topCaptionBackgroundLeftScroll,
+        rightVisible: topCaptionBackgroundRightScroll,
+        options: (
+          <>
+            <Tooltip title="Default Background" arrow>
+              <ColorSwatch
+                onClick={() => {
+                  handleTextChange('backgroundColor', undefined);
+                }}
+                selected={!hasExplicitTopCaptionBackground}
+                sx={{
+                  background:
+                    'linear-gradient(45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.25) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.25) 75%)',
+                  backgroundSize: '8px 8px',
+                  backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                }}
+              >
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                  A
+                </Typography>
+              </ColorSwatch>
+            </Tooltip>
+            <Tooltip title="Pick Custom Background Color" arrow>
+              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <ColorSwatch
+                  onClick={() => topCaptionBackgroundPickerRef.current && topCaptionBackgroundPickerRef.current.click()}
+                  selected={false}
+                  sx={{
+                    position: 'relative',
+                    flexShrink: 0,
+                    backgroundColor: savedTopCaptionBackgroundColor,
+                    backgroundImage:
+                      'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                    backgroundSize: '8px 8px',
+                    backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                  }}
+                >
+                  <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedTopCaptionBackgroundColor) ? '#fff' : '#000' }} />
+                </ColorSwatch>
+                <input
+                  type="color"
+                  value={savedTopCaptionBackgroundColor}
+                  onChange={handleCustomTopCaptionBackgroundChange}
+                  ref={topCaptionBackgroundPickerRef}
+                  style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                />
+              </Box>
+            </Tooltip>
+            {hasSavedCustomTopCaptionBackgroundColor && (
+              <Tooltip title="Custom Background Color" arrow>
+                <ColorSwatch
+                  onClick={() => {
+                    handleTextChange('backgroundColor', savedTopCaptionBackgroundColor);
+                  }}
+                  selected={normalizedTopCaptionBackgroundColor.toLowerCase() === toHexColorInput(savedTopCaptionBackgroundColor, '#ffffff').toLowerCase()}
+                  sx={{ backgroundColor: savedTopCaptionBackgroundColor, flexShrink: 0 }}
+                />
+              </Tooltip>
+            )}
+            {TOP_CAPTION_BACKGROUND_COLOR_PRESETS.map((colorOption) => (
+              <Tooltip key={`inline-top-caption-bg-${colorOption.color}`} title={colorOption.name} arrow>
+                <ColorSwatch
+                  onClick={() => {
+                    handleTextChange('backgroundColor', colorOption.color);
+                  }}
+                  selected={normalizedTopCaptionBackgroundColor.toLowerCase() === toHexColorInput(colorOption.color, '#ffffff').toLowerCase()}
+                  sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                />
+              </Tooltip>
+            ))}
+          </>
+        ),
+      };
+    }
+
+    return {
+      scrollerRef: textColorScrollerRef,
+      onScroll: handleTextColorScroll,
+      leftVisible: textColorLeftScroll,
+      rightVisible: textColorRightScroll,
+      options: (
+        <>
+          <Tooltip title="Pick Custom Color" arrow>
+            <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <ColorSwatch
+                onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
+                selected={false}
+                sx={{
+                  position: 'relative',
+                  flexShrink: 0,
+                  backgroundColor: savedCustomTextColor,
+                  backgroundImage:
+                    'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                  backgroundSize: '8px 8px',
+                  backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                }}
+              >
+                <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
+              </ColorSwatch>
+              <input
+                type="color"
+                value={savedCustomTextColor}
+                onChange={handleCustomTextColorChange}
+                ref={textColorPickerRef}
+                style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+              />
+            </Box>
+          </Tooltip>
+          {hasSavedCustomTextColor && (
+            <Tooltip title="Custom Color" arrow>
+              <ColorSwatch
+                onClick={() => {
+                  handleTextChange('color', savedCustomTextColor);
+                }}
+                selected={normalizedCurrentTextColor.toLowerCase() === toHexColorInput(savedCustomTextColor, '#ffffff').toLowerCase()}
+                sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
+              />
+            </Tooltip>
+          )}
+          {TEXT_COLOR_PRESETS.map((colorOption) => (
+            <Tooltip key={`inline-text-${colorOption.color}`} title={colorOption.name} arrow>
+              <ColorSwatch
+                onClick={() => {
+                  handleTextChange('color', colorOption.color);
+                }}
+                selected={normalizedCurrentTextColor.toLowerCase() === toHexColorInput(colorOption.color, '#ffffff').toLowerCase()}
+                sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+              />
+            </Tooltip>
+          ))}
+        </>
+      ),
+    };
+  })();
 
   useEffect(() => {
     let focusTimeout;
@@ -934,6 +1506,58 @@ const CaptionEditor = ({
   const parsedText = getParsedText();
   const rawTextValue = parsedText.rawValue;
   const cleanTextValue = parsedText.cleanText;
+  const showOutlineWeightSlider = !positioningOnly && showInlineColor && activeInlineColorTarget === 'stroke';
+  const primarySliderProperty = showOutlineWeightSlider ? 'strokeWidth' : 'fontSize';
+  const primarySliderTooltip = showOutlineWeightSlider ? 'Outline Thickness' : 'Font Size';
+  const primarySliderValue = (() => {
+    if (showOutlineWeightSlider) {
+      return Math.round(Number(getCurrentValue('strokeWidth')) || 0);
+    }
+
+    const panelText = panelTexts[panelId] || {};
+    const hasActualText = cleanTextValue && cleanTextValue.trim();
+    let baseFontSize;
+    if (hasActualText && !panelText.fontSize) {
+      const panel = panelRects.find(p => p.panelId === panelId);
+      if (panel && calculateOptimalFontSize) {
+        baseFontSize = calculateOptimalFontSize(cleanTextValue, panel.width, panel.height);
+      } else {
+        baseFontSize = showTopCaptionOptions
+          ? TOP_CAPTION_DEFAULT_FONT_SIZE
+          : (lastUsedTextSettings.fontSize || 26);
+      }
+    } else {
+      baseFontSize = panelText.fontSize
+        || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
+    }
+    if (showTopCaptionOptions) {
+      return Math.round(baseFontSize);
+    }
+    return Math.round(baseFontSize * textScaleFactor);
+  })();
+  const primarySliderMin = showOutlineWeightSlider
+    ? 0
+    : (showTopCaptionOptions ? 8 : Math.round(8 * textScaleFactor));
+  const primarySliderMax = showOutlineWeightSlider
+    ? 16
+    : (showTopCaptionOptions ? 72 : Math.round(72 * textScaleFactor));
+  const primarySliderIcon = showOutlineWeightSlider ? (
+    <Typography
+      variant="caption"
+      sx={{
+        color: '#ffffff',
+        fontWeight: 800,
+        letterSpacing: 0.2,
+        lineHeight: 1.1,
+        textAlign: 'center',
+        userSelect: 'none',
+      }}
+    >
+      Outline Size
+    </Typography>
+  ) : (
+    <FormatSize sx={{ color: '#ffffff' }} />
+  );
 
   return (
     <Box
@@ -951,8 +1575,10 @@ const CaptionEditor = ({
         // Prevent double scroll and avoid covering bottom fixed bar
         maxHeight: 'calc(100vh - 140px)',
         overflowY: 'auto',
+        overflowX: 'hidden',
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
       }}
     >
       <Box sx={{ p: 1 }}>
@@ -1011,9 +1637,7 @@ const CaptionEditor = ({
               <ToggleButtonGroup
                 value={(() => {
                   const result = [...activeInlineFormats];
-                  // Mark color toggle as selected when non-default color is active
-                  const defaultColor = (lastUsedTextSettings.color || '#ffffff').toLowerCase();
-                  if (currentTextColor && currentTextColor.toLowerCase() !== defaultColor) {
+                  if (hasActiveColorSelection) {
                     result.push('color');
                   }
                   return result;
@@ -1022,8 +1646,6 @@ const CaptionEditor = ({
                   const clicked = event?.target?.closest?.('button')?.value || event?.currentTarget?.value;
                   if (clicked === 'bold' || clicked === 'italic' || clicked === 'underline') {
                     applyInlineStyleToggle(clicked === 'underline' ? 'underline' : clicked);
-                  } else if (clicked === 'color') {
-                    setShowInlineColor(true);
                   }
                 }}
                 aria-label="text formatting"
@@ -1067,15 +1689,19 @@ const CaptionEditor = ({
                 >
                   {alignmentIcon}
                 </ToggleButton>
-                {/* Inline color toggle within the group */}
                 <ToggleButton
                   size='small'
                   value="color"
                   aria-label="color"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInlineColor(true); }}
+                  onClick={handleColorTargetMenuOpen}
                 >
-                  <Palette sx={{ color: currentTextColor }} />
+                  <Palette
+                    sx={{
+                      color: '#ffffff',
+                      opacity: hasActiveColorSelection ? 1 : 0.88,
+                    }}
+                  />
                 </ToggleButton>
               </ToggleButtonGroup>
               <FormControl sx={{ flex: 1 }}>
@@ -1131,11 +1757,10 @@ const CaptionEditor = ({
 
               {showInlineColor && (
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', height: 42 }}>
-                  {/* Square button on left to go back to formatting */}
                   <Tooltip title="Back" placement="top">
                     <IconButton
                       size="small"
-                      onClick={() => setShowInlineColor(false)}
+                      onClick={handleInlineColorBack}
                       sx={{
                         mr: 1,
                         color: '#ffffff',
@@ -1152,9 +1777,8 @@ const CaptionEditor = ({
                       <ChevronLeft fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  {/* Inline color scroller (same size as main) with indicators */}
                   <Box
-                    ref={textColorScrollerRef}
+                    ref={activeInlineColorConfig.scrollerRef}
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1163,11 +1787,12 @@ const CaptionEditor = ({
                       overflowY: 'hidden',
                       position: 'relative',
                       flex: 1,
+                      minWidth: 0,
                     }}
                   >
-                    <Box sx={{ flex: 1, position: 'relative' }}>
+                    <Box sx={{ flex: 1, position: 'relative', minWidth: 0 }}>
                       <HorizontalScroller
-                        onScroll={handleTextColorScroll}
+                        onScroll={activeInlineColorConfig.onScroll}
                         sx={{
                           pt: 0,
                           pb: 0,
@@ -1177,60 +1802,11 @@ const CaptionEditor = ({
                           gap: theme.spacing(1),
                         }}
                       >
-                      {/* Custom color picker */}
-                      <Tooltip title="Pick Custom Color" arrow>
-                        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                          <ColorSwatch
-                            onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
-                            selected={false}
-                            sx={{
-                              position: 'relative',
-                              flexShrink: 0,
-                              backgroundColor: savedCustomTextColor,
-                              backgroundImage:
-                                'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
-                              backgroundSize: '8px 8px',
-                              backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
-                            }}
-                          >
-                            <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
-                          </ColorSwatch>
-                          <input
-                            type="color"
-                            value={savedCustomTextColor}
-                            onChange={handleCustomTextColorChange}
-                            ref={textColorPickerRef}
-                            style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-                          />
-                        </Box>
-                      </Tooltip>
-
-                      {/* Saved custom color (if not in presets) */}
-                      {hasSavedCustomTextColor && (
-                        <Tooltip title="Custom Color" arrow>
-                          <ColorSwatch
-                            onClick={() => { handleTextChange('color', savedCustomTextColor); setShowInlineColor(false); }}
-                            selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === savedCustomTextColor}
-                            sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
-                          />
-                        </Tooltip>
-                      )}
-
-                      {/* Preset colors */}
-                      {TEXT_COLOR_PRESETS.map((colorOption) => (
-                        <Tooltip key={colorOption.color} title={colorOption.name} arrow>
-                          <ColorSwatch
-                            onClick={() => { handleTextChange('color', colorOption.color); setShowInlineColor(false); }}
-                            selected={(panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff') === colorOption.color}
-                            sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
-                          />
-                        </Tooltip>
-                      ))}
+                        {activeInlineColorConfig.options}
                         <Box sx={{ minWidth: 4, flexShrink: 0 }} />
                       </HorizontalScroller>
-                      {/* Visual indicators for scrolling */}
-                      <ScrollIndicator direction="left" isVisible={textColorLeftScroll} />
-                      <ScrollIndicator direction="right" isVisible={textColorRightScroll} />
+                      <ScrollIndicator direction="left" isVisible={activeInlineColorConfig.leftVisible} />
+                      <ScrollIndicator direction="right" isVisible={activeInlineColorConfig.rightVisible} />
                     </Box>
                   </Box>
                 </Box>
@@ -1240,96 +1816,159 @@ const CaptionEditor = ({
                 anchorEl={alignmentAnchorEl}
                 open={Boolean(alignmentAnchorEl)}
                 onClose={handleAlignmentMenuClose}
+                MenuListProps={{
+                  autoFocusItem: false,
+                }}
                 PaperProps={{
                   sx: {
                     bgcolor: 'rgba(0, 0, 0, 0.96)',
                     color: '#ffffff',
                     border: '1px solid rgba(255,255,255,0.22)',
+                    '& .MuiMenuItem-root': {
+                      color: '#ffffff',
+                      '&:focus, &.Mui-focusVisible': {
+                        backgroundColor: 'transparent',
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                      },
+                    },
                   },
                 }}
               >
                 <MenuItem
-                  selected={currentTextAlign === 'left'}
                   onClick={() => handleAlignmentChange('left')}
                 >
                   <FormatAlignLeft sx={{ mr: 1 }} />
                   Left
                 </MenuItem>
                 <MenuItem
-                  selected={currentTextAlign === 'center'}
                   onClick={() => handleAlignmentChange('center')}
                 >
                   <FormatAlignCenter sx={{ mr: 1 }} />
                   Center
                 </MenuItem>
                 <MenuItem
-                  selected={currentTextAlign === 'right'}
                   onClick={() => handleAlignmentChange('right')}
                 >
                   <FormatAlignRight sx={{ mr: 1 }} />
                   Right
                 </MenuItem>
               </Menu>
+              <Menu
+                anchorEl={colorTargetAnchorEl}
+                open={Boolean(colorTargetAnchorEl)}
+                onClose={handleColorTargetMenuClose}
+                MenuListProps={{
+                  autoFocusItem: false,
+                }}
+                PaperProps={{
+                  sx: {
+                    bgcolor: 'rgba(0, 0, 0, 0.96)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    '& .MuiMenuItem-root': {
+                      color: '#ffffff',
+                      '&:focus, &.Mui-focusVisible': {
+                        backgroundColor: 'transparent',
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                      },
+                    },
+                  },
+                }}
+              >
+                <MenuItem
+                  onClick={() => handleColorTargetSelect('text')}
+                >
+                  {renderColorMenuDot(normalizedCurrentTextColor, {
+                    noColor: isTransparentLikeColor(currentTextColor),
+                  })}
+                  Text Color
+                </MenuItem>
+                <MenuItem
+                  onClick={() => handleColorTargetSelect('stroke')}
+                >
+                  {renderColorMenuDot(normalizedCurrentStrokeColor, {
+                    noColor: isOutlineDisabled || isTransparentLikeColor(rawCurrentStrokeColor),
+                  })}
+                  Text Outline
+                </MenuItem>
+                {showTopCaptionOptions && (
+                  <MenuItem
+                    onClick={() => handleColorTargetSelect('background')}
+                  >
+                    {renderColorMenuDot(normalizedTopCaptionBackgroundColor, {
+                      noColor: isTransparentLikeColor(currentTopCaptionBackgroundColor),
+                    })}
+                    Background Color
+                  </MenuItem>
+                )}
+              </Menu>
             </>
           )}
 
             {/* Full-width color section removed: color options only show when toggled inline */}
 
-            {/* Font Size */}
+            {/* Primary style slider swaps to outline thickness while editing outline color */}
             {!positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25, mb: 0.25 }}>
-              <Tooltip title="Font Size" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <FormatSize sx={{ color: '#ffffff' }} />
+              <Tooltip title={primarySliderTooltip} placement="left">
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: showOutlineWeightSlider ? 74 : 40,
+                    px: showOutlineWeightSlider ? 0.5 : 0,
+                  }}
+                >
+                  {primarySliderIcon}
                 </Box>
               </Tooltip>
               <Slider
-                value={(() => {
-                  const panelText = panelTexts[panelId] || {};
-                  const hasActualText = cleanTextValue && cleanTextValue.trim();
-                  let baseFontSize;
-                  if (hasActualText && !panelText.fontSize) {
-                    const panel = panelRects.find(p => p.panelId === panelId);
-                    if (panel && calculateOptimalFontSize) {
-                      baseFontSize = calculateOptimalFontSize(cleanTextValue, panel.width, panel.height);
-                    } else {
-                      baseFontSize = lastUsedTextSettings.fontSize || 26;
-                    }
-                  } else {
-                    baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
-                  }
-                  return Math.round(baseFontSize * textScaleFactor);
-                })()}
+                value={primarySliderValue}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
                     return;
                   }
-                  const baseFontSize = value / textScaleFactor;
+                  if (showOutlineWeightSlider) {
+                    handleTextChange('strokeWidth', Math.max(0, Number(value) || 0));
+                    return;
+                  }
+                  const baseFontSize = showTopCaptionOptions
+                    ? Number(value)
+                    : (Number(value) / textScaleFactor);
                   handleTextChange('fontSize', baseFontSize);
                 }}
-                onMouseDown={() => handleSliderMouseDown('fontSize')}
+                onMouseDown={() => handleSliderMouseDown(primarySliderProperty)}
                 onMouseUp={handleSliderMouseUp}
-                onTouchStart={() => handleSliderMouseDown('fontSize')}
+                onTouchStart={() => handleSliderMouseDown(primarySliderProperty)}
                 onTouchEnd={handleSliderMouseUp}
-                min={Math.round(8 * textScaleFactor)}
-                max={Math.round(72 * textScaleFactor)}
+                onChangeCommitted={handleSliderMouseUp}
+                min={primarySliderMin}
+                max={primarySliderMax}
                 step={1}
                 sx={{ 
                   flex: 1,
                   color: '#ffffff',
                   mx: 1,
+                  '&.Mui-disabled': {
+                    color: 'rgba(255,255,255,0.28)',
+                  },
                 }}
               />
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                {activeSlider === `${panelId}-fontSize` ? (
+                {activeSlider === `${panelId}-${primarySliderProperty}` ? (
                   <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
-                    {getCurrentValue('fontSize')}
+                    {getCurrentValue(primarySliderProperty)}
                   </Typography>
                 ) : (
                   <IconButton
                     size="small"
-                    onClick={() => handleResetClick('format', 'fontSize')}
-                    disabled={isValueAtDefault('fontSize')}
+                    onClick={() => handleResetClick('format', primarySliderProperty)}
+                    disabled={isValueAtDefault(primarySliderProperty)}
                     sx={{ 
                       color: '#ffffff', 
                       p: 0.5,
@@ -1356,12 +1995,16 @@ const CaptionEditor = ({
                 </Box>
               </Tooltip>
               <Slider
-                value={Math.round((panelTexts[panelId]?.captionSpacingY ?? 0) * textScaleFactor)}
+                value={showTopCaptionOptions
+                  ? Math.round(panelTexts[panelId]?.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y)
+                  : Math.round((panelTexts[panelId]?.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y) * textScaleFactor)}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
                     return;
                   }
-                  const baseSpacingY = Number(value) / textScaleFactor;
+                  const baseSpacingY = showTopCaptionOptions
+                    ? Number(value)
+                    : (Number(value) / textScaleFactor);
                   handleTextChange('captionSpacingY', Math.max(0, baseSpacingY));
                 }}
                 onMouseDown={() => handleSliderMouseDown('captionSpacingY')}
@@ -1369,7 +2012,7 @@ const CaptionEditor = ({
                 onTouchStart={() => handleSliderMouseDown('captionSpacingY')}
                 onTouchEnd={handleSliderMouseUp}
                 min={0}
-                max={Math.round(100 * textScaleFactor)}
+                max={showTopCaptionOptions ? 100 : Math.round(100 * textScaleFactor)}
                 step={1}
                 sx={{
                   flex: 1,
@@ -1401,64 +2044,6 @@ const CaptionEditor = ({
                     <Restore fontSize="small" />
                   </IconButton>
                 )}
-              </Box>
-            </Box>
-            )}
-
-            {showTopCaptionOptions && !positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
-              <Tooltip title="Top Caption Background" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <FormatColorFill sx={{ color: '#ffffff' }} />
-                </Box>
-              </Tooltip>
-              <Box sx={{ flex: 1, mx: 1, display: 'flex', alignItems: 'center', minHeight: 40 }}>
-                <Button
-                  fullWidth
-                  onClick={() => topCaptionBackgroundPickerRef.current?.click()}
-                  sx={{
-                    height: 34,
-                    color: isDarkColor(normalizedTopCaptionBackgroundColor) ? '#ffffff' : '#111111',
-                    backgroundColor: currentTopCaptionBackgroundColor,
-                    border: '1px solid rgba(255,255,255,0.35)',
-                    textTransform: 'none',
-                    justifyContent: 'flex-start',
-                    px: 1.25,
-                    fontWeight: 700,
-                    '&:hover': {
-                      backgroundColor: currentTopCaptionBackgroundColor,
-                      filter: 'brightness(0.95)',
-                    },
-                  }}
-                >
-                  {currentTopCaptionBackgroundColor}
-                </Button>
-                <input
-                  type="color"
-                  ref={topCaptionBackgroundPickerRef}
-                  value={normalizedTopCaptionBackgroundColor}
-                  onChange={handleTopCaptionBackgroundChange}
-                  style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
-                />
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                <IconButton
-                  size="small"
-                  onClick={() => handleResetClick('format', 'backgroundColor')}
-                  disabled={isValueAtDefault('backgroundColor')}
-                  sx={{
-                    color: '#ffffff',
-                    p: 0.5,
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    },
-                    '&.Mui-disabled': {
-                      color: 'rgba(255, 255, 255, 0.3)',
-                    }
-                  }}
-                >
-                  <Restore fontSize="small" />
-                </IconButton>
               </Box>
             </Box>
             )}

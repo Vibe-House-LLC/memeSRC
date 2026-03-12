@@ -5,6 +5,7 @@
 */
 
 import { layoutDefinitions } from '../config/layouts';
+import { TOP_CAPTION_DEFAULTS } from '../constants/topCaptionDefaults';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 
@@ -14,17 +15,10 @@ const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
 const isFloatingTextLayerId = (panelId) => (
   typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
 );
-const TOP_CAPTION_DEFAULTS = {
-  fontSize: 42,
-  fontWeight: 700,
-  fontStyle: 'normal',
-  fontFamily: 'IMPACT',
-  color: '#111111',
-  strokeWidth: 0,
-  textAlign: 'left',
-  captionSpacingY: 0,
-  backgroundColor: '#ffffff',
-};
+const getTopCaptionVerticalPadding = (fontSize, extraSpacingY = 0, strokeWidth = 0) => (
+  Math.max(2, Math.ceil(fontSize * 0.08), Math.ceil(Math.max(0, strokeWidth) / 2))
+  + Math.max(0, extraSpacingY)
+);
 
 const normalizeTextAlign = (value) => {
   if (value === 'left' || value === 'center' || value === 'right') return value;
@@ -43,6 +37,56 @@ const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
   if (align === 'left') return anchorX;
   if (align === 'right') return anchorX - blockWidth;
   return anchorX - (blockWidth / 2);
+};
+
+const parseColorToRGB = (color) => {
+  if (!color || typeof color !== 'string') return null;
+  const c = color.trim();
+  if (c[0] === '#') {
+    const hex = c.slice(1);
+    if (hex.length === 3) {
+      const r = parseInt(hex[0] + hex[0], 16);
+      const g = parseInt(hex[1] + hex[1], 16);
+      const b = parseInt(hex[2] + hex[2], 16);
+      if ([r, g, b].every(Number.isFinite)) return { r, g, b };
+      return null;
+    }
+    if (hex.length >= 6) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      if ([r, g, b].every(Number.isFinite)) return { r, g, b };
+      return null;
+    }
+    return null;
+  }
+
+  const rgbMatch = c.match(/rgba?\(([^)]+)\)/i);
+  if (rgbMatch) {
+    const parts = rgbMatch[1].split(',').map((part) => Number(part.trim()));
+    const [r, g, b] = parts;
+    if ([r, g, b].every(Number.isFinite)) {
+      return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255) };
+    }
+  }
+  return null;
+};
+
+const getContrastingMonoStroke = (textColor) => {
+  const rgb = parseColorToRGB(textColor);
+  if (!rgb) return '#000000';
+  const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return brightness < 128 ? '#FFFFFF' : '#000000';
+};
+const isTransparentLikeColor = (value) => {
+  if (typeof value !== 'string') return false;
+  const color = value.trim().toLowerCase();
+  if (!color || color === 'none' || color === 'transparent') return true;
+  if (/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^hsla\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^#([0-9a-f]{8})$/i.test(color) && color.slice(7, 9) === '00') return true;
+  if (/^#([0-9a-f]{4})$/i.test(color) && color.slice(4, 5) === '0') return true;
+  return false;
 };
 
 // Determine if a persisted custom layout is compatible with the requested panel count
@@ -440,22 +484,25 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         ? Number(topCaptionConfig.fontSize)
         : TOP_CAPTION_DEFAULTS.fontSize;
       const fontSize = baseFontSize * textScaleFactor;
+      const requestedStrokeWidth = Number.isFinite(Number(topCaptionConfig?.strokeWidth))
+        ? Number(topCaptionConfig.strokeWidth)
+        : TOP_CAPTION_DEFAULTS.strokeWidth;
       const fontWeight = topCaptionConfig?.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
       const fontStyle = topCaptionConfig?.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
       const fontFamily = topCaptionConfig?.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
       measureCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
       const horizontalPadding = Math.max(18, Math.round(width * 0.045));
-      const verticalPadding = Math.max(12, Math.round(fontSize * 0.42)) + scaledCaptionSpacingY;
+      const verticalPadding = getTopCaptionVerticalPadding(fontSize, scaledCaptionSpacingY, requestedStrokeWidth);
       const maxTextWidth = Math.max(48, width - (horizontalPadding * 2) - (borderPixels * 2));
       const wrappedLines = wrapSimpleText(measureCtx, topCaptionText, maxTextWidth);
       const lineHeight = fontSize * 1.2;
       const textHeight = Math.max(lineHeight, wrappedLines.length * lineHeight);
       const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
       const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
-      const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+      const maxCaptionHeightForFixedCanvas = Math.max(1, baseImageHeight - minImageAreaHeight);
       topCaptionHeight = shouldExpandForSingleCustom
-        ? Math.max(56, requestedCaptionHeight)
-        : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+        ? Math.max(1, requestedCaptionHeight)
+        : Math.max(1, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
     }
   }
   const imageAreaHeight = hasTopCaptionText
@@ -588,6 +635,12 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     const textAlign = normalizeTextAlign(topCaptionConfig?.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
     const textColor = topCaptionConfig?.color || TOP_CAPTION_DEFAULTS.color;
     const strokeWidth = topCaptionConfig?.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
+    const rawTopCaptionStrokeColor = (
+      typeof topCaptionConfig?.strokeColor === 'string' &&
+      topCaptionConfig.strokeColor.trim().length > 0
+    ) ? topCaptionConfig.strokeColor.trim() : null;
+    const strokeDisabledByColor = isTransparentLikeColor(rawTopCaptionStrokeColor);
+    const explicitStrokeColor = strokeDisabledByColor ? null : rawTopCaptionStrokeColor;
     const normalizedTopCaptionBackground = typeof topCaptionConfig?.backgroundColor === 'string'
       ? topCaptionConfig.backgroundColor.trim().toLowerCase()
       : '';
@@ -608,35 +661,48 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
 
     const textPadding = Math.max(16, captionRect.width * 0.04);
     const maxTextWidth = Math.max(24, captionRect.width - textPadding * 2);
-    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-    const lines = wrapSimpleText(ctx, topCaptionText, maxTextWidth);
+    const textLayerCanvas = document.createElement('canvas');
+    textLayerCanvas.width = Math.max(1, Math.ceil(captionRect.width));
+    textLayerCanvas.height = Math.max(1, Math.ceil(captionRect.height));
+    const textLayerCtx = textLayerCanvas.getContext('2d');
+    const textDrawCtx = textLayerCtx || ctx;
+
+    textDrawCtx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+    const lines = wrapSimpleText(textDrawCtx, topCaptionText, maxTextWidth);
     const lineHeight = fontSize * 1.2;
     const totalTextHeight = lines.length * lineHeight;
-    const startY = captionRect.y + ((captionRect.height - totalTextHeight) / 2) + (lineHeight / 2);
-    const maxLineWidth = lines.reduce((max, line) => Math.max(max, ctx.measureText(line).width), 0);
+    const startY = (textLayerCtx ? 0 : captionRect.y) + ((captionRect.height - totalTextHeight) / 2) + (lineHeight / 2);
+    const maxLineWidth = lines.reduce((max, line) => Math.max(max, textDrawCtx.measureText(line).width), 0);
     const textAnchorX = textAlign === 'left'
-      ? captionRect.x + textPadding
+      ? (textLayerCtx ? textPadding : captionRect.x + textPadding)
       : textAlign === 'right'
-        ? captionRect.x + captionRect.width - textPadding
-        : captionRect.x + captionRect.width / 2;
+        ? (textLayerCtx ? captionRect.width - textPadding : captionRect.x + captionRect.width - textPadding)
+        : (textLayerCtx ? captionRect.width / 2 : captionRect.x + captionRect.width / 2);
     const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
 
-    ctx.fillStyle = textColor;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    if (strokeWidth > 0) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.72)';
-      ctx.lineWidth = strokeWidth;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
+    textDrawCtx.fillStyle = textColor;
+    textDrawCtx.textAlign = 'left';
+    textDrawCtx.textBaseline = 'middle';
+    textDrawCtx.lineJoin = 'round';
+    textDrawCtx.lineCap = 'round';
+    textDrawCtx.shadowColor = 'transparent';
+    textDrawCtx.shadowOffsetX = 0;
+    textDrawCtx.shadowOffsetY = 0;
+    textDrawCtx.shadowBlur = 0;
+    if (!strokeDisabledByColor && strokeWidth > 0) {
+      textDrawCtx.strokeStyle = explicitStrokeColor || getContrastingMonoStroke(textColor);
+      textDrawCtx.lineWidth = strokeWidth;
     }
     lines.forEach((line, idx) => {
       const y = startY + idx * lineHeight;
-      const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
+      const lineX = getLineStartX(textAlign, textAnchorX, textDrawCtx.measureText(line).width);
       const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
-      if (strokeWidth > 0) ctx.strokeText(line, drawX, y);
-      ctx.fillText(line, drawX, y);
+      if (!strokeDisabledByColor && strokeWidth > 0) textDrawCtx.strokeText(line, drawX, y);
+      textDrawCtx.fillText(line, drawX, y);
     });
+    if (textLayerCtx) {
+      ctx.drawImage(textLayerCanvas, captionRect.x, captionRect.y, captionRect.width, captionRect.height);
+    }
     ctx.restore();
   }
 
@@ -699,6 +765,12 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     const fontFamily = panelText.fontFamily || 'Arial';
     const textColor = panelText.color || '#ffffff';
     const strokeWidth = panelText.strokeWidth ?? 2;
+    const rawStrokeColor = (
+      typeof panelText.strokeColor === 'string' &&
+      panelText.strokeColor.trim().length > 0
+    ) ? panelText.strokeColor.trim() : null;
+    const strokeDisabledByColor = isTransparentLikeColor(rawStrokeColor);
+    const explicitStrokeColor = strokeDisabledByColor ? null : rawStrokeColor;
     const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
     const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
     const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
@@ -708,14 +780,16 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     ctx.fillStyle = textColor;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = strokeWidth;
+    ctx.strokeStyle = explicitStrokeColor || getContrastingMonoStroke(textColor);
+    ctx.lineWidth = strokeDisabledByColor ? 0 : strokeWidth;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowOffsetX = 1;
-    ctx.shadowOffsetY = 1;
-    ctx.shadowBlur = 3;
+    ctx.shadowColor = (strokeDisabledByColor || explicitStrokeColor)
+      ? 'transparent'
+      : 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowOffsetX = (strokeDisabledByColor || explicitStrokeColor) ? 0 : 1;
+    ctx.shadowOffsetY = (strokeDisabledByColor || explicitStrokeColor) ? 0 : 1;
+    ctx.shadowBlur = (strokeDisabledByColor || explicitStrokeColor) ? 0 : 3;
 
     const textPadding = 10;
     const maxTextWidth = w - textPadding * 2;
@@ -755,7 +829,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const lineY = startY + idx * lineHeight;
       const lineX = getLineStartX(textAlign, textAnchorX, ctx.measureText(line).width);
       const drawX = Number.isFinite(lineX) ? lineX : textBlockLeft;
-      if (strokeWidth > 0) ctx.strokeText(line, drawX, lineY);
+      if (!strokeDisabledByColor && strokeWidth > 0) ctx.strokeText(line, drawX, lineY);
       ctx.fillText(line, drawX, lineY);
     });
 
