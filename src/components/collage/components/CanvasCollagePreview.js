@@ -216,16 +216,20 @@ const isFloatingTextLayerId = (panelId) => (
 const TOP_CAPTION_PLACEHOLDER = 'Add Top Caption';
 const FLOATING_TEXT_LAYER_PLACEHOLDER = 'Add Text Layer';
 const TOP_CAPTION_DEFAULTS = {
-  fontSize: 42,
+  fontSize: 18,
   fontWeight: 700,
   fontStyle: 'normal',
   fontFamily: 'IMPACT',
   color: '#111111',
   strokeWidth: 0,
   textAlign: 'left',
-  captionSpacingY: 0,
+  captionSpacingY: 5,
   backgroundColor: '#ffffff',
 };
+const getTopCaptionVerticalPadding = (fontSize, extraSpacingY = 0, strokeWidth = 0) => (
+  Math.max(2, Math.ceil(fontSize * 0.08), Math.ceil(Math.max(0, strokeWidth) / 2))
+  + Math.max(0, extraSpacingY)
+);
 const CAPTION_PLACEHOLDER_TEXT = 'Add Caption';
 const TEXT_PADDING_PX = 10;
 const TEXT_DEFAULT_BOTTOM_RATIO = 0.95;
@@ -1335,13 +1339,14 @@ const CanvasCollagePreview = ({
     }
     const baseFontSize = Number(topCaptionConfig.fontSize) > 0
       ? Number(topCaptionConfig.fontSize)
-      : (Number(lastUsedTextSettings?.fontSize) > 0
-        ? Number(lastUsedTextSettings.fontSize)
-        : TOP_CAPTION_DEFAULTS.fontSize);
+      : TOP_CAPTION_DEFAULTS.fontSize;
     const fontSize = baseFontSize * (canvasWidth / BASE_CANVAS_WIDTH);
     const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
     const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
     const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;
+    const requestedStrokeWidth = Number.isFinite(Number(topCaptionConfig.strokeWidth))
+      ? Number(topCaptionConfig.strokeWidth)
+      : TOP_CAPTION_DEFAULTS.strokeWidth;
     const captionSpacingY = Number.isFinite(Number(topCaptionConfig.captionSpacingY))
       ? Math.max(0, Number(topCaptionConfig.captionSpacingY))
       : TOP_CAPTION_DEFAULTS.captionSpacingY;
@@ -1355,7 +1360,7 @@ const CanvasCollagePreview = ({
     };
 
     const horizontalPadding = Math.max(18, Math.round(canvasWidth * 0.045));
-    const verticalPadding = Math.max(12, Math.round(fontSize * 0.42)) + scaledCaptionSpacingY;
+    const verticalPadding = getTopCaptionVerticalPadding(fontSize, scaledCaptionSpacingY, requestedStrokeWidth);
     const maxTextWidth = Math.max(48, canvasWidth - (horizontalPadding * 2) - (borderPixels * 2));
 
     const wrappedLines = buildWrappedLines(
@@ -1372,11 +1377,11 @@ const CanvasCollagePreview = ({
     const requestedCaptionHeight = textHeight + (verticalPadding * 2) + Math.max(borderPixels, 0);
 
     const minImageAreaHeight = Math.max(120, baseImageHeight * 0.35);
-    const maxCaptionHeightForFixedCanvas = Math.max(56, baseImageHeight - minImageAreaHeight);
+    const maxCaptionHeightForFixedCanvas = Math.max(1, baseImageHeight - minImageAreaHeight);
     const expandCanvas = Boolean(isSingleImageAutoCustomAspect);
     const captionHeight = expandCanvas
-      ? Math.max(56, requestedCaptionHeight)
-      : Math.max(56, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
+      ? Math.max(1, requestedCaptionHeight)
+      : Math.max(1, Math.min(requestedCaptionHeight, maxCaptionHeightForFixedCanvas));
 
     const imageAreaHeight = expandCanvas
       ? baseImageHeight
@@ -1443,9 +1448,7 @@ const CanvasCollagePreview = ({
 
     const baseFontSize = Number(topCaptionConfig.fontSize) > 0
       ? Number(topCaptionConfig.fontSize)
-      : (Number(lastUsedTextSettings?.fontSize) > 0
-        ? Number(lastUsedTextSettings.fontSize)
-        : TOP_CAPTION_DEFAULTS.fontSize);
+      : TOP_CAPTION_DEFAULTS.fontSize;
     const fontSize = baseFontSize * textScaleFactor;
     const fontWeight = topCaptionConfig.fontWeight || TOP_CAPTION_DEFAULTS.fontWeight;
     const fontStyle = topCaptionConfig.fontStyle || TOP_CAPTION_DEFAULTS.fontStyle;

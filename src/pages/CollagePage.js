@@ -2198,11 +2198,11 @@ export default function CollagePage() {
         fontFamily: existingTopCaption.fontFamily || 'IMPACT',
         fontWeight: existingTopCaption.fontWeight ?? 700,
         fontStyle: existingTopCaption.fontStyle || 'normal',
-        fontSize: existingTopCaption.fontSize || 42,
+        fontSize: existingTopCaption.fontSize || 18,
         color: existingTopCaption.color || '#111111',
         strokeWidth: existingTopCaption.strokeWidth ?? 0,
         textAlign: existingTopCaption.textAlign || 'left',
-        captionSpacingY: existingTopCaption.captionSpacingY ?? 0,
+        captionSpacingY: existingTopCaption.captionSpacingY ?? 5,
         ...(hasExplicitBackgroundColor
           ? {
             backgroundColor: existingTopCaption.backgroundColor,

@@ -82,6 +82,8 @@ const TOP_CAPTION_BACKGROUND_COLOR_PRESETS = [
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
 const DEFAULT_FONT_OPTIONS = ['Arial', 'Impact', 'Georgia', 'Verdana', 'Courier New'];
 const VALID_TEXT_ALIGNMENTS = ['left', 'center', 'right'];
+const TOP_CAPTION_DEFAULT_FONT_SIZE = 18;
+const TOP_CAPTION_DEFAULT_SPACING_Y = 5;
 
 const normalizeTextAlign = (value) => (
   VALID_TEXT_ALIGNMENTS.includes(value) ? value : 'center'
@@ -302,6 +304,14 @@ const CaptionEditor = ({
   const autoStrokeColor = getAutoStrokeColorFromTextColor(currentTextColor);
   const currentStrokeColor = hasExplicitStrokeColor ? rawCurrentStrokeColor.trim() : autoStrokeColor;
   const normalizedCurrentStrokeColor = toHexColorInput(currentStrokeColor, '#000000');
+  const defaultOutlineWidth = showTopCaptionOptions
+    ? 0
+    : Math.max(1, Number(lastUsedTextSettings.strokeWidth) || 2);
+  const currentOutlineWidth = Number.isFinite(Number(panelTexts[panelId]?.strokeWidth))
+    ? Number(panelTexts[panelId]?.strokeWidth)
+    : defaultOutlineWidth;
+  const outlineRestoreWidth = Math.max(1, Number(lastUsedTextSettings.strokeWidth) || 2);
+  const isOutlineDisabled = currentOutlineWidth === 0;
   // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
@@ -511,7 +521,16 @@ const CaptionEditor = ({
     if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
     setSavedCustomStrokeColor(nextColor);
     localStorage.setItem('memeTextStrokeCustomColor', nextColor);
-    handleTextChange('strokeColor', nextColor);
+    if (!updatePanelText) return;
+    const currentText = panelTexts[panelId] || {};
+    const updatedText = {
+      ...currentText,
+      strokeColor: nextColor.trim(),
+    };
+    if (currentOutlineWidth === 0) {
+      updatedText.strokeWidth = outlineRestoreWidth;
+    }
+    updatePanelText(panelId, updatedText);
     if (showInlineColor) {
       setShowInlineColor(false);
     }
@@ -551,6 +570,32 @@ const CaptionEditor = ({
     setColorTargetAnchorEl(null);
   }, []);
 
+  const handleOutlineColorSelect = useCallback((nextColor) => {
+    if (!updatePanelText || typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    const currentText = panelTexts[panelId] || {};
+    const updatedText = {
+      ...currentText,
+      strokeColor: nextColor.trim(),
+    };
+    if (currentOutlineWidth === 0) {
+      updatedText.strokeWidth = outlineRestoreWidth;
+    }
+    updatePanelText(panelId, updatedText);
+    setShowInlineColor(false);
+  }, [currentOutlineWidth, outlineRestoreWidth, panelId, panelTexts, updatePanelText]);
+
+  const handleNoOutlineSelect = useCallback(() => {
+    if (!updatePanelText) return;
+    const currentText = panelTexts[panelId] || {};
+    const updatedText = {
+      ...currentText,
+      strokeWidth: 0,
+    };
+    delete updatedText.strokeColor;
+    updatePanelText(panelId, updatedText);
+    setShowInlineColor(false);
+  }, [panelId, panelTexts, updatePanelText]);
+
   const handleCustomTopCaptionBackgroundChange = (event) => {
     const nextColor = event.target.value;
     if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
@@ -589,7 +634,9 @@ const CaptionEditor = ({
       if (cleanValue && cleanValue.trim() && !hadPreviousContent && !hasExplicitFontSize) {
         updatedText = {
           ...updatedText,
-          fontSize: lastUsedTextSettings.fontSize || 26
+          fontSize: showTopCaptionOptions
+            ? TOP_CAPTION_DEFAULT_FONT_SIZE
+            : (lastUsedTextSettings.fontSize || 26),
         };
       }
     } else {
@@ -625,7 +672,7 @@ const CaptionEditor = ({
     }
 
     updatePanelText(panelId, updatedText);
-  }, [panelTexts, updatePanelText, panelId, lastUsedTextSettings]);
+  }, [panelTexts, updatePanelText, panelId, lastUsedTextSettings, showTopCaptionOptions]);
 
   // Reset dialog handlers
   const handleResetClick = useCallback((type, propertyName) => {
@@ -644,7 +691,10 @@ const CaptionEditor = ({
       if (hasActualText) {
         handleTextChange(propertyName, undefined);
       } else {
-        handleTextChange(propertyName, lastUsedTextSettings.fontSize || 26);
+        handleTextChange(
+          propertyName,
+          showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26),
+        );
       }
     } else {
       handleTextChange(propertyName, undefined);
@@ -652,7 +702,7 @@ const CaptionEditor = ({
     
     setResetDialogOpen(false);
     setResetDialogData({ type: null, panelId: null, propertyName: null });
-  }, [resetDialogData, handleTextChange, panelTexts, panelId, lastUsedTextSettings]);
+  }, [resetDialogData, handleTextChange, panelTexts, panelId, lastUsedTextSettings, showTopCaptionOptions]);
 
   const handleResetCancel = useCallback(() => {
     setResetDialogOpen(false);
@@ -664,16 +714,21 @@ const CaptionEditor = ({
     const currentValue = panelTexts[panelId]?.[propertyName];
     
     if (propertyName === 'fontSize') {
-      return currentValue === undefined || currentValue === (lastUsedTextSettings.fontSize || 26);
+      const defaultFontSize = showTopCaptionOptions
+        ? TOP_CAPTION_DEFAULT_FONT_SIZE
+        : (lastUsedTextSettings.fontSize || 26);
+      return currentValue === undefined || currentValue === defaultFontSize;
     }
     
     if (propertyName === 'strokeWidth') {
-      const defaultStrokeWidth = lastUsedTextSettings.strokeWidth || 2;
+      const defaultStrokeWidth = showTopCaptionOptions
+        ? 0
+        : (lastUsedTextSettings.strokeWidth || 2);
       return currentValue === undefined || currentValue === defaultStrokeWidth;
     }
 
     if (propertyName === 'captionSpacingY') {
-      return currentValue === undefined || currentValue === 0;
+      return currentValue === undefined || currentValue === (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_SPACING_Y : 0);
     }
 
     if (propertyName === 'backgroundColor') {
@@ -700,7 +755,7 @@ const CaptionEditor = ({
     }
     
     return false;
-  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground, hasExplicitStrokeColor]);
+  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground, hasExplicitStrokeColor, showTopCaptionOptions]);
 
   // Helper function to get current value for display
   const getCurrentValue = useCallback((propertyName) => {
@@ -717,21 +772,29 @@ const CaptionEditor = ({
         if (panel && calculateOptimalFontSize) {
           baseFontSize = calculateOptimalFontSize(cleanText, panel.width, panel.height);
         } else {
-          baseFontSize = lastUsedTextSettings.fontSize || 26;
+          baseFontSize = showTopCaptionOptions
+            ? TOP_CAPTION_DEFAULT_FONT_SIZE
+            : (lastUsedTextSettings.fontSize || 26);
         }
       } else {
-        baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+        baseFontSize = panelText.fontSize
+          || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
       }
       
       return Math.round(baseFontSize * textScaleFactor);
     }
     
     if (propertyName === 'strokeWidth') {
-      return currentValue || lastUsedTextSettings.strokeWidth || 2;
+      if (currentValue !== undefined) {
+        return currentValue;
+      }
+      return showTopCaptionOptions ? 0 : (lastUsedTextSettings.strokeWidth || 2);
     }
 
     if (propertyName === 'captionSpacingY') {
-      const spacingY = currentValue !== undefined ? currentValue : 0;
+      const spacingY = currentValue !== undefined
+        ? currentValue
+        : (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_SPACING_Y : 0);
       return Math.round(spacingY * textScaleFactor);
     }
 
@@ -740,7 +803,7 @@ const CaptionEditor = ({
     }
 
     if (propertyName === 'strokeColor') {
-      return hasExplicitStrokeColor ? currentStrokeColor : 'Auto';
+      return isOutlineDisabled ? 'None' : (hasExplicitStrokeColor ? currentStrokeColor : 'Default');
     }
     
     if (propertyName === 'textPositionX') {
@@ -772,6 +835,8 @@ const CaptionEditor = ({
     currentTopCaptionBackgroundColor,
     currentStrokeColor,
     hasExplicitStrokeColor,
+    isOutlineDisabled,
+    showTopCaptionOptions,
   ]);
 
   const syncActiveFormatsFromSelection = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
@@ -1136,13 +1201,10 @@ const CaptionEditor = ({
         rightVisible: strokeColorRightScroll,
         options: (
           <>
-            <Tooltip title="Auto Stroke" arrow>
+            <Tooltip title="No Outline" arrow>
               <ColorSwatch
-                onClick={() => {
-                  handleTextChange('strokeColor', undefined);
-                  setShowInlineColor(false);
-                }}
-                selected={!hasExplicitStrokeColor}
+                onClick={handleNoOutlineSelect}
+                selected={isOutlineDisabled}
                 sx={{
                   background:
                     'linear-gradient(45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.25) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.25) 75%)',
@@ -1150,12 +1212,30 @@ const CaptionEditor = ({
                   backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
                 }}
               >
-                <Typography variant="caption" sx={{ fontWeight: 800, color: '#ffffff' }}>
-                  A
-                </Typography>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.92)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 6,
+                      left: -1,
+                      width: 16,
+                      height: 2,
+                      borderRadius: 999,
+                      backgroundColor: '#ffffff',
+                      transform: 'rotate(-45deg)',
+                      transformOrigin: 'center',
+                    },
+                  }}
+                />
               </ColorSwatch>
             </Tooltip>
-            <Tooltip title="Pick Custom Stroke Color" arrow>
+            <Tooltip title="Pick Custom Outline Color" arrow>
               <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <ColorSwatch
                   onClick={() => strokeColorPickerRef.current && strokeColorPickerRef.current.click()}
@@ -1182,13 +1262,10 @@ const CaptionEditor = ({
               </Box>
             </Tooltip>
             {hasSavedCustomStrokeColor && (
-              <Tooltip title="Custom Stroke Color" arrow>
+              <Tooltip title="Custom Outline Color" arrow>
                 <ColorSwatch
-                  onClick={() => {
-                    handleTextChange('strokeColor', savedCustomStrokeColor);
-                    setShowInlineColor(false);
-                  }}
-                  selected={hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(savedCustomStrokeColor, '#000000').toLowerCase()}
+                  onClick={() => handleOutlineColorSelect(savedCustomStrokeColor)}
+                  selected={!isOutlineDisabled && hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(savedCustomStrokeColor, '#000000').toLowerCase()}
                   sx={{ backgroundColor: savedCustomStrokeColor, flexShrink: 0 }}
                 />
               </Tooltip>
@@ -1196,11 +1273,8 @@ const CaptionEditor = ({
             {STROKE_COLOR_PRESETS.map((colorOption) => (
               <Tooltip key={`inline-stroke-${colorOption.color}`} title={colorOption.name} arrow>
                 <ColorSwatch
-                  onClick={() => {
-                    handleTextChange('strokeColor', colorOption.color);
-                    setShowInlineColor(false);
-                  }}
-                  selected={hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(colorOption.color, '#000000').toLowerCase()}
+                  onClick={() => handleOutlineColorSelect(colorOption.color)}
+                  selected={!isOutlineDisabled && hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(colorOption.color, '#000000').toLowerCase()}
                   sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
                 />
               </Tooltip>
@@ -1719,7 +1793,7 @@ const CaptionEditor = ({
                 <MenuItem
                   onClick={() => handleColorTargetSelect('stroke')}
                 >
-                  Stroke Color
+                  Outline Color
                 </MenuItem>
                 {showTopCaptionOptions && (
                   <MenuItem
@@ -1815,7 +1889,7 @@ const CaptionEditor = ({
                 </Box>
               </Tooltip>
               <Slider
-                value={Math.round((panelTexts[panelId]?.captionSpacingY ?? 0) * textScaleFactor)}
+                value={Math.round((panelTexts[panelId]?.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y) * textScaleFactor)}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
                     return;
