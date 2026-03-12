@@ -254,6 +254,18 @@ const getAutoStrokeColorFromTextColor = (textColor) => (
   isDarkColor(toHexColorInput(textColor, '#ffffff')) ? '#ffffff' : '#000000'
 );
 
+const isTransparentLikeColor = (value) => {
+  if (typeof value !== 'string') return false;
+  const color = value.trim().toLowerCase();
+  if (!color) return false;
+  if (color === 'transparent') return true;
+  if (/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^hsla\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^#([0-9a-f]{8})$/i.test(color) && color.slice(7, 9) === '00') return true;
+  if (/^#([0-9a-f]{4})$/i.test(color) && color.slice(4, 5) === '0') return true;
+  return false;
+};
+
 const CaptionEditor = ({
   panelId,
   panelTexts,
@@ -447,20 +459,45 @@ const CaptionEditor = ({
     hasCustomTextColor
     || hasExplicitStrokeColor
   );
-  const renderColorMenuDot = (color, sx = {}) => (
+  const renderColorMenuDot = (color, options = {}) => (
     <Box
       sx={{
         width: 10,
         height: 10,
-        borderRadius: '50%',
-        backgroundColor: color,
-        border: '1px solid rgba(255,255,255,0.35)',
-        boxSizing: 'border-box',
+        position: 'relative',
         flexShrink: 0,
         mr: 1.25,
-        ...sx,
+        ...options.sx,
       }}
-    />
+    >
+      <Box
+        sx={{
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          backgroundColor: options.noColor ? '#111111' : color,
+          border: options.noColor
+            ? '1px solid rgba(255,59,48,0.95)'
+            : '1px solid rgba(255,255,255,0.35)',
+          boxSizing: 'border-box',
+        }}
+      />
+      {options.noColor && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 4,
+            left: -1,
+            width: 12,
+            height: 2,
+            borderRadius: 999,
+            backgroundColor: 'rgba(255,59,48,0.95)',
+            transform: 'rotate(-45deg)',
+            transformOrigin: 'center',
+          }}
+        />
+      )}
+    </Box>
   );
 
   // Calculate responsive dimensions based on panel size with mobile-friendly minimums
@@ -1807,20 +1844,26 @@ const CaptionEditor = ({
                 <MenuItem
                   onClick={() => handleColorTargetSelect('text')}
                 >
-                  {renderColorMenuDot(normalizedCurrentTextColor)}
+                  {renderColorMenuDot(normalizedCurrentTextColor, {
+                    noColor: isTransparentLikeColor(currentTextColor),
+                  })}
                   Text Color
                 </MenuItem>
                 <MenuItem
                   onClick={() => handleColorTargetSelect('stroke')}
                 >
-                  {renderColorMenuDot(normalizedCurrentStrokeColor, isOutlineDisabled ? { opacity: 0.45 } : undefined)}
+                  {renderColorMenuDot(normalizedCurrentStrokeColor, {
+                    noColor: isOutlineDisabled || isTransparentLikeColor(rawCurrentStrokeColor),
+                  })}
                   Outline Color
                 </MenuItem>
                 {showTopCaptionOptions && (
                   <MenuItem
                     onClick={() => handleColorTargetSelect('background')}
                   >
-                    {renderColorMenuDot(normalizedTopCaptionBackgroundColor)}
+                    {renderColorMenuDot(normalizedTopCaptionBackgroundColor, {
+                      noColor: isTransparentLikeColor(currentTopCaptionBackgroundColor),
+                    })}
                     Background Color
                   </MenuItem>
                 )}
