@@ -6,16 +6,21 @@ import { createWebsiteSetting, updateWebsiteSetting } from "../graphql/mutations
 import { getWebsiteSetting } from "../graphql/queries";
 import MaintenanceModes from "../sections/@dashboard/website-settings/MaintenanceModes";
 import RateLimits from "../sections/@dashboard/website-settings/RateLimits";
+import ExperimentsSettings from "../sections/@dashboard/website-settings/ExperimentsSettings";
 
 export default function WebsiteSettings() {
     const [loading, setLoading] = useState(true);
     const [savingMaintenance, setSavingMaintenance] = useState(false);
     const [savingRateLimits, setSavingRateLimits] = useState(false);
+    const [savingExperiments, setSavingExperiments] = useState(false);
+    const [experimentsSaveStatus, setExperimentsSaveStatus] = useState('idle');
     const [fullSiteMaintenance, setFullSiteMaintenance] = useState(false);
     const [universalSearchMaintenance, setUniversalSearchMaintenance] = useState(false);
     const [openAIRateLimit, setOpenAIRateLimit] = useState('100');
     const [nanoBananaRateLimit, setNanoBananaRateLimit] = useState('100');
     const [moderationThreshold, setModerationThreshold] = useState('0.6');
+    const [experimentsHostName, setExperimentsHostName] = useState('');
+    const [experimentsApiKey, setExperimentsApiKey] = useState('');
     const [globalSettings, setGlobalSettings] = useState();
 
     useEffect(() => {
@@ -32,6 +37,8 @@ export default function WebsiteSettings() {
                 setOpenAIRateLimit((globalSettings?.openAIRateLimit ?? 100).toString())
                 setNanoBananaRateLimit((globalSettings?.nanoBananaRateLimit ?? 100).toString())
                 setModerationThreshold((globalSettings?.moderationThreshold ?? 0.6).toString())
+                setExperimentsHostName(globalSettings?.experimentsHostName || '')
+                setExperimentsApiKey(globalSettings?.experimentsApiKey || '')
                 setLoading(false)
             } else {
                 setGlobalSettings()
@@ -40,6 +47,8 @@ export default function WebsiteSettings() {
                 setOpenAIRateLimit('100')
                 setNanoBananaRateLimit('100')
                 setModerationThreshold('0.6')
+                setExperimentsHostName('')
+                setExperimentsApiKey('')
                 setLoading(false)
             }
         }).catch(error => {
@@ -107,6 +116,31 @@ export default function WebsiteSettings() {
         setSavingRateLimits(false)
     }
 
+    const saveExperimentsSettings = async () => {
+        setSavingExperiments(true)
+        setExperimentsSaveStatus('idle')
+        try {
+            await ensureGlobalSettings()
+
+            const updateGlobalSettings = await API.graphql(
+                graphqlOperation(updateWebsiteSetting, {
+                    input: {
+                        id: 'globalSettings',
+                        experimentsHostName,
+                        experimentsApiKey,
+                    }
+                })
+            )
+            console.log(updateGlobalSettings)
+            setGlobalSettings(updateGlobalSettings?.data?.updateWebsiteSetting)
+            setExperimentsSaveStatus('success')
+        } catch (error) {
+            console.log(error)
+            setExperimentsSaveStatus('error')
+        }
+        setSavingExperiments(false)
+    }
+
     return (
         <>
             <Helmet>
@@ -140,6 +174,21 @@ export default function WebsiteSettings() {
                             setNanoBananaRateLimit={setNanoBananaRateLimit}
                             moderationThreshold={moderationThreshold}
                             setModerationThreshold={setModerationThreshold}
+                        />
+                        <ExperimentsSettings
+                            saveFunction={saveExperimentsSettings}
+                            saving={savingExperiments}
+                            experimentsHostName={experimentsHostName}
+                            onExperimentsHostNameChange={(value) => {
+                                setExperimentsSaveStatus('idle')
+                                setExperimentsHostName(value)
+                            }}
+                            experimentsApiKey={experimentsApiKey}
+                            onExperimentsApiKeyChange={(value) => {
+                                setExperimentsSaveStatus('idle')
+                                setExperimentsApiKey(value)
+                            }}
+                            saveStatus={experimentsSaveStatus}
                         />
                     </>
                 }

@@ -374,6 +374,8 @@ type WebsiteSetting @model @auth(
   openAIRateLimit: Int @default(value: "100")
   nanoBananaRateLimit: Int @default(value: "100")
   moderationThreshold: Float @default(value: "0.6")
+  experimentsHostName: String
+  experimentsApiKey: String
 }
 
 type ProSupportMessage @model @auth(
