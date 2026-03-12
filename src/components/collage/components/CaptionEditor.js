@@ -446,7 +446,6 @@ const CaptionEditor = ({
   const hasActiveColorSelection = (
     hasCustomTextColor
     || hasExplicitStrokeColor
-    || (showTopCaptionOptions && hasExplicitTopCaptionBackground)
   );
 
   // Calculate responsive dimensions based on panel size with mobile-friendly minimums
