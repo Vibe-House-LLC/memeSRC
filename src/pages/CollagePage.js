@@ -379,7 +379,7 @@ export default function CollagePage() {
     borderThickness,
     setBorderThickness,
     borderColor,
-    setBorderColor,
+    setBorderColor: setBorderColorState,
     addImage,
     addMultipleImages,
     removeImage,
@@ -397,7 +397,7 @@ export default function CollagePage() {
     updatePanelImageMapping,
     updatePanelTransform,
     setAllPanelTransforms,
-    updatePanelText,
+    updatePanelText: updatePanelTextState,
     libraryRefreshTrigger,
   } = useCollageState(isAdmin);
 
@@ -416,6 +416,109 @@ export default function CollagePage() {
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
   }, [selectedImages]);
+  const suppressTopCaptionBorderSyncPromptRef = useRef(false);
+
+  const updatePanelText = useCallback((panelId, textConfig, options = {}) => {
+    const replace = options?.replace === true;
+    const previousTopCaption = panelTexts?.[TOP_CAPTION_PANEL_ID] || {};
+    const shouldCheckTopCaptionBackground = (
+      panelId === TOP_CAPTION_PANEL_ID &&
+      textConfig &&
+      typeof textConfig === 'object'
+    );
+
+    let nextBackgroundColor = null;
+    let topCaptionBackgroundChanged = false;
+
+    if (shouldCheckTopCaptionBackground) {
+      const nextTopCaption = replace
+        ? { ...(textConfig || {}) }
+        : { ...previousTopCaption, ...(textConfig || {}) };
+      const previousBackground = (
+        typeof previousTopCaption.backgroundColor === 'string'
+          ? previousTopCaption.backgroundColor.trim().toLowerCase()
+          : ''
+      );
+      const rawNextBackground = (
+        typeof nextTopCaption.backgroundColor === 'string'
+          ? nextTopCaption.backgroundColor.trim()
+          : ''
+      );
+      const normalizedNextBackground = rawNextBackground.toLowerCase();
+
+      topCaptionBackgroundChanged = rawNextBackground.length > 0 && normalizedNextBackground !== previousBackground;
+      nextBackgroundColor = rawNextBackground || null;
+    }
+
+    updatePanelTextState(panelId, textConfig, options);
+
+    if (!shouldCheckTopCaptionBackground) return;
+    if (suppressTopCaptionBorderSyncPromptRef.current) {
+      suppressTopCaptionBorderSyncPromptRef.current = false;
+      return;
+    }
+    if (!topCaptionBackgroundChanged || !nextBackgroundColor || isHydratingProject) return;
+    if (typeof window === 'undefined' || typeof window.confirm !== 'function') return;
+
+    const shouldSyncBorderColor = window.confirm('Sync the border color to this top text background color?');
+    if (shouldSyncBorderColor) {
+      setBorderColorState(nextBackgroundColor);
+    }
+  }, [isHydratingProject, panelTexts, setBorderColorState, updatePanelTextState]);
+
+  const handleBorderColorSelection = useCallback((nextColor) => {
+    if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    const trimmedNextColor = nextColor.trim();
+    if (trimmedNextColor.toLowerCase() === String(borderColor || '').trim().toLowerCase()) return;
+
+    const topCaptionConfig = panelTexts?.[TOP_CAPTION_PANEL_ID];
+    const topCaptionVisible = Boolean(
+      topCaptionConfig &&
+      typeof topCaptionConfig === 'object' &&
+      Object.keys(topCaptionConfig).length > 0
+    );
+
+    if (!topCaptionVisible || isHydratingProject || typeof window === 'undefined' || typeof window.confirm !== 'function') {
+      setBorderColorState(trimmedNextColor);
+      return;
+    }
+
+    const normalizedBackgroundColor = (
+      typeof topCaptionConfig.backgroundColor === 'string'
+        ? topCaptionConfig.backgroundColor.trim().toLowerCase()
+        : ''
+    );
+    const hasExplicitTopCaptionBackground = (
+      topCaptionConfig.backgroundColorExplicit === true ||
+      (normalizedBackgroundColor.length > 0 && normalizedBackgroundColor !== '#ffffff')
+    );
+    const currentTopCaptionBackgroundColor = hasExplicitTopCaptionBackground
+      ? (topCaptionConfig.backgroundColor || borderColor || '#ffffff')
+      : (borderColor || '#ffffff');
+
+    const shouldSyncTopCaptionBackground = window.confirm('Sync the top text background color to this border color?');
+    if (shouldSyncTopCaptionBackground) {
+      suppressTopCaptionBorderSyncPromptRef.current = true;
+      updatePanelText(TOP_CAPTION_PANEL_ID, {
+        ...topCaptionConfig,
+        backgroundColor: trimmedNextColor,
+        backgroundColorExplicit: true,
+      });
+      setBorderColorState(trimmedNextColor);
+      return;
+    }
+
+    if (!hasExplicitTopCaptionBackground) {
+      suppressTopCaptionBorderSyncPromptRef.current = true;
+      updatePanelText(TOP_CAPTION_PANEL_ID, {
+        ...topCaptionConfig,
+        backgroundColor: currentTopCaptionBackgroundColor,
+        backgroundColorExplicit: true,
+      });
+    }
+
+    setBorderColorState(trimmedNextColor);
+  }, [borderColor, isHydratingProject, panelTexts, setBorderColorState, updatePanelText]);
 
   const clearAppendNavigationState = useCallback(() => {
     navigate(location.pathname, { replace: true, state: {} });
@@ -1400,7 +1503,7 @@ export default function CollagePage() {
       setPanelCount(nextPanelCount);
       setSelectedTemplate(templateForSnapshot || null);
       if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
-      if (snap.borderColor !== undefined) setBorderColor(snap.borderColor);
+      if (snap.borderColor !== undefined) setBorderColorState(snap.borderColor);
       setCustomLayout(restoredCustom);
       setLiveCustomLayout(restoredCustom || null);
       setLivePanelDimensions(null);
@@ -1425,7 +1528,7 @@ export default function CollagePage() {
     justLoadedRef.current = true; // Flag to sync signature after first render
     setIsDirty(false); // Project just loaded, no unsaved changes
     setSaveStatus({ state: 'saved', time: Date.now(), error: null });
-  }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColor, setBorderThickness, setCustomAspectRatio, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
+  }, [applySnapshotState, getProjectRecord, resolveTemplateSnapshot, setActiveProjectId, setBorderColorState, setBorderThickness, setCustomAspectRatio, setCustomLayout, setHydrationMode, setHydratingProject, setPanelCount, setSelectedAspectRatio, setSelectedTemplate]);
 
   // Ensure we always release the loading flag, even on errors, and only
   // after state has settled so custom layouts are not cleared prematurely.
@@ -2677,7 +2780,7 @@ export default function CollagePage() {
     borderThickness,
     setBorderThickness,
     borderColor,
-    setBorderColor,
+    setBorderColor: handleBorderColorSelection,
     borderThicknessOptions,
     stickers,
     canManageStickers,

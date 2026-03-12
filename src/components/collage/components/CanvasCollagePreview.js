@@ -1452,6 +1452,10 @@ const CanvasCollagePreview = ({
     const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
     const textAlign = normalizeTextAlignValue(topCaptionConfig.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
     const baseTextColor = topCaptionConfig.color || TOP_CAPTION_DEFAULTS.color;
+    const explicitStrokeColor = (
+      typeof topCaptionConfig.strokeColor === 'string' &&
+      topCaptionConfig.strokeColor.trim().length > 0
+    ) ? topCaptionConfig.strokeColor.trim() : null;
     const normalizedTopCaptionBackground = typeof topCaptionConfig.backgroundColor === 'string'
       ? topCaptionConfig.backgroundColor.trim().toLowerCase()
       : '';
@@ -1481,12 +1485,17 @@ const CanvasCollagePreview = ({
     ctx.clip();
 
     let textColor = baseTextColor;
-    let strokeColor = getContrastingMonoStroke(baseTextColor);
+    let strokeColor = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
     if (!hasActualText) {
       const rgba = parseColorToRGBA(baseTextColor) || { r: 17, g: 17, b: 17, a: 1 };
       textColor = rgbaString(rgba.r, rgba.g, rgba.b, 0.45);
-      const mono = parseColorToRGBA(strokeColor) || { r: 0, g: 0, b: 0, a: 1 };
-      strokeColor = rgbaString(mono.r, mono.g, mono.b, 0.28);
+      const strokeRgba = parseColorToRGBA(strokeColor) || { r: 0, g: 0, b: 0, a: 1 };
+      strokeColor = rgbaString(
+        strokeRgba.r,
+        strokeRgba.g,
+        strokeRgba.b,
+        explicitStrokeColor ? 0.4 : 0.28,
+      );
     }
 
     ctx.fillStyle = textColor;
@@ -2830,6 +2839,10 @@ const CanvasCollagePreview = ({
           fontStyle,
           underline: false,
         };
+        const explicitStrokeColor = (
+          typeof panelText.strokeColor === 'string' &&
+          panelText.strokeColor.trim().length > 0
+        ) ? panelText.strokeColor.trim() : null;
         // Respect explicit 0 to disable stroke; fall back only when undefined
         const requestedStrokeWidth =
           (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
@@ -2845,7 +2858,7 @@ const CanvasCollagePreview = ({
         if (hasActualText) {
           textColor = baseTextColor;
           // Choose black or white stroke based on contrast with the text color
-          strokeColor = getContrastingMonoStroke(baseTextColor);
+          strokeColor = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
           // Subtle feathered shadow
           shadowColor = 'rgba(0, 0, 0, 0.25)';
         } else {
@@ -2871,9 +2884,9 @@ const CanvasCollagePreview = ({
             textColor = 'rgba(255, 255, 255, 0.4)'; // Fallback
           }
           // Stroke uses contrasting mono with reduced opacity
-          const mono = getContrastingMonoStroke(baseTextColor);
-          const monoRGBA = parseColorToRGBA(mono) || { r: 0, g: 0, b: 0, a: 1 };
-          strokeColor = rgbaString(monoRGBA.r, monoRGBA.g, monoRGBA.b, 0.4);
+          const strokeSource = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
+          const strokeRGBA = parseColorToRGBA(strokeSource) || { r: 0, g: 0, b: 0, a: 1 };
+          strokeColor = rgbaString(strokeRGBA.r, strokeRGBA.g, strokeRGBA.b, 0.4);
           // Very subtle feathered shadow for placeholder
           shadowColor = 'rgba(0, 0, 0, 0.2)';
         }
@@ -5438,6 +5451,10 @@ const CanvasCollagePreview = ({
               fontStyle,
               underline: false,
             };
+            const explicitStrokeColor = (
+              typeof panelText.strokeColor === 'string' &&
+              panelText.strokeColor.trim().length > 0
+            ) ? panelText.strokeColor.trim() : null;
             // Respect explicit 0 to disable stroke; fall back only when undefined
             const requestedStrokeWidth =
               (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
@@ -5450,7 +5467,7 @@ const CanvasCollagePreview = ({
             exportCtx.fillStyle = baseTextColor;
             exportCtx.textAlign = 'left';
             exportCtx.textBaseline = 'middle';
-            exportCtx.strokeStyle = getContrastingMonoStroke(baseTextColor);
+            exportCtx.strokeStyle = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
             // Use a font-relative stroke by default for readability in exports,
             // but allow explicit 0 to disable strokes entirely.
             const exportComputedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));

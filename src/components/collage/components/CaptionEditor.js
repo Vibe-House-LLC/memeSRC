@@ -28,12 +28,12 @@ import {
   FormatAlignLeft,
   FormatAlignCenter,
   FormatAlignRight,
-  FormatColorFill,
   Palette,
   SwapHoriz, 
   SwapVert, 
   Colorize, 
   ChevronLeft, 
+  ChevronRight,
   RotateLeft,
   Restore,
   DeleteOutline as DeleteIcon,
@@ -60,6 +60,24 @@ const TEXT_COLOR_PRESETS = [
   { color: '#ffff00', name: 'Yellow' },
   { color: '#ff00ff', name: 'Magenta' },
   { color: '#00ffff', name: 'Cyan' },
+];
+const STROKE_COLOR_PRESETS = [
+  { color: '#ffffff', name: 'White' },
+  { color: '#000000', name: 'Black' },
+  { color: '#ff0000', name: 'Red' },
+  { color: '#00ff00', name: 'Green' },
+  { color: '#0000ff', name: 'Blue' },
+  { color: '#ffff00', name: 'Yellow' },
+  { color: '#ff00ff', name: 'Magenta' },
+  { color: '#00ffff', name: 'Cyan' },
+];
+const TOP_CAPTION_BACKGROUND_COLOR_PRESETS = [
+  { color: '#FFFFFF', name: 'White' },
+  { color: '#000000', name: 'Black' },
+  { color: '#FF0000', name: 'Red' },
+  { color: '#0000FF', name: 'Blue' },
+  { color: '#FFFF00', name: 'Yellow' },
+  { color: '#00FF00', name: 'Green' },
 ];
 
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
@@ -180,6 +198,25 @@ const ScrollIndicator = styled(Box, {
   ...(direction === 'left' ? { left: 0 } : { right: 0 })
 }));
 
+const ColorScrollButton = styled(IconButton, {
+  shouldForwardProp: (prop) => prop !== 'direction',
+})(({ direction }) => ({
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: 3,
+  width: 24,
+  height: 24,
+  color: '#ffffff',
+  border: '1px solid rgba(255,255,255,0.28)',
+  backgroundColor: 'rgba(0, 0, 0, 0.72)',
+  ...(direction === 'left' ? { left: 2 } : { right: 2 }),
+  '&:hover': {
+    backgroundColor: 'rgba(0, 0, 0, 0.86)',
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+}));
+
 // Create a color swatch component for text color selection
 const ColorSwatch = styled(Box)(({ theme, selected, size = 'medium' }) => {
   const sizeMap = {
@@ -230,6 +267,10 @@ const isDarkColor = (hexColor) => {
   return brightness < 128;
 };
 
+const getAutoStrokeColorFromTextColor = (textColor) => (
+  isDarkColor(toHexColorInput(textColor, '#ffffff')) ? '#ffffff' : '#000000'
+);
+
 const CaptionEditor = ({
   panelId,
   panelTexts,
@@ -272,6 +313,15 @@ const CaptionEditor = ({
     currentTopCaptionBackgroundColor,
     '#ffffff',
   );
+  const normalizedCurrentTextColor = toHexColorInput(currentTextColor, '#ffffff');
+  const rawCurrentStrokeColor = panelTexts[panelId]?.strokeColor;
+  const hasExplicitStrokeColor = (
+    typeof rawCurrentStrokeColor === 'string' &&
+    rawCurrentStrokeColor.trim().length > 0
+  );
+  const autoStrokeColor = getAutoStrokeColorFromTextColor(currentTextColor);
+  const currentStrokeColor = hasExplicitStrokeColor ? rawCurrentStrokeColor.trim() : autoStrokeColor;
+  const normalizedCurrentStrokeColor = toHexColorInput(currentStrokeColor, '#000000');
   // Single unified editor view (tabs removed)
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetDialogData, setResetDialogData] = useState({ type: null, panelId: null, propertyName: null });
@@ -299,14 +349,29 @@ const CaptionEditor = ({
   // State for text color scroll indicators
   const [textColorLeftScroll, setTextColorLeftScroll] = useState(false);
   const [textColorRightScroll, setTextColorRightScroll] = useState(false);
+  const [strokeColorLeftScroll, setStrokeColorLeftScroll] = useState(false);
+  const [strokeColorRightScroll, setStrokeColorRightScroll] = useState(false);
+  const [topCaptionBackgroundLeftScroll, setTopCaptionBackgroundLeftScroll] = useState(false);
+  const [topCaptionBackgroundRightScroll, setTopCaptionBackgroundRightScroll] = useState(false);
   
   // Refs for text color picker
   const textColorScrollerRef = useRef(null);
   const textColorPickerRef = useRef(null);
+  const strokeColorScrollerRef = useRef(null);
+  const strokeColorPickerRef = useRef(null);
+  const topCaptionBackgroundScrollerRef = useRef(null);
   
   // Saved custom text color state
   const [savedCustomTextColor, setSavedCustomTextColor] = useState(() => {
     const storedColor = localStorage.getItem('memeTextCustomColor');
+    return storedColor || '#ffffff';
+  });
+  const [savedCustomStrokeColor, setSavedCustomStrokeColor] = useState(() => {
+    const storedColor = localStorage.getItem('memeTextStrokeCustomColor');
+    return storedColor || '#000000';
+  });
+  const [savedTopCaptionBackgroundColor, setSavedTopCaptionBackgroundColor] = useState(() => {
+    const storedColor = localStorage.getItem('memeTopCaptionBackgroundCustomColor');
     return storedColor || '#ffffff';
   });
 
@@ -356,6 +421,16 @@ const CaptionEditor = ({
 
   // Check if there's a saved custom color that's different from preset colors
   const hasSavedCustomTextColor = savedCustomTextColor && !TEXT_COLOR_PRESETS.some(c => c.color === savedCustomTextColor);
+  const hasSavedCustomStrokeColor = (
+    savedCustomStrokeColor &&
+    !STROKE_COLOR_PRESETS.some(c => c.color.toLowerCase() === savedCustomStrokeColor.toLowerCase())
+  );
+  const hasSavedCustomTopCaptionBackgroundColor = (
+    savedTopCaptionBackgroundColor &&
+    !TOP_CAPTION_BACKGROUND_COLOR_PRESETS.some(
+      (c) => c.color.toLowerCase() === savedTopCaptionBackgroundColor.toLowerCase()
+    )
+  );
   const requestedFontFamily = panelTexts[panelId]?.fontFamily || lastUsedTextSettings.fontFamily || 'Arial';
   const fontOptions = React.useMemo(
     () => resolveFontOptions(fonts, requestedFontFamily),
@@ -398,14 +473,76 @@ const CaptionEditor = ({
     checkTextColorScrollPosition();
   }, [checkTextColorScrollPosition]);
 
+  const checkStrokeColorScrollPosition = useCallback(() => {
+    if (!strokeColorScrollerRef.current) return;
+
+    const container = strokeColorScrollerRef.current;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const threshold = 5;
+
+    setStrokeColorLeftScroll(scrollLeft > threshold);
+    setStrokeColorRightScroll(scrollLeft < scrollWidth - clientWidth - threshold);
+  }, []);
+
+  const handleStrokeColorScroll = useCallback(() => {
+    checkStrokeColorScrollPosition();
+  }, [checkStrokeColorScrollPosition]);
+
+  const checkTopCaptionBackgroundScrollPosition = useCallback(() => {
+    if (!topCaptionBackgroundScrollerRef.current) return;
+
+    const container = topCaptionBackgroundScrollerRef.current;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const threshold = 5;
+
+    setTopCaptionBackgroundLeftScroll(scrollLeft > threshold);
+    setTopCaptionBackgroundRightScroll(scrollLeft < scrollWidth - clientWidth - threshold);
+  }, []);
+
+  const handleTopCaptionBackgroundScroll = useCallback(() => {
+    checkTopCaptionBackgroundScrollPosition();
+  }, [checkTopCaptionBackgroundScrollPosition]);
+
+  const scrollColorScrollerLeft = useCallback((ref, afterScroll) => {
+    if (!ref?.current) return;
+    const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 220);
+    ref.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
+    setTimeout(() => {
+      if (typeof afterScroll === 'function') {
+        afterScroll();
+      }
+    }, 250);
+  }, []);
+
+  const scrollColorScrollerRight = useCallback((ref, afterScroll) => {
+    if (!ref?.current) return;
+    const scrollDistance = Math.min(ref.current.clientWidth * 0.5, 220);
+    ref.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+    setTimeout(() => {
+      if (typeof afterScroll === 'function') {
+        afterScroll();
+      }
+    }, 250);
+  }, []);
+
   // Handle custom text color selection
   const handleCustomTextColorChange = (e) => {
     const newColor = e.target.value;
     setSavedCustomTextColor(newColor);
     localStorage.setItem('memeTextCustomColor', newColor);
     handleTextChange('color', newColor);
-    // Auto-close color picker after choosing a custom color
-    setShowInlineColor(false);
+    if (!showTopCaptionOptions) {
+      // Auto-close color picker after choosing a custom color for inline picker mode.
+      setShowInlineColor(false);
+    }
+  };
+
+  const handleCustomStrokeColorChange = (event) => {
+    const nextColor = event.target.value;
+    if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    setSavedCustomStrokeColor(nextColor);
+    localStorage.setItem('memeTextStrokeCustomColor', nextColor);
+    handleTextChange('strokeColor', nextColor);
   };
 
   const handleAlignmentMenuOpen = (event) => {
@@ -421,11 +558,12 @@ const CaptionEditor = ({
     setAlignmentAnchorEl(null);
   };
 
-  const handleTopCaptionBackgroundChange = (event) => {
+  const handleCustomTopCaptionBackgroundChange = (event) => {
     const nextColor = event.target.value;
-    if (typeof nextColor === 'string' && nextColor.trim().length > 0) {
-      handleTextChange('backgroundColor', nextColor);
-    }
+    if (typeof nextColor !== 'string' || nextColor.trim().length === 0) return;
+    setSavedTopCaptionBackgroundColor(nextColor);
+    localStorage.setItem('memeTopCaptionBackgroundCustomColor', nextColor);
+    handleTextChange('backgroundColor', nextColor);
   };
 
   const handleTextChange = useCallback((property, value, rawValueOverride, parsedOverride) => {
@@ -545,6 +683,10 @@ const CaptionEditor = ({
     if (propertyName === 'backgroundColor') {
       return !hasExplicitTopCaptionBackground;
     }
+
+    if (propertyName === 'strokeColor') {
+      return !hasExplicitStrokeColor;
+    }
     
     if (propertyName === 'textPositionX') {
       const defaultPositionX = lastUsedTextSettings.textPositionX || 0;
@@ -562,7 +704,7 @@ const CaptionEditor = ({
     }
     
     return false;
-  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground]);
+  }, [panelTexts, panelId, lastUsedTextSettings, hasExplicitTopCaptionBackground, hasExplicitStrokeColor]);
 
   // Helper function to get current value for display
   const getCurrentValue = useCallback((propertyName) => {
@@ -600,6 +742,10 @@ const CaptionEditor = ({
     if (propertyName === 'backgroundColor') {
       return currentTopCaptionBackgroundColor;
     }
+
+    if (propertyName === 'strokeColor') {
+      return hasExplicitStrokeColor ? currentStrokeColor : 'Auto';
+    }
     
     if (propertyName === 'textPositionX') {
       return currentValue !== undefined ? currentValue : (lastUsedTextSettings.textPositionX || 0);
@@ -628,6 +774,8 @@ const CaptionEditor = ({
     getParsedText,
     topCaptionDefaultBackgroundColor,
     currentTopCaptionBackgroundColor,
+    currentStrokeColor,
+    hasExplicitStrokeColor,
   ]);
 
   const syncActiveFormatsFromSelection = useCallback((overrideSelection, rawValueOverride, parsedOverride) => {
@@ -880,6 +1028,70 @@ const CaptionEditor = ({
     setTimeout(() => handleTextColorScroll(), 200);
   }, [showInlineColor, handleTextColorScroll]);
 
+  useEffect(() => {
+    const strokeScrollerElement = strokeColorScrollerRef.current;
+
+    if (strokeScrollerElement) {
+      strokeScrollerElement.addEventListener('scroll', handleStrokeColorScroll);
+      setTimeout(() => {
+        handleStrokeColorScroll();
+      }, 100);
+    }
+
+    const handleResize = () => {
+      handleStrokeColorScroll();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (strokeScrollerElement) {
+        strokeScrollerElement.removeEventListener('scroll', handleStrokeColorScroll);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [handleStrokeColorScroll]);
+
+  useEffect(() => {
+    if (strokeColorScrollerRef.current) {
+      setTimeout(() => handleStrokeColorScroll(), 50);
+      setTimeout(() => handleStrokeColorScroll(), 200);
+      setTimeout(() => handleStrokeColorScroll(), 500);
+    }
+  }, [handleStrokeColorScroll, showTopCaptionOptions, showInlineColor]);
+
+  useEffect(() => {
+    const backgroundScrollerElement = topCaptionBackgroundScrollerRef.current;
+
+    if (backgroundScrollerElement) {
+      backgroundScrollerElement.addEventListener('scroll', handleTopCaptionBackgroundScroll);
+      setTimeout(() => {
+        handleTopCaptionBackgroundScroll();
+      }, 100);
+    }
+
+    const handleResize = () => {
+      handleTopCaptionBackgroundScroll();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (backgroundScrollerElement) {
+        backgroundScrollerElement.removeEventListener('scroll', handleTopCaptionBackgroundScroll);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [handleTopCaptionBackgroundScroll]);
+
+  useEffect(() => {
+    if (topCaptionBackgroundScrollerRef.current) {
+      setTimeout(() => handleTopCaptionBackgroundScroll(), 50);
+      setTimeout(() => handleTopCaptionBackgroundScroll(), 200);
+      setTimeout(() => handleTopCaptionBackgroundScroll(), 500);
+    }
+  }, [handleTopCaptionBackgroundScroll, showTopCaptionOptions]);
+
   // Effect to update localStorage when custom text color changes
   useEffect(() => {
     const currentTextColor = panelTexts[panelId]?.color || lastUsedTextSettings.color || '#ffffff';
@@ -890,6 +1102,27 @@ const CaptionEditor = ({
       localStorage.setItem('memeTextCustomColor', currentTextColor);
     }
   }, [panelTexts, lastUsedTextSettings, panelId]);
+
+  useEffect(() => {
+    if (!hasExplicitStrokeColor) return;
+    const normalizedStrokeColor = toHexColorInput(rawCurrentStrokeColor, '#000000');
+    const isCustomStrokeColor = !STROKE_COLOR_PRESETS.some(
+      (colorOption) => colorOption.color.toLowerCase() === normalizedStrokeColor.toLowerCase()
+    );
+    if (!isCustomStrokeColor) return;
+    setSavedCustomStrokeColor(normalizedStrokeColor);
+    localStorage.setItem('memeTextStrokeCustomColor', normalizedStrokeColor);
+  }, [hasExplicitStrokeColor, rawCurrentStrokeColor]);
+
+  useEffect(() => {
+    if (!showTopCaptionOptions) return;
+    const isCustomTopCaptionBackground = !TOP_CAPTION_BACKGROUND_COLOR_PRESETS.some(
+      (colorOption) => colorOption.color.toLowerCase() === normalizedTopCaptionBackgroundColor.toLowerCase()
+    );
+    if (!isCustomTopCaptionBackground) return;
+    setSavedTopCaptionBackgroundColor(normalizedTopCaptionBackgroundColor);
+    localStorage.setItem('memeTopCaptionBackgroundCustomColor', normalizedTopCaptionBackgroundColor);
+  }, [normalizedTopCaptionBackgroundColor, showTopCaptionOptions]);
 
   // Focus text field when caption editor opens
   useEffect(() => {
@@ -951,6 +1184,7 @@ const CaptionEditor = ({
         // Prevent double scroll and avoid covering bottom fixed bar
         maxHeight: 'calc(100vh - 140px)',
         overflowY: 'auto',
+        overflowX: 'hidden',
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
       }}
@@ -1013,7 +1247,7 @@ const CaptionEditor = ({
                   const result = [...activeInlineFormats];
                   // Mark color toggle as selected when non-default color is active
                   const defaultColor = (lastUsedTextSettings.color || '#ffffff').toLowerCase();
-                  if (currentTextColor && currentTextColor.toLowerCase() !== defaultColor) {
+                  if (!showTopCaptionOptions && currentTextColor && currentTextColor.toLowerCase() !== defaultColor) {
                     result.push('color');
                   }
                   return result;
@@ -1067,16 +1301,17 @@ const CaptionEditor = ({
                 >
                   {alignmentIcon}
                 </ToggleButton>
-                {/* Inline color toggle within the group */}
-                <ToggleButton
-                  size='small'
-                  value="color"
-                  aria-label="color"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInlineColor(true); }}
-                >
-                  <Palette sx={{ color: currentTextColor }} />
-                </ToggleButton>
+                {!showTopCaptionOptions && (
+                  <ToggleButton
+                    size='small'
+                    value="color"
+                    aria-label="color"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowInlineColor(true); }}
+                  >
+                    <Palette sx={{ color: currentTextColor }} />
+                  </ToggleButton>
+                )}
               </ToggleButtonGroup>
               <FormControl sx={{ flex: 1 }}>
                 <Select
@@ -1407,45 +1642,393 @@ const CaptionEditor = ({
 
             {showTopCaptionOptions && !positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
-              <Tooltip title="Top Caption Background" placement="left">
+              <Tooltip title="Top Caption Text Color" placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <FormatColorFill sx={{ color: '#ffffff' }} />
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 1,
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        color: normalizedCurrentTextColor,
+                      }}
+                    >
+                      T
+                    </Typography>
+                  </Box>
                 </Box>
               </Tooltip>
-              <Box sx={{ flex: 1, mx: 1, display: 'flex', alignItems: 'center', minHeight: 40 }}>
-                <Button
-                  fullWidth
-                  onClick={() => topCaptionBackgroundPickerRef.current?.click()}
+              <Box sx={{ flex: 1, mx: 1, position: 'relative' }}>
+                <ColorScrollButton
+                  direction="left"
+                  size="small"
+                  onClick={() => scrollColorScrollerLeft(textColorScrollerRef, handleTextColorScroll)}
                   sx={{
-                    height: 34,
-                    color: isDarkColor(normalizedTopCaptionBackgroundColor) ? '#ffffff' : '#111111',
-                    backgroundColor: currentTopCaptionBackgroundColor,
-                    border: '1px solid rgba(255,255,255,0.35)',
-                    textTransform: 'none',
-                    justifyContent: 'flex-start',
-                    px: 1.25,
-                    fontWeight: 700,
-                    '&:hover': {
-                      backgroundColor: currentTopCaptionBackgroundColor,
-                      filter: 'brightness(0.95)',
-                    },
+                    visibility: textColorLeftScroll ? 'visible' : 'hidden',
+                    opacity: textColorLeftScroll ? 1 : 0,
                   }}
                 >
-                  {currentTopCaptionBackgroundColor}
-                </Button>
-                <input
-                  type="color"
-                  ref={topCaptionBackgroundPickerRef}
-                  value={normalizedTopCaptionBackgroundColor}
-                  onChange={handleTopCaptionBackgroundChange}
-                  style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
-                />
+                  <ChevronLeft sx={{ fontSize: 16 }} />
+                </ColorScrollButton>
+                <ColorScrollButton
+                  direction="right"
+                  size="small"
+                  onClick={() => scrollColorScrollerRight(textColorScrollerRef, handleTextColorScroll)}
+                  sx={{
+                    visibility: textColorRightScroll ? 'visible' : 'hidden',
+                    opacity: textColorRightScroll ? 1 : 0,
+                  }}
+                >
+                  <ChevronRight sx={{ fontSize: 16 }} />
+                </ColorScrollButton>
+                <HorizontalScroller
+                  ref={textColorScrollerRef}
+                  onScroll={handleTextColorScroll}
+                  sx={{
+                    pt: 0,
+                    pb: 0,
+                    mt: 0,
+                    minHeight: 42,
+                    alignItems: 'center',
+                    gap: theme.spacing(1),
+                    px: 3.2,
+                  }}
+                >
+                  <Tooltip title="Pick Custom Color" arrow>
+                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <ColorSwatch
+                        onClick={() => textColorPickerRef.current && textColorPickerRef.current.click()}
+                        selected={false}
+                        sx={{
+                          position: 'relative',
+                          flexShrink: 0,
+                          backgroundColor: savedCustomTextColor,
+                          backgroundImage:
+                            'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                          backgroundSize: '8px 8px',
+                          backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                        }}
+                      >
+                        <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedCustomTextColor) ? '#fff' : '#000' }} />
+                      </ColorSwatch>
+                      <input
+                        type="color"
+                        value={savedCustomTextColor}
+                        onChange={handleCustomTextColorChange}
+                        ref={textColorPickerRef}
+                        style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                      />
+                    </Box>
+                  </Tooltip>
+                  {hasSavedCustomTextColor && (
+                    <Tooltip title="Custom Color" arrow>
+                      <ColorSwatch
+                        onClick={() => handleTextChange('color', savedCustomTextColor)}
+                        selected={normalizedCurrentTextColor.toLowerCase() === toHexColorInput(savedCustomTextColor, '#ffffff').toLowerCase()}
+                        sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                  )}
+                  {TEXT_COLOR_PRESETS.map((colorOption) => (
+                    <Tooltip key={`top-caption-text-${colorOption.color}`} title={colorOption.name} arrow>
+                      <ColorSwatch
+                        onClick={() => handleTextChange('color', colorOption.color)}
+                        selected={normalizedCurrentTextColor.toLowerCase() === toHexColorInput(colorOption.color, '#ffffff').toLowerCase()}
+                        sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                  ))}
+                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+                </HorizontalScroller>
+                <ScrollIndicator direction="left" isVisible={textColorLeftScroll} />
+                <ScrollIndicator direction="right" isVisible={textColorRightScroll} />
+              </Box>
+              <Box sx={{ minWidth: 40 }} />
+            </Box>
+            )}
+
+            {showTopCaptionOptions && !positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+              <Tooltip title="Top Caption Background" placement="left">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 1,
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: normalizedTopCaptionBackgroundColor,
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: 800,
+                        lineHeight: 1,
+                        letterSpacing: -0.2,
+                        color: isDarkColor(normalizedTopCaptionBackgroundColor) ? '#fff' : '#111',
+                        fontSize: '0.58rem',
+                      }}
+                    >
+                      BG
+                    </Typography>
+                  </Box>
+                </Box>
+              </Tooltip>
+              <Box sx={{ flex: 1, mx: 1, position: 'relative' }}>
+                <ColorScrollButton
+                  direction="left"
+                  size="small"
+                  onClick={() => scrollColorScrollerLeft(topCaptionBackgroundScrollerRef, handleTopCaptionBackgroundScroll)}
+                  sx={{
+                    visibility: topCaptionBackgroundLeftScroll ? 'visible' : 'hidden',
+                    opacity: topCaptionBackgroundLeftScroll ? 1 : 0,
+                  }}
+                >
+                  <ChevronLeft sx={{ fontSize: 16 }} />
+                </ColorScrollButton>
+                <ColorScrollButton
+                  direction="right"
+                  size="small"
+                  onClick={() => scrollColorScrollerRight(topCaptionBackgroundScrollerRef, handleTopCaptionBackgroundScroll)}
+                  sx={{
+                    visibility: topCaptionBackgroundRightScroll ? 'visible' : 'hidden',
+                    opacity: topCaptionBackgroundRightScroll ? 1 : 0,
+                  }}
+                >
+                  <ChevronRight sx={{ fontSize: 16 }} />
+                </ColorScrollButton>
+                <HorizontalScroller
+                  ref={topCaptionBackgroundScrollerRef}
+                  onScroll={handleTopCaptionBackgroundScroll}
+                  sx={{
+                    pt: 0,
+                    pb: 0,
+                    mt: 0,
+                    minHeight: 42,
+                    alignItems: 'center',
+                    gap: theme.spacing(1),
+                    px: 3.2,
+                  }}
+                >
+                  <Tooltip title="Pick Custom Color" arrow>
+                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <ColorSwatch
+                        onClick={() => topCaptionBackgroundPickerRef.current && topCaptionBackgroundPickerRef.current.click()}
+                        selected={false}
+                        sx={{
+                          position: 'relative',
+                          flexShrink: 0,
+                          backgroundColor: savedTopCaptionBackgroundColor,
+                          backgroundImage:
+                            'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                          backgroundSize: '8px 8px',
+                          backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                        }}
+                      >
+                        <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedTopCaptionBackgroundColor) ? '#fff' : '#000' }} />
+                      </ColorSwatch>
+                      <input
+                        type="color"
+                        value={savedTopCaptionBackgroundColor}
+                        onChange={handleCustomTopCaptionBackgroundChange}
+                        ref={topCaptionBackgroundPickerRef}
+                        style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                      />
+                    </Box>
+                  </Tooltip>
+                  {hasSavedCustomTopCaptionBackgroundColor && (
+                    <Tooltip title="Custom Color" arrow>
+                      <ColorSwatch
+                        onClick={() => handleTextChange('backgroundColor', savedTopCaptionBackgroundColor)}
+                        selected={normalizedTopCaptionBackgroundColor.toLowerCase() === toHexColorInput(savedTopCaptionBackgroundColor, '#ffffff').toLowerCase()}
+                        sx={{ backgroundColor: savedTopCaptionBackgroundColor, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                  )}
+                  {TOP_CAPTION_BACKGROUND_COLOR_PRESETS.map((colorOption) => (
+                    <Tooltip key={`top-caption-bg-${colorOption.color}`} title={colorOption.name} arrow>
+                      <ColorSwatch
+                        onClick={() => handleTextChange('backgroundColor', colorOption.color)}
+                        selected={normalizedTopCaptionBackgroundColor.toLowerCase() === toHexColorInput(colorOption.color, '#ffffff').toLowerCase()}
+                        sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                  ))}
+                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+                </HorizontalScroller>
+                <ScrollIndicator direction="left" isVisible={topCaptionBackgroundLeftScroll} />
+                <ScrollIndicator direction="right" isVisible={topCaptionBackgroundRightScroll} />
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
                 <IconButton
                   size="small"
                   onClick={() => handleResetClick('format', 'backgroundColor')}
                   disabled={isValueAtDefault('backgroundColor')}
+                  sx={{
+                    color: '#ffffff',
+                    p: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                    '&.Mui-disabled': {
+                      color: 'rgba(255, 255, 255, 0.3)',
+                    }
+                  }}
+                >
+                  <Restore fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+            )}
+
+            {!positioningOnly && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+              <Tooltip title="Text Stroke Color" placement="left">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 1,
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        border: `2px solid ${normalizedCurrentStrokeColor}`,
+                      }}
+                    />
+                  </Box>
+                </Box>
+              </Tooltip>
+              <Box sx={{ flex: 1, mx: 1, position: 'relative' }}>
+                <ColorScrollButton
+                  direction="left"
+                  size="small"
+                  onClick={() => scrollColorScrollerLeft(strokeColorScrollerRef, handleStrokeColorScroll)}
+                  sx={{
+                    visibility: strokeColorLeftScroll ? 'visible' : 'hidden',
+                    opacity: strokeColorLeftScroll ? 1 : 0,
+                  }}
+                >
+                  <ChevronLeft sx={{ fontSize: 16 }} />
+                </ColorScrollButton>
+                <ColorScrollButton
+                  direction="right"
+                  size="small"
+                  onClick={() => scrollColorScrollerRight(strokeColorScrollerRef, handleStrokeColorScroll)}
+                  sx={{
+                    visibility: strokeColorRightScroll ? 'visible' : 'hidden',
+                    opacity: strokeColorRightScroll ? 1 : 0,
+                  }}
+                >
+                  <ChevronRight sx={{ fontSize: 16 }} />
+                </ColorScrollButton>
+                <HorizontalScroller
+                  ref={strokeColorScrollerRef}
+                  onScroll={handleStrokeColorScroll}
+                  sx={{
+                    pt: 0,
+                    pb: 0,
+                    mt: 0,
+                    minHeight: 42,
+                    alignItems: 'center',
+                    gap: theme.spacing(1),
+                    px: 3.2,
+                  }}
+                >
+                  <Tooltip title="Auto Stroke" arrow>
+                    <ColorSwatch
+                      onClick={() => handleTextChange('strokeColor', undefined)}
+                      selected={!hasExplicitStrokeColor}
+                      sx={{
+                        background:
+                          'linear-gradient(45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.25) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.25) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.25) 75%)',
+                        backgroundSize: '8px 8px',
+                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                        A
+                      </Typography>
+                    </ColorSwatch>
+                  </Tooltip>
+                  <Tooltip title="Pick Custom Stroke Color" arrow>
+                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <ColorSwatch
+                        onClick={() => strokeColorPickerRef.current && strokeColorPickerRef.current.click()}
+                        selected={false}
+                        sx={{
+                          position: 'relative',
+                          flexShrink: 0,
+                          backgroundColor: savedCustomStrokeColor,
+                          backgroundImage:
+                            'linear-gradient(45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(200,200,200,0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(200,200,200,0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(200,200,200,0.2) 75%)',
+                          backgroundSize: '8px 8px',
+                          backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px',
+                        }}
+                      >
+                        <Colorize fontSize="inherit" sx={{ fontSize: 18, color: isDarkColor(savedCustomStrokeColor) ? '#fff' : '#000' }} />
+                      </ColorSwatch>
+                      <input
+                        type="color"
+                        value={savedCustomStrokeColor}
+                        onChange={handleCustomStrokeColorChange}
+                        ref={strokeColorPickerRef}
+                        style={{ position: 'absolute', opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                      />
+                    </Box>
+                  </Tooltip>
+                  {hasSavedCustomStrokeColor && (
+                    <Tooltip title="Custom Stroke Color" arrow>
+                      <ColorSwatch
+                        onClick={() => handleTextChange('strokeColor', savedCustomStrokeColor)}
+                        selected={hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(savedCustomStrokeColor, '#000000').toLowerCase()}
+                        sx={{ backgroundColor: savedCustomStrokeColor, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                  )}
+                  {STROKE_COLOR_PRESETS.map((colorOption) => (
+                    <Tooltip key={`stroke-${colorOption.color}`} title={colorOption.name} arrow>
+                      <ColorSwatch
+                        onClick={() => handleTextChange('strokeColor', colorOption.color)}
+                        selected={hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(colorOption.color, '#000000').toLowerCase()}
+                        sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                  ))}
+                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+                </HorizontalScroller>
+                <ScrollIndicator direction="left" isVisible={strokeColorLeftScroll} />
+                <ScrollIndicator direction="right" isVisible={strokeColorRightScroll} />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                <IconButton
+                  size="small"
+                  onClick={() => handleResetClick('format', 'strokeColor')}
+                  disabled={isValueAtDefault('strokeColor')}
                   sx={{
                     color: '#ffffff',
                     p: 0.5,

@@ -45,6 +45,46 @@ const getTextBlockLeft = (textAlign, anchorX, blockWidth) => {
   return anchorX - (blockWidth / 2);
 };
 
+const parseColorToRGB = (color) => {
+  if (!color || typeof color !== 'string') return null;
+  const c = color.trim();
+  if (c[0] === '#') {
+    const hex = c.slice(1);
+    if (hex.length === 3) {
+      const r = parseInt(hex[0] + hex[0], 16);
+      const g = parseInt(hex[1] + hex[1], 16);
+      const b = parseInt(hex[2] + hex[2], 16);
+      if ([r, g, b].every(Number.isFinite)) return { r, g, b };
+      return null;
+    }
+    if (hex.length >= 6) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      if ([r, g, b].every(Number.isFinite)) return { r, g, b };
+      return null;
+    }
+    return null;
+  }
+
+  const rgbMatch = c.match(/rgba?\(([^)]+)\)/i);
+  if (rgbMatch) {
+    const parts = rgbMatch[1].split(',').map((part) => Number(part.trim()));
+    const [r, g, b] = parts;
+    if ([r, g, b].every(Number.isFinite)) {
+      return { r: clamp(r, 0, 255), g: clamp(g, 0, 255), b: clamp(b, 0, 255) };
+    }
+  }
+  return null;
+};
+
+const getContrastingMonoStroke = (textColor) => {
+  const rgb = parseColorToRGB(textColor);
+  if (!rgb) return '#000000';
+  const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return brightness < 128 ? '#FFFFFF' : '#000000';
+};
+
 // Determine if a persisted custom layout is compatible with the requested panel count
 function isCustomLayoutCompatible(customLayout, panelCount) {
   try {
@@ -588,6 +628,10 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     const textAlign = normalizeTextAlign(topCaptionConfig?.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
     const textColor = topCaptionConfig?.color || TOP_CAPTION_DEFAULTS.color;
     const strokeWidth = topCaptionConfig?.strokeWidth ?? TOP_CAPTION_DEFAULTS.strokeWidth;
+    const explicitStrokeColor = (
+      typeof topCaptionConfig?.strokeColor === 'string' &&
+      topCaptionConfig.strokeColor.trim().length > 0
+    ) ? topCaptionConfig.strokeColor.trim() : null;
     const normalizedTopCaptionBackground = typeof topCaptionConfig?.backgroundColor === 'string'
       ? topCaptionConfig.backgroundColor.trim().toLowerCase()
       : '';
@@ -625,7 +669,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     if (strokeWidth > 0) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.72)';
+      ctx.strokeStyle = explicitStrokeColor || getContrastingMonoStroke(textColor);
       ctx.lineWidth = strokeWidth;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
@@ -699,6 +743,10 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     const fontFamily = panelText.fontFamily || 'Arial';
     const textColor = panelText.color || '#ffffff';
     const strokeWidth = panelText.strokeWidth ?? 2;
+    const explicitStrokeColor = (
+      typeof panelText.strokeColor === 'string' &&
+      panelText.strokeColor.trim().length > 0
+    ) ? panelText.strokeColor.trim() : null;
     const textPositionX = panelText.textPositionX !== undefined ? panelText.textPositionX : 0;
     const textPositionY = panelText.textPositionY !== undefined ? panelText.textPositionY : 0;
     const textRotation = panelText.textRotation !== undefined ? panelText.textRotation : 0;
@@ -708,7 +756,7 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     ctx.fillStyle = textColor;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = explicitStrokeColor || getContrastingMonoStroke(textColor);
     ctx.lineWidth = strokeWidth;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
