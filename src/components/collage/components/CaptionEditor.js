@@ -525,6 +525,79 @@ const CaptionEditor = ({
     }, 250);
   }, []);
 
+  const renderFloatingColorScroller = ({
+    scrollerRef,
+    onScroll,
+    leftVisible,
+    rightVisible,
+    onScrollLeft,
+    onScrollRight,
+    children,
+  }) => (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        position: 'relative',
+        flex: 1,
+        minWidth: 0,
+        touchAction: 'pan-x',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        '&::-webkit-scrollbar': {
+          display: 'none',
+        },
+      }}
+    >
+      <Box sx={{ flex: 1, position: 'relative', minWidth: 0 }}>
+        <ColorScrollButton
+          direction="left"
+          size="small"
+          onClick={onScrollLeft}
+          sx={{
+            visibility: leftVisible ? 'visible' : 'hidden',
+            opacity: leftVisible ? 1 : 0,
+          }}
+        >
+          <ChevronLeft sx={{ fontSize: 16 }} />
+        </ColorScrollButton>
+        <ColorScrollButton
+          direction="right"
+          size="small"
+          onClick={onScrollRight}
+          sx={{
+            visibility: rightVisible ? 'visible' : 'hidden',
+            opacity: rightVisible ? 1 : 0,
+          }}
+        >
+          <ChevronRight sx={{ fontSize: 16 }} />
+        </ColorScrollButton>
+        <HorizontalScroller
+          ref={scrollerRef}
+          onScroll={onScroll}
+          sx={{
+            pt: 0,
+            pb: 0,
+            mt: 0,
+            minHeight: 42,
+            alignItems: 'center',
+            gap: theme.spacing(1),
+            px: 0,
+            touchAction: 'pan-x',
+          }}
+        >
+          {children}
+          <Box sx={{ minWidth: 4, flexShrink: 0 }} />
+        </HorizontalScroller>
+        <ScrollIndicator direction="left" isVisible={leftVisible} />
+        <ScrollIndicator direction="right" isVisible={rightVisible} />
+      </Box>
+    </Box>
+  );
+
   // Handle custom text color selection
   const handleCustomTextColorChange = (e) => {
     const newColor = e.target.value;
@@ -1187,6 +1260,7 @@ const CaptionEditor = ({
         overflowX: 'hidden',
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
       }}
     >
       <Box sx={{ p: 1 }}>
@@ -1641,9 +1715,9 @@ const CaptionEditor = ({
             )}
 
             {showTopCaptionOptions && !positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25, minWidth: 0 }}>
               <Tooltip title="Top Caption Text Color" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, flexShrink: 0 }}>
                   <Box
                     sx={{
                       width: 24,
@@ -1669,42 +1743,16 @@ const CaptionEditor = ({
                   </Box>
                 </Box>
               </Tooltip>
-              <Box sx={{ flex: 1, mx: 1, position: 'relative' }}>
-                <ColorScrollButton
-                  direction="left"
-                  size="small"
-                  onClick={() => scrollColorScrollerLeft(textColorScrollerRef, handleTextColorScroll)}
-                  sx={{
-                    visibility: textColorLeftScroll ? 'visible' : 'hidden',
-                    opacity: textColorLeftScroll ? 1 : 0,
-                  }}
-                >
-                  <ChevronLeft sx={{ fontSize: 16 }} />
-                </ColorScrollButton>
-                <ColorScrollButton
-                  direction="right"
-                  size="small"
-                  onClick={() => scrollColorScrollerRight(textColorScrollerRef, handleTextColorScroll)}
-                  sx={{
-                    visibility: textColorRightScroll ? 'visible' : 'hidden',
-                    opacity: textColorRightScroll ? 1 : 0,
-                  }}
-                >
-                  <ChevronRight sx={{ fontSize: 16 }} />
-                </ColorScrollButton>
-                <HorizontalScroller
-                  ref={textColorScrollerRef}
-                  onScroll={handleTextColorScroll}
-                  sx={{
-                    pt: 0,
-                    pb: 0,
-                    mt: 0,
-                    minHeight: 42,
-                    alignItems: 'center',
-                    gap: theme.spacing(1),
-                    px: 3.2,
-                  }}
-                >
+              <Box sx={{ flex: 1, mx: 1, minWidth: 0 }}>
+                {renderFloatingColorScroller({
+                  scrollerRef: textColorScrollerRef,
+                  onScroll: handleTextColorScroll,
+                  leftVisible: textColorLeftScroll,
+                  rightVisible: textColorRightScroll,
+                  onScrollLeft: () => scrollColorScrollerLeft(textColorScrollerRef, handleTextColorScroll),
+                  onScrollRight: () => scrollColorScrollerRight(textColorScrollerRef, handleTextColorScroll),
+                  children: (
+                    <>
                   <Tooltip title="Pick Custom Color" arrow>
                     <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <ColorSwatch
@@ -1749,19 +1797,18 @@ const CaptionEditor = ({
                       />
                     </Tooltip>
                   ))}
-                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-                </HorizontalScroller>
-                <ScrollIndicator direction="left" isVisible={textColorLeftScroll} />
-                <ScrollIndicator direction="right" isVisible={textColorRightScroll} />
+                    </>
+                  ),
+                })}
               </Box>
-              <Box sx={{ minWidth: 40 }} />
+              <Box sx={{ minWidth: 40, flexShrink: 0 }} />
             </Box>
             )}
 
             {showTopCaptionOptions && !positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25, minWidth: 0 }}>
               <Tooltip title="Top Caption Background" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, flexShrink: 0 }}>
                   <Box
                     sx={{
                       width: 24,
@@ -1789,42 +1836,16 @@ const CaptionEditor = ({
                   </Box>
                 </Box>
               </Tooltip>
-              <Box sx={{ flex: 1, mx: 1, position: 'relative' }}>
-                <ColorScrollButton
-                  direction="left"
-                  size="small"
-                  onClick={() => scrollColorScrollerLeft(topCaptionBackgroundScrollerRef, handleTopCaptionBackgroundScroll)}
-                  sx={{
-                    visibility: topCaptionBackgroundLeftScroll ? 'visible' : 'hidden',
-                    opacity: topCaptionBackgroundLeftScroll ? 1 : 0,
-                  }}
-                >
-                  <ChevronLeft sx={{ fontSize: 16 }} />
-                </ColorScrollButton>
-                <ColorScrollButton
-                  direction="right"
-                  size="small"
-                  onClick={() => scrollColorScrollerRight(topCaptionBackgroundScrollerRef, handleTopCaptionBackgroundScroll)}
-                  sx={{
-                    visibility: topCaptionBackgroundRightScroll ? 'visible' : 'hidden',
-                    opacity: topCaptionBackgroundRightScroll ? 1 : 0,
-                  }}
-                >
-                  <ChevronRight sx={{ fontSize: 16 }} />
-                </ColorScrollButton>
-                <HorizontalScroller
-                  ref={topCaptionBackgroundScrollerRef}
-                  onScroll={handleTopCaptionBackgroundScroll}
-                  sx={{
-                    pt: 0,
-                    pb: 0,
-                    mt: 0,
-                    minHeight: 42,
-                    alignItems: 'center',
-                    gap: theme.spacing(1),
-                    px: 3.2,
-                  }}
-                >
+              <Box sx={{ flex: 1, mx: 1, minWidth: 0 }}>
+                {renderFloatingColorScroller({
+                  scrollerRef: topCaptionBackgroundScrollerRef,
+                  onScroll: handleTopCaptionBackgroundScroll,
+                  leftVisible: topCaptionBackgroundLeftScroll,
+                  rightVisible: topCaptionBackgroundRightScroll,
+                  onScrollLeft: () => scrollColorScrollerLeft(topCaptionBackgroundScrollerRef, handleTopCaptionBackgroundScroll),
+                  onScrollRight: () => scrollColorScrollerRight(topCaptionBackgroundScrollerRef, handleTopCaptionBackgroundScroll),
+                  children: (
+                    <>
                   <Tooltip title="Pick Custom Color" arrow>
                     <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <ColorSwatch
@@ -1869,12 +1890,11 @@ const CaptionEditor = ({
                       />
                     </Tooltip>
                   ))}
-                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-                </HorizontalScroller>
-                <ScrollIndicator direction="left" isVisible={topCaptionBackgroundLeftScroll} />
-                <ScrollIndicator direction="right" isVisible={topCaptionBackgroundRightScroll} />
+                    </>
+                  ),
+                })}
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, flexShrink: 0 }}>
                 <IconButton
                   size="small"
                   onClick={() => handleResetClick('format', 'backgroundColor')}
@@ -1897,9 +1917,9 @@ const CaptionEditor = ({
             )}
 
             {!positioningOnly && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25, minWidth: 0 }}>
               <Tooltip title="Text Stroke Color" placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, flexShrink: 0 }}>
                   <Box
                     sx={{
                       width: 24,
@@ -1923,42 +1943,16 @@ const CaptionEditor = ({
                   </Box>
                 </Box>
               </Tooltip>
-              <Box sx={{ flex: 1, mx: 1, position: 'relative' }}>
-                <ColorScrollButton
-                  direction="left"
-                  size="small"
-                  onClick={() => scrollColorScrollerLeft(strokeColorScrollerRef, handleStrokeColorScroll)}
-                  sx={{
-                    visibility: strokeColorLeftScroll ? 'visible' : 'hidden',
-                    opacity: strokeColorLeftScroll ? 1 : 0,
-                  }}
-                >
-                  <ChevronLeft sx={{ fontSize: 16 }} />
-                </ColorScrollButton>
-                <ColorScrollButton
-                  direction="right"
-                  size="small"
-                  onClick={() => scrollColorScrollerRight(strokeColorScrollerRef, handleStrokeColorScroll)}
-                  sx={{
-                    visibility: strokeColorRightScroll ? 'visible' : 'hidden',
-                    opacity: strokeColorRightScroll ? 1 : 0,
-                  }}
-                >
-                  <ChevronRight sx={{ fontSize: 16 }} />
-                </ColorScrollButton>
-                <HorizontalScroller
-                  ref={strokeColorScrollerRef}
-                  onScroll={handleStrokeColorScroll}
-                  sx={{
-                    pt: 0,
-                    pb: 0,
-                    mt: 0,
-                    minHeight: 42,
-                    alignItems: 'center',
-                    gap: theme.spacing(1),
-                    px: 3.2,
-                  }}
-                >
+              <Box sx={{ flex: 1, mx: 1, minWidth: 0 }}>
+                {renderFloatingColorScroller({
+                  scrollerRef: strokeColorScrollerRef,
+                  onScroll: handleStrokeColorScroll,
+                  leftVisible: strokeColorLeftScroll,
+                  rightVisible: strokeColorRightScroll,
+                  onScrollLeft: () => scrollColorScrollerLeft(strokeColorScrollerRef, handleStrokeColorScroll),
+                  onScrollRight: () => scrollColorScrollerRight(strokeColorScrollerRef, handleStrokeColorScroll),
+                  children: (
+                    <>
                   <Tooltip title="Auto Stroke" arrow>
                     <ColorSwatch
                       onClick={() => handleTextChange('strokeColor', undefined)}
@@ -2019,12 +2013,11 @@ const CaptionEditor = ({
                       />
                     </Tooltip>
                   ))}
-                  <Box sx={{ minWidth: 4, flexShrink: 0 }} />
-                </HorizontalScroller>
-                <ScrollIndicator direction="left" isVisible={strokeColorLeftScroll} />
-                <ScrollIndicator direction="right" isVisible={strokeColorRightScroll} />
+                    </>
+                  ),
+                })}
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40, flexShrink: 0 }}>
                 <IconButton
                   size="small"
                   onClick={() => handleResetClick('format', 'strokeColor')}
