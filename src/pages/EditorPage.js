@@ -39,7 +39,6 @@ import useSearchDetails from '../hooks/useSearchDetails';
 import getFrame from '../utils/frameHandler';
 import LoadingBackdrop from '../components/LoadingBackdrop';
 import ImageEditorControls from '../components/ImageEditorControls';
-import EditorPageBottomBannerAd from '../ads/EditorPageBottomBannerAd';
 
 const Alert = forwardRef((props, ref) => <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />);
 
@@ -1948,18 +1947,6 @@ const EditorPage = ({ setSeriesTitle, shows }) => {
               </Grid>
             </Grid>
           </Card>
-
-          {user?.userDetails?.subscriptionStatus !== 'active' &&
-            <Grid container>
-              <Grid item xs={12} mt={2}>
-                <center>
-                  <Box sx={{ maxWidth: '800px'}}>
-                    <EditorPageBottomBannerAd />
-                  </Box>
-                </center>
-              </Grid>
-            </Grid>
-          }
 
           <Popover
             open={colorPickerShowing !== false}

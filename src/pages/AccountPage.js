@@ -798,8 +798,8 @@ const AccountPage = () => {
                         }}
                       >
                         {isPro
-                          ? 'Unlock the full power of memeSRC with ad-free browsing, priority support, and magic credits'
-                          : 'Upgrade to Pro and unlock premium features, magic credits, and an ad-free experience'}
+                          ? 'Unlock the full power of memeSRC with priority support, premium tools, and magic credits'
+                          : 'Upgrade to Pro and unlock premium features, magic credits, and priority support'}
                       </Typography>
                     </Box>
                   </Stack>

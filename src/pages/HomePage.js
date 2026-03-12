@@ -9,7 +9,6 @@ import { useSearchFilterGroups } from '../hooks/useSearchFilterGroups';
 import { UserContext } from '../UserContext';
 import { trackUsageEvent } from '../utils/trackUsageEvent';
 import getSessionID from '../utils/getSessionsId';
-import { useAdFreeDecember } from '../contexts/AdFreeDecemberContext';
 
 const prepSessionID = () => {
   void getSessionID().catch((error) => {
@@ -44,7 +43,6 @@ export default function SearchPage({ metadata }) {
   const [seriesTitle, setSeriesTitle] = useState(shows.some(show => show.isFavorite) ? defaultShow : '_universal');
   const { setSearchQuery: setV2SearchQuery } = useSearchDetailsV2()
   const { groups } = useSearchFilterGroups();
-  const { triggerDialog } = useAdFreeDecember();
 
   const navigate = useNavigate();
 
@@ -128,14 +126,11 @@ export default function SearchPage({ metadata }) {
       source: 'HomePage',
     });
 
-    // Trigger ad-free dialog after search submission
-    triggerDialog();
-
     const encodedSearchTerms = encodeURIComponent(rawSearchTerm)
     navigate(`/search/${seriesTitle}?searchTerm=${encodedSearchTerms}`)
     setSearchTerm('')
     persistSearchTerm('')
-  }, [seriesTitle, searchTerm, shows, navigate, setSearchTerm, setV2SearchQuery, persistSearchTerm, groups, triggerDialog]);
+  }, [seriesTitle, searchTerm, shows, navigate, setSearchTerm, setV2SearchQuery, persistSearchTerm, groups]);
 
   const memoizedFullScreenSearch = useMemo(() => (
     <FullScreenSearch

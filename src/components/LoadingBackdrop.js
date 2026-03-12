@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Backdrop, Typography, Stack, LinearProgress, Box } from '@mui/material';
+import { Backdrop, Typography, Stack, LinearProgress } from '@mui/material';
 import Logo from './logo';
-import MagicToolsLoadingAd from '../ads/MagicToolsLoadingAd';
-import { UserContext } from '../UserContext';
 
 function LoadingBackdrop({ open, duration = 20, variationCount = 2 }) {
-    const { user } = useContext(UserContext)
     const [progress, setProgress] = useState(0);
     const [progressVariant, setProgressVariant] = useState('determinate');
     const [messageIndex, setMessageIndex] = useState(0);
@@ -102,11 +99,6 @@ function LoadingBackdrop({ open, duration = 20, variationCount = 2 }) {
                 <Typography variant="caption" sx={{ marginTop: 'px', color: 'rgba(255, 255, 255, 0.7)' }}>
                     Wait while memeSRC works its magic
                 </Typography>
-                {user?.userDetails?.subscriptionStatus !== 'active' && open &&
-                    <Box sx={{ width: '95vw', maxWidth: 400 }}>
-                        <MagicToolsLoadingAd />
-                    </Box>
-                }
             </Stack>
 
 

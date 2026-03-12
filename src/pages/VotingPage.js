@@ -29,7 +29,6 @@ import {
   DialogContentText,
   Autocomplete,
   Switch,
-  useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -44,7 +43,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import FlipMove from 'react-flip-move';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { LoadingButton } from '@mui/lab';
 import { GridFilterAltIcon, GridSearchIcon } from '@mui/x-data-grid';
@@ -56,9 +55,6 @@ import { UserContext } from '../UserContext';
 import TvdbSearch from '../components/TvdbSearch/TvdbSearch';
 import { SnackbarContext } from '../SnackbarContext';
 import { useShows } from '../contexts/useShows';  // Add this import if not already present
-import FixedMobileBannerAd from '../ads/FixedMobileBannerAd';
-import HomePageBannerAd from '../ads/HomePageBannerAd';
-import { shouldShowAds } from '../utils/adsenseLoader';
 
 const StyledBadge = styled(Badge)(() => ({
   '& .MuiBadge-badge': {
@@ -303,9 +299,6 @@ export default function VotingPage() {
   const [isSubmittingMagicVote, setIsSubmittingMagicVote] = useState(false);
 
   // Add these state variables after other state declarations
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const showAds = shouldShowAds(user);
-
   // Add this debounced search function after other function declarations
   const debouncedSearch = useMemo(
     () => debounce(async (searchValue) => {
@@ -1374,21 +1367,6 @@ export default function VotingPage() {
         </Box>
 
         <Grid container style={{ minWidth: '100%' }}>
-          {showAds && (
-            <Grid item xs={12} mb={3}>
-              <center>
-                <Box>
-                  {isMobile ? <FixedMobileBannerAd /> : <HomePageBannerAd />}
-                  <Link to="/pro" style={{ textDecoration: 'none' }}>
-                    <Typography variant="body2" textAlign="center" color="white" sx={{ marginTop: 1 }}>
-                      ☝️ Remove ads with <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>memeSRC Pro</span>
-                    </Typography>
-                  </Link>
-                </Box>
-              </center>
-            </Grid>
-          )}
-
           {(loading && !seriesMetadata.length) || isChangingRankMethod ? (
             <Grid
               item

@@ -10,12 +10,9 @@ import AddCidPopup from '../../components/ipfs/add-cid-popup';
 import { UserContext } from '../../UserContext';
 import { trackUsageEvent } from '../../utils/trackUsageEvent';
 import UnifiedSearchBar from '../../components/search/UnifiedSearchBar';
-import FixedMobileBannerAd from '../../ads/FixedMobileBannerAd';
 import useLoadRandomFrame from '../../utils/loadRandomFrame';
 import FloatingActionButtons from '../../components/floating-action-buttons/FloatingActionButtons';
 import { useSearchFilterGroups } from '../../hooks/useSearchFilterGroups';
-import { shouldShowAds } from '../../utils/adsenseLoader';
-import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 
 const sanitizeSearchValue = (value) => {
   if (value === undefined || value === null) {
@@ -35,7 +32,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
   const [searchParams] = useSearchParams();
   const searchTerm = searchParams.get('searchTerm');
 
-  const { user, shows: contextShows, defaultShow } = useContext(UserContext);
+  const { shows: contextShows, defaultShow } = useContext(UserContext);
   const { groups } = useSearchFilterGroups();
   const {
     searchQuery,
@@ -59,8 +56,6 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
   const shows = useMemo(() => (Array.isArray(contextShows) ? contextShows : []), [contextShows]);
   const savedSeries = useMemo(() => (Array.isArray(savedCids) ? savedCids : []), [savedCids]);
-  const { triggerDialog } = useAdFreeDecember();
-
   const hasFavoriteShows = useMemo(() => shows.some((show) => show.isFavorite), [shows]);
   const resolvedCid = useMemo(() => {
     if (cid) return cid;
@@ -189,19 +184,15 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
     [buildSearchUrl, navigate, resolvedCid, setSearchQuery, shows],
   );
 
-  const showAd = shouldShowAds(user);
-
   const handleRandomSearch = useCallback(() => {
     const scope = resolvedCid || '_universal';
     trackUsageEvent('random_frame', {
       source: 'UnifiedSearchBar',
       scope,
       showCount: Array.isArray(shows) ? shows.length : 0,
-      hasAd: showAd,
     });
-    triggerDialog();
     loadRandomFrame(scope);
-  }, [resolvedCid, loadRandomFrame, shows, showAd, triggerDialog]);
+  }, [resolvedCid, loadRandomFrame, shows]);
 
   const activeIndexInfo = useMemo(() => {
     if (!resolvedCid) {
@@ -382,25 +373,7 @@ export default function IpfsSearchBar({ children, showSearchBar = true }) {
 
       {Children.map(children, (child) => cloneElement(child, { shows }))}
 
-      <FloatingActionButtons shows={resolvedCid} showAd={showAd} />
-
-      {showAd && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: 'black',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1299,
-          }}
-        >
-          <FixedMobileBannerAd />
-        </Box>
-      )}
+      <FloatingActionButtons shows={resolvedCid} />
 
       <AddCidPopup open={addNewCidOpen} setOpen={setAddNewCidOpen} />
     </>

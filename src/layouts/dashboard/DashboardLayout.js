@@ -4,13 +4,10 @@ import { Box } from '@mui/material';
 
 import Header from './header';
 import Nav from './nav';
-import { AdFreeDecemberDialog } from '../../components/AdFreeDecemberDialog';
-import { useAdFreeDecember } from '../../contexts/AdFreeDecemberContext';
 
 export default function DashboardLayout() {
   const [navAnchorEl, setNavAnchorEl] = useState(null);
   const location = useLocation();
-  const { showDialog, closeDialog } = useAdFreeDecember();
 
   useEffect(() => {
     // Close navigation menu whenever the route changes
@@ -28,7 +25,6 @@ export default function DashboardLayout() {
       <Box component="main" sx={{ width: '100%' }}>
         <Outlet />
       </Box>
-      <AdFreeDecemberDialog open={showDialog} onClose={closeDialog} />
     </>
   );
 }
