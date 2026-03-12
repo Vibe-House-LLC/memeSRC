@@ -1509,8 +1509,6 @@ const CaptionEditor = ({
   const showOutlineWeightSlider = !positioningOnly && showInlineColor && activeInlineColorTarget === 'stroke';
   const primarySliderProperty = showOutlineWeightSlider ? 'strokeWidth' : 'fontSize';
   const primarySliderTooltip = showOutlineWeightSlider ? 'Outline Thickness' : 'Font Size';
-  const isPrimarySliderActive = activeSlider === `${panelId}-${primarySliderProperty}`;
-  const primarySliderDisabled = showOutlineWeightSlider && isOutlineDisabled && !isPrimarySliderActive;
   const primarySliderValue = (() => {
     if (showOutlineWeightSlider) {
       return Math.round(Number(getCurrentValue('strokeWidth')) || 0);
@@ -1547,7 +1545,7 @@ const CaptionEditor = ({
     <Typography
       variant="caption"
       sx={{
-        color: primarySliderDisabled ? 'rgba(255,255,255,0.38)' : '#ffffff',
+        color: '#ffffff',
         fontWeight: 800,
         letterSpacing: 0.2,
         lineHeight: 1.1,
@@ -1931,7 +1929,6 @@ const CaptionEditor = ({
               </Tooltip>
               <Slider
                 value={primarySliderValue}
-                disabled={primarySliderDisabled}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
                     return;
@@ -1971,7 +1968,7 @@ const CaptionEditor = ({
                   <IconButton
                     size="small"
                     onClick={() => handleResetClick('format', primarySliderProperty)}
-                    disabled={primarySliderDisabled || isValueAtDefault(primarySliderProperty)}
+                    disabled={isValueAtDefault(primarySliderProperty)}
                     sx={{ 
                       color: '#ffffff', 
                       p: 0.5,
