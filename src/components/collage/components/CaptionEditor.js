@@ -565,9 +565,6 @@ const CaptionEditor = ({
     setSavedCustomTextColor(newColor);
     localStorage.setItem('memeTextCustomColor', newColor);
     handleTextChange('color', newColor);
-    if (showInlineColor) {
-      setShowInlineColor(false);
-    }
   };
 
   const handleCustomStrokeColorChange = (event) => {
@@ -585,9 +582,6 @@ const CaptionEditor = ({
       updatedText.strokeWidth = outlineRestoreWidth;
     }
     updatePanelText(panelId, updatedText);
-    if (showInlineColor) {
-      setShowInlineColor(false);
-    }
   };
 
   const handleAlignmentMenuOpen = (event) => {
@@ -635,7 +629,6 @@ const CaptionEditor = ({
       updatedText.strokeWidth = outlineRestoreWidth;
     }
     updatePanelText(panelId, updatedText);
-    setShowInlineColor(false);
   }, [currentOutlineWidth, outlineRestoreWidth, panelId, panelTexts, updatePanelText]);
 
   const handleNoOutlineSelect = useCallback(() => {
@@ -647,7 +640,6 @@ const CaptionEditor = ({
     };
     delete updatedText.strokeColor;
     updatePanelText(panelId, updatedText, { replace: true });
-    setShowInlineColor(false);
   }, [panelId, panelTexts, updatePanelText]);
 
   const handleCustomTopCaptionBackgroundChange = (event) => {
@@ -656,9 +648,6 @@ const CaptionEditor = ({
     setSavedTopCaptionBackgroundColor(nextColor);
     localStorage.setItem('memeTopCaptionBackgroundCustomColor', nextColor);
     handleTextChange('backgroundColor', nextColor);
-    if (showInlineColor) {
-      setShowInlineColor(false);
-    }
   };
 
   const handleTextChange = useCallback((property, value, rawValueOverride, parsedOverride) => {
@@ -1354,7 +1343,6 @@ const CaptionEditor = ({
               <ColorSwatch
                 onClick={() => {
                   handleTextChange('backgroundColor', undefined);
-                  setShowInlineColor(false);
                 }}
                 selected={!hasExplicitTopCaptionBackground}
                 sx={{
@@ -1400,7 +1388,6 @@ const CaptionEditor = ({
                 <ColorSwatch
                   onClick={() => {
                     handleTextChange('backgroundColor', savedTopCaptionBackgroundColor);
-                    setShowInlineColor(false);
                   }}
                   selected={normalizedTopCaptionBackgroundColor.toLowerCase() === toHexColorInput(savedTopCaptionBackgroundColor, '#ffffff').toLowerCase()}
                   sx={{ backgroundColor: savedTopCaptionBackgroundColor, flexShrink: 0 }}
@@ -1412,7 +1399,6 @@ const CaptionEditor = ({
                 <ColorSwatch
                   onClick={() => {
                     handleTextChange('backgroundColor', colorOption.color);
-                    setShowInlineColor(false);
                   }}
                   selected={normalizedTopCaptionBackgroundColor.toLowerCase() === toHexColorInput(colorOption.color, '#ffffff').toLowerCase()}
                   sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
@@ -1462,7 +1448,6 @@ const CaptionEditor = ({
               <ColorSwatch
                 onClick={() => {
                   handleTextChange('color', savedCustomTextColor);
-                  setShowInlineColor(false);
                 }}
                 selected={normalizedCurrentTextColor.toLowerCase() === toHexColorInput(savedCustomTextColor, '#ffffff').toLowerCase()}
                 sx={{ backgroundColor: savedCustomTextColor, flexShrink: 0 }}
@@ -1474,7 +1459,6 @@ const CaptionEditor = ({
               <ColorSwatch
                 onClick={() => {
                   handleTextChange('color', colorOption.color);
-                  setShowInlineColor(false);
                 }}
                 selected={normalizedCurrentTextColor.toLowerCase() === toHexColorInput(colorOption.color, '#ffffff').toLowerCase()}
                 sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
@@ -1525,6 +1509,7 @@ const CaptionEditor = ({
   const showOutlineWeightSlider = !positioningOnly && showInlineColor && activeInlineColorTarget === 'stroke';
   const primarySliderProperty = showOutlineWeightSlider ? 'strokeWidth' : 'fontSize';
   const primarySliderTooltip = showOutlineWeightSlider ? 'Outline Thickness' : 'Font Size';
+  const primarySliderDisabled = showOutlineWeightSlider && isOutlineDisabled;
   const primarySliderValue = (() => {
     if (showOutlineWeightSlider) {
       return Math.round(Number(getCurrentValue('strokeWidth')) || 0);
@@ -1558,45 +1543,19 @@ const CaptionEditor = ({
     ? 16
     : (showTopCaptionOptions ? 72 : Math.round(72 * textScaleFactor));
   const primarySliderIcon = showOutlineWeightSlider ? (
-    <Box
+    <Typography
+      variant="caption"
       sx={{
-        position: 'relative',
-        width: 18,
-        height: 18,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        color: primarySliderDisabled ? 'rgba(255,255,255,0.38)' : '#ffffff',
+        fontWeight: 800,
+        letterSpacing: 0.2,
+        lineHeight: 1.1,
+        textAlign: 'center',
+        userSelect: 'none',
       }}
     >
-      <Box
-        component="span"
-        sx={{
-          position: 'absolute',
-          fontSize: 17,
-          fontWeight: 900,
-          lineHeight: 1,
-          color: '#ffffff',
-          fontFamily: 'Impact, Arial Black, Arial, sans-serif',
-          userSelect: 'none',
-        }}
-      >
-        T
-      </Box>
-      <Box
-        component="span"
-        sx={{
-          position: 'absolute',
-          fontSize: 11,
-          fontWeight: 900,
-          lineHeight: 1,
-          color: '#000000',
-          fontFamily: 'Impact, Arial Black, Arial, sans-serif',
-          userSelect: 'none',
-        }}
-      >
-        T
-      </Box>
-    </Box>
+      Outline Size
+    </Typography>
   ) : (
     <FormatSize sx={{ color: '#ffffff' }} />
   );
@@ -1935,7 +1894,7 @@ const CaptionEditor = ({
                   {renderColorMenuDot(normalizedCurrentStrokeColor, {
                     noColor: isOutlineDisabled || isTransparentLikeColor(rawCurrentStrokeColor),
                   })}
-                  Outline Color
+                  Text Outline
                 </MenuItem>
                 {showTopCaptionOptions && (
                   <MenuItem
@@ -1957,12 +1916,21 @@ const CaptionEditor = ({
             {!positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25, mb: 0.25 }}>
               <Tooltip title={primarySliderTooltip} placement="left">
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: showOutlineWeightSlider ? 74 : 40,
+                    px: showOutlineWeightSlider ? 0.5 : 0,
+                  }}
+                >
                   {primarySliderIcon}
                 </Box>
               </Tooltip>
               <Slider
                 value={primarySliderValue}
+                disabled={primarySliderDisabled}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
                     return;
@@ -1987,6 +1955,9 @@ const CaptionEditor = ({
                   flex: 1,
                   color: '#ffffff',
                   mx: 1,
+                  '&.Mui-disabled': {
+                    color: 'rgba(255,255,255,0.28)',
+                  },
                 }}
               />
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
@@ -1998,7 +1969,7 @@ const CaptionEditor = ({
                   <IconButton
                     size="small"
                     onClick={() => handleResetClick('format', primarySliderProperty)}
-                    disabled={isValueAtDefault(primarySliderProperty)}
+                    disabled={primarySliderDisabled || isValueAtDefault(primarySliderProperty)}
                     sx={{ 
                       color: '#ffffff', 
                       p: 0.5,
