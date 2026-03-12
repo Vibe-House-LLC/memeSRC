@@ -1312,7 +1312,7 @@ const CaptionEditor = ({
               <Tooltip title="Custom Outline Color" arrow>
                 <ColorSwatch
                   onClick={() => handleOutlineColorSelect(savedCustomStrokeColor)}
-                  selected={!isOutlineDisabled && hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(savedCustomStrokeColor, '#000000').toLowerCase()}
+                  selected={!isOutlineDisabled && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(savedCustomStrokeColor, '#000000').toLowerCase()}
                   sx={{ backgroundColor: savedCustomStrokeColor, flexShrink: 0 }}
                 />
               </Tooltip>
@@ -1321,7 +1321,7 @@ const CaptionEditor = ({
               <Tooltip key={`inline-stroke-${colorOption.color}`} title={colorOption.name} arrow>
                 <ColorSwatch
                   onClick={() => handleOutlineColorSelect(colorOption.color)}
-                  selected={!isOutlineDisabled && hasExplicitStrokeColor && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(colorOption.color, '#000000').toLowerCase()}
+                  selected={!isOutlineDisabled && normalizedCurrentStrokeColor.toLowerCase() === toHexColorInput(colorOption.color, '#000000').toLowerCase()}
                   sx={{ backgroundColor: colorOption.color, flexShrink: 0 }}
                 />
               </Tooltip>
@@ -1509,7 +1509,8 @@ const CaptionEditor = ({
   const showOutlineWeightSlider = !positioningOnly && showInlineColor && activeInlineColorTarget === 'stroke';
   const primarySliderProperty = showOutlineWeightSlider ? 'strokeWidth' : 'fontSize';
   const primarySliderTooltip = showOutlineWeightSlider ? 'Outline Thickness' : 'Font Size';
-  const primarySliderDisabled = showOutlineWeightSlider && isOutlineDisabled;
+  const isPrimarySliderActive = activeSlider === `${panelId}-${primarySliderProperty}`;
+  const primarySliderDisabled = showOutlineWeightSlider && isOutlineDisabled && !isPrimarySliderActive;
   const primarySliderValue = (() => {
     if (showOutlineWeightSlider) {
       return Math.round(Number(getCurrentValue('strokeWidth')) || 0);
@@ -1948,6 +1949,7 @@ const CaptionEditor = ({
                 onMouseUp={handleSliderMouseUp}
                 onTouchStart={() => handleSliderMouseDown(primarySliderProperty)}
                 onTouchEnd={handleSliderMouseUp}
+                onChangeCommitted={handleSliderMouseUp}
                 min={primarySliderMin}
                 max={primarySliderMax}
                 step={1}
