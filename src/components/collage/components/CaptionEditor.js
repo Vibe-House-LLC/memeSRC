@@ -258,6 +258,7 @@ const isTransparentLikeColor = (value) => {
   if (typeof value !== 'string') return false;
   const color = value.trim().toLowerCase();
   if (!color) return false;
+  if (color === 'none') return true;
   if (color === 'transparent') return true;
   if (/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
   if (/^hsla\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
@@ -312,7 +313,8 @@ const CaptionEditor = ({
   const rawCurrentStrokeColor = panelTexts[panelId]?.strokeColor;
   const hasExplicitStrokeColor = (
     typeof rawCurrentStrokeColor === 'string' &&
-    rawCurrentStrokeColor.trim().length > 0
+    rawCurrentStrokeColor.trim().length > 0 &&
+    !isTransparentLikeColor(rawCurrentStrokeColor)
   );
   const autoStrokeColor = getAutoStrokeColorFromTextColor(currentTextColor);
   const currentStrokeColor = hasExplicitStrokeColor ? rawCurrentStrokeColor.trim() : autoStrokeColor;
@@ -644,7 +646,7 @@ const CaptionEditor = ({
       strokeWidth: 0,
     };
     delete updatedText.strokeColor;
-    updatePanelText(panelId, updatedText);
+    updatePanelText(panelId, updatedText, { replace: true });
     setShowInlineColor(false);
   }, [panelId, panelTexts, updatePanelText]);
 

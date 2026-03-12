@@ -227,6 +227,16 @@ const TEXT_EXTENDED_BOTTOM_RATIO = 1.1;
 const TEXT_MIN_FONT_SIZE = 8;
 const TEXT_MAX_FONT_SIZE = 72;
 const TEXT_LAYER_DEFAULT_BOX_WIDTH_PERCENT = 90;
+const isTransparentLikeColor = (value) => {
+  if (typeof value !== 'string') return false;
+  const color = value.trim().toLowerCase();
+  if (!color || color === 'none' || color === 'transparent') return true;
+  if (/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^hsla\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*,\s*0(?:\.0+)?\s*\)$/.test(color)) return true;
+  if (/^#([0-9a-f]{8})$/i.test(color) && color.slice(7, 9) === '00') return true;
+  if (/^#([0-9a-f]{4})$/i.test(color) && color.slice(4, 5) === '0') return true;
+  return false;
+};
 const TEXT_LAYER_MIN_BOX_WIDTH_PERCENT = 20;
 const TEXT_LAYER_MAX_BOX_WIDTH_PERCENT = 100;
 const TEXT_LAYER_MIN_BOX_WIDTH_PX = 36;
@@ -1445,10 +1455,12 @@ const CanvasCollagePreview = ({
     const fontFamily = topCaptionConfig.fontFamily || TOP_CAPTION_DEFAULTS.fontFamily;
     const textAlign = normalizeTextAlignValue(topCaptionConfig.textAlign || TOP_CAPTION_DEFAULTS.textAlign);
     const baseTextColor = topCaptionConfig.color || TOP_CAPTION_DEFAULTS.color;
-    const explicitStrokeColor = (
+    const rawTopCaptionStrokeColor = (
       typeof topCaptionConfig.strokeColor === 'string' &&
       topCaptionConfig.strokeColor.trim().length > 0
     ) ? topCaptionConfig.strokeColor.trim() : null;
+    const strokeDisabledByColor = isTransparentLikeColor(rawTopCaptionStrokeColor);
+    const explicitStrokeColor = strokeDisabledByColor ? null : rawTopCaptionStrokeColor;
     const normalizedTopCaptionBackground = typeof topCaptionConfig.backgroundColor === 'string'
       ? topCaptionConfig.backgroundColor.trim().toLowerCase()
       : '';
@@ -1477,6 +1489,18 @@ const CanvasCollagePreview = ({
     ctx.rect(rect.x, rect.y, rect.width, rect.height);
     ctx.clip();
 
+    const textLayerCanvas = document.createElement('canvas');
+    const textLayerScaleX = typeof ctx.getTransform === 'function' ? Math.max(1, Math.abs(ctx.getTransform().a)) : 1;
+    const textLayerScaleY = typeof ctx.getTransform === 'function' ? Math.max(1, Math.abs(ctx.getTransform().d)) : 1;
+    textLayerCanvas.width = Math.max(1, Math.ceil(rect.width * textLayerScaleX));
+    textLayerCanvas.height = Math.max(1, Math.ceil(rect.height * textLayerScaleY));
+    const textLayerCtx = textLayerCanvas.getContext('2d');
+    if (!textLayerCtx) {
+      ctx.restore();
+      return;
+    }
+    textLayerCtx.scale(textLayerScaleX, textLayerScaleY);
+
     let textColor = baseTextColor;
     let strokeColor = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
     if (!hasActualText) {
@@ -1491,27 +1515,25 @@ const CanvasCollagePreview = ({
       );
     }
 
-    ctx.fillStyle = textColor;
-    ctx.strokeStyle = strokeColor;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    // Top caption intentionally has no drop shadow for clean meme-style text.
-    ctx.shadowColor = 'transparent';
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.shadowBlur = 0;
-
-    if (requestedStrokeWidth === 0) {
-      ctx.lineWidth = 0;
-    } else if (requestedStrokeWidth > 0) {
-      ctx.lineWidth = requestedStrokeWidth;
-    } else {
-      ctx.lineWidth = 0;
+    textLayerCtx.fillStyle = textColor;
+    textLayerCtx.strokeStyle = strokeColor;
+    textLayerCtx.textAlign = 'left';
+    textLayerCtx.textBaseline = 'middle';
+    textLayerCtx.lineJoin = 'round';
+    textLayerCtx.lineCap = 'round';
+    // Render text on a transparent layer first so glyph anti-aliasing does not pick up the caption bar color.
+    textLayerCtx.shadowColor = 'transparent';
+    textLayerCtx.shadowOffsetX = 0;
+    textLayerCtx.shadowOffsetY = 0;
+    textLayerCtx.shadowBlur = 0;
+    const shouldDrawTopCaptionStroke = !strokeDisabledByColor && requestedStrokeWidth > 0;
+    if (shouldDrawTopCaptionStroke) {
+      textLayerCtx.lineWidth = requestedStrokeWidth;
     }
 
     const lineHeight = fontSize * 1.2;
     const wrappedLines = buildWrappedLines(
-      ctx,
+      textLayerCtx,
       displayText,
       activeRanges,
       maxTextWidth,
@@ -1520,13 +1542,13 @@ const CanvasCollagePreview = ({
       fontFamily,
     );
     const totalTextHeight = wrappedLines.length * lineHeight;
-    const startY = rect.y + ((rect.height - totalTextHeight) / 2) + (lineHeight / 2);
+    const startY = ((rect.height - totalTextHeight) / 2) + (lineHeight / 2);
     const maxLineWidth = wrappedLines.reduce((max, line) => Math.max(max, line.width), 0);
     const textAnchorX = textAlign === 'left'
-      ? rect.x + hPad
+      ? hPad
       : textAlign === 'right'
-        ? rect.x + rect.width - hPad
-        : rect.x + (rect.width / 2);
+        ? rect.width - hPad
+        : (rect.width / 2);
     const textBlockLeft = getTextBlockLeft(textAlign, textAnchorX, maxLineWidth);
 
     wrappedLines.forEach((line, lineIndex) => {
@@ -1538,31 +1560,32 @@ const CanvasCollagePreview = ({
       segments.forEach((segment) => {
         const segmentText = displayText.slice(segment.start, segment.end);
         const resolvedStyle = segment.style;
-        ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
-        const segmentWidth = ctx.measureText(segmentText).width;
+        textLayerCtx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
+        const segmentWidth = textLayerCtx.measureText(segmentText).width;
 
-        if (ctx.lineWidth > 0) {
-          ctx.strokeText(segmentText, cursorX, lineY);
+        if (shouldDrawTopCaptionStroke) {
+          textLayerCtx.strokeText(segmentText, cursorX, lineY);
         }
-        ctx.fillText(segmentText, cursorX, lineY);
+        textLayerCtx.fillText(segmentText, cursorX, lineY);
 
         if (resolvedStyle.underline) {
-          ctx.save();
-          ctx.shadowColor = 'transparent';
-          ctx.strokeStyle = textColor;
-          ctx.lineWidth = Math.max(1, fontSize * 0.08);
+          textLayerCtx.save();
+          textLayerCtx.shadowColor = 'transparent';
+          textLayerCtx.strokeStyle = textColor;
+          textLayerCtx.lineWidth = Math.max(1, fontSize * 0.08);
           const underlineY = lineY + fontSize * 0.35;
-          ctx.beginPath();
-          ctx.moveTo(cursorX, underlineY);
-          ctx.lineTo(cursorX + segmentWidth, underlineY);
-          ctx.stroke();
-          ctx.restore();
+          textLayerCtx.beginPath();
+          textLayerCtx.moveTo(cursorX, underlineY);
+          textLayerCtx.lineTo(cursorX + segmentWidth, underlineY);
+          textLayerCtx.stroke();
+          textLayerCtx.restore();
         }
 
         cursorX += segmentWidth;
       });
     });
 
+    ctx.drawImage(textLayerCanvas, rect.x, rect.y, rect.width, rect.height);
     ctx.restore();
   }, [topCaptionLayout, panelTexts, lastUsedTextSettings?.fontSize, textScaleFactor, borderColor]);
 
@@ -2832,10 +2855,12 @@ const CanvasCollagePreview = ({
           fontStyle,
           underline: false,
         };
-        const explicitStrokeColor = (
+        const rawStrokeColor = (
           typeof panelText.strokeColor === 'string' &&
           panelText.strokeColor.trim().length > 0
         ) ? panelText.strokeColor.trim() : null;
+        const strokeDisabledByColor = isTransparentLikeColor(rawStrokeColor);
+        const explicitStrokeColor = strokeDisabledByColor ? null : rawStrokeColor;
         // Respect explicit 0 to disable stroke; fall back only when undefined
         const requestedStrokeWidth =
           (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
@@ -2852,8 +2877,9 @@ const CanvasCollagePreview = ({
           textColor = baseTextColor;
           // Choose black or white stroke based on contrast with the text color
           strokeColor = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
-          // Subtle feathered shadow
-          shadowColor = 'rgba(0, 0, 0, 0.25)';
+          shadowColor = (strokeDisabledByColor || explicitStrokeColor)
+            ? 'transparent'
+            : 'rgba(0, 0, 0, 0.25)';
         } else {
           // For placeholder, use the same default styling but with reduced opacity
           // Parse the base color to apply opacity
@@ -2880,8 +2906,9 @@ const CanvasCollagePreview = ({
           const strokeSource = explicitStrokeColor || getContrastingMonoStroke(baseTextColor);
           const strokeRGBA = parseColorToRGBA(strokeSource) || { r: 0, g: 0, b: 0, a: 1 };
           strokeColor = rgbaString(strokeRGBA.r, strokeRGBA.g, strokeRGBA.b, 0.4);
-          // Very subtle feathered shadow for placeholder
-          shadowColor = 'rgba(0, 0, 0, 0.2)';
+          shadowColor = (strokeDisabledByColor || explicitStrokeColor)
+            ? 'transparent'
+            : 'rgba(0, 0, 0, 0.2)';
         }
 
         ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
@@ -2894,12 +2921,16 @@ const CanvasCollagePreview = ({
         // Use a thicker, font-relative stroke by default for readability,
         // but allow explicit 0 to disable strokes entirely.
         const computedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
-        if (requestedStrokeWidth === 0) {
-          ctx.lineWidth = 0;
-        } else if (requestedStrokeWidth > 0) {
-          ctx.lineWidth = requestedStrokeWidth;
-        } else {
-          ctx.lineWidth = computedStrokeWidth;
+        const resolvedStrokeWidth = strokeDisabledByColor
+          ? 0
+          : requestedStrokeWidth === 0
+            ? 0
+            : requestedStrokeWidth > 0
+              ? requestedStrokeWidth
+              : computedStrokeWidth;
+        const shouldDrawCaptionStroke = resolvedStrokeWidth > 0;
+        if (shouldDrawCaptionStroke) {
+          ctx.lineWidth = resolvedStrokeWidth;
         }
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
@@ -2968,7 +2999,7 @@ const CanvasCollagePreview = ({
             ctx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
             const segmentWidth = ctx.measureText(segmentText).width;
 
-            if (ctx.lineWidth > 0) {
+            if (shouldDrawCaptionStroke) {
               ctx.strokeText(segmentText, cursorX, lineY);
             }
 
@@ -5444,10 +5475,12 @@ const CanvasCollagePreview = ({
               fontStyle,
               underline: false,
             };
-            const explicitStrokeColor = (
+            const rawStrokeColor = (
               typeof panelText.strokeColor === 'string' &&
               panelText.strokeColor.trim().length > 0
             ) ? panelText.strokeColor.trim() : null;
+            const strokeDisabledByColor = isTransparentLikeColor(rawStrokeColor);
+            const explicitStrokeColor = strokeDisabledByColor ? null : rawStrokeColor;
             // Respect explicit 0 to disable stroke; fall back only when undefined
             const requestedStrokeWidth =
               (panelText.strokeWidth ?? lastUsedTextSettings.strokeWidth ?? 0);
@@ -5464,20 +5497,25 @@ const CanvasCollagePreview = ({
             // Use a font-relative stroke by default for readability in exports,
             // but allow explicit 0 to disable strokes entirely.
             const exportComputedStrokeWidth = Math.min(16, Math.max(3, Math.round(fontSize * 0.18)));
-            if (requestedStrokeWidth === 0) {
-              exportCtx.lineWidth = 0;
-            } else if (requestedStrokeWidth > 0) {
-              exportCtx.lineWidth = requestedStrokeWidth;
-            } else {
-              exportCtx.lineWidth = exportComputedStrokeWidth;
+            const resolvedExportStrokeWidth = strokeDisabledByColor
+              ? 0
+              : requestedStrokeWidth === 0
+                ? 0
+                : requestedStrokeWidth > 0
+                  ? requestedStrokeWidth
+                  : exportComputedStrokeWidth;
+            const shouldDrawExportStroke = resolvedExportStrokeWidth > 0;
+            if (shouldDrawExportStroke) {
+              exportCtx.lineWidth = resolvedExportStrokeWidth;
             }
             exportCtx.lineJoin = 'round';
             exportCtx.lineCap = 'round';
-            // Subtle feathered shadow for exported image as well
-            exportCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            exportCtx.shadowColor = (strokeDisabledByColor || explicitStrokeColor)
+              ? 'transparent'
+              : 'rgba(0, 0, 0, 0.25)';
             exportCtx.shadowOffsetX = 0;
             exportCtx.shadowOffsetY = 0;
-            exportCtx.shadowBlur = 14;
+            exportCtx.shadowBlur = (strokeDisabledByColor || explicitStrokeColor) ? 0 : 14;
 
             const textBoxWidth = resolveTextBoxWidthPx(rect, panelText, lastUsedTextSettings);
             const textAnchorX = getTextAnchorXFromPosition(rect, textPositionX);
@@ -5540,7 +5578,7 @@ const CanvasCollagePreview = ({
                 exportCtx.font = `${resolvedStyle.fontStyle || 'normal'} ${resolvedStyle.fontWeight} ${fontSize}px ${fontFamily}`;
                 const segmentWidth = exportCtx.measureText(segmentText).width;
 
-                if (exportCtx.lineWidth > 0) {
+                if (shouldDrawExportStroke) {
                   exportCtx.strokeText(segmentText, cursorX, lineY);
                 }
                 exportCtx.fillText(segmentText, cursorX, lineY);
