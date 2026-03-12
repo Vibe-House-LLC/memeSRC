@@ -1522,6 +1522,84 @@ const CaptionEditor = ({
   const parsedText = getParsedText();
   const rawTextValue = parsedText.rawValue;
   const cleanTextValue = parsedText.cleanText;
+  const showOutlineWeightSlider = !positioningOnly && showInlineColor && activeInlineColorTarget === 'stroke';
+  const primarySliderProperty = showOutlineWeightSlider ? 'strokeWidth' : 'fontSize';
+  const primarySliderTooltip = showOutlineWeightSlider ? 'Outline Thickness' : 'Font Size';
+  const primarySliderValue = (() => {
+    if (showOutlineWeightSlider) {
+      return Math.round(Number(getCurrentValue('strokeWidth')) || 0);
+    }
+
+    const panelText = panelTexts[panelId] || {};
+    const hasActualText = cleanTextValue && cleanTextValue.trim();
+    let baseFontSize;
+    if (hasActualText && !panelText.fontSize) {
+      const panel = panelRects.find(p => p.panelId === panelId);
+      if (panel && calculateOptimalFontSize) {
+        baseFontSize = calculateOptimalFontSize(cleanTextValue, panel.width, panel.height);
+      } else {
+        baseFontSize = showTopCaptionOptions
+          ? TOP_CAPTION_DEFAULT_FONT_SIZE
+          : (lastUsedTextSettings.fontSize || 26);
+      }
+    } else {
+      baseFontSize = panelText.fontSize
+        || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
+    }
+    if (showTopCaptionOptions) {
+      return Math.round(baseFontSize);
+    }
+    return Math.round(baseFontSize * textScaleFactor);
+  })();
+  const primarySliderMin = showOutlineWeightSlider
+    ? 0
+    : (showTopCaptionOptions ? 8 : Math.round(8 * textScaleFactor));
+  const primarySliderMax = showOutlineWeightSlider
+    ? 16
+    : (showTopCaptionOptions ? 72 : Math.round(72 * textScaleFactor));
+  const primarySliderIcon = showOutlineWeightSlider ? (
+    <Box
+      sx={{
+        position: 'relative',
+        width: 18,
+        height: 18,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Box
+        component="span"
+        sx={{
+          position: 'absolute',
+          fontSize: 17,
+          fontWeight: 900,
+          lineHeight: 1,
+          color: '#ffffff',
+          fontFamily: 'Impact, Arial Black, Arial, sans-serif',
+          userSelect: 'none',
+        }}
+      >
+        T
+      </Box>
+      <Box
+        component="span"
+        sx={{
+          position: 'absolute',
+          fontSize: 11,
+          fontWeight: 900,
+          lineHeight: 1,
+          color: '#000000',
+          fontFamily: 'Impact, Arial Black, Arial, sans-serif',
+          userSelect: 'none',
+        }}
+      >
+        T
+      </Box>
+    </Box>
+  ) : (
+    <FormatSize sx={{ color: '#ffffff' }} />
+  );
 
   return (
     <Box
@@ -1875,39 +1953,22 @@ const CaptionEditor = ({
 
             {/* Full-width color section removed: color options only show when toggled inline */}
 
-            {/* Font Size */}
+            {/* Primary style slider swaps to outline thickness while editing outline color */}
             {!positioningOnly && (
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.25, mb: 0.25 }}>
-              <Tooltip title="Font Size" placement="left">
+              <Tooltip title={primarySliderTooltip} placement="left">
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                  <FormatSize sx={{ color: '#ffffff' }} />
+                  {primarySliderIcon}
                 </Box>
               </Tooltip>
               <Slider
-                value={(() => {
-                  const panelText = panelTexts[panelId] || {};
-                  const hasActualText = cleanTextValue && cleanTextValue.trim();
-                  let baseFontSize;
-                  if (hasActualText && !panelText.fontSize) {
-                    const panel = panelRects.find(p => p.panelId === panelId);
-                    if (panel && calculateOptimalFontSize) {
-                      baseFontSize = calculateOptimalFontSize(cleanTextValue, panel.width, panel.height);
-                    } else {
-                      baseFontSize = showTopCaptionOptions
-                        ? TOP_CAPTION_DEFAULT_FONT_SIZE
-                        : (lastUsedTextSettings.fontSize || 26);
-                    }
-                  } else {
-                    baseFontSize = panelText.fontSize
-                      || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
-                  }
-                  if (showTopCaptionOptions) {
-                    return Math.round(baseFontSize);
-                  }
-                  return Math.round(baseFontSize * textScaleFactor);
-                })()}
+                value={primarySliderValue}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
+                    return;
+                  }
+                  if (showOutlineWeightSlider) {
+                    handleTextChange('strokeWidth', Math.max(0, Number(value) || 0));
                     return;
                   }
                   const baseFontSize = showTopCaptionOptions
@@ -1915,12 +1976,12 @@ const CaptionEditor = ({
                     : (Number(value) / textScaleFactor);
                   handleTextChange('fontSize', baseFontSize);
                 }}
-                onMouseDown={() => handleSliderMouseDown('fontSize')}
+                onMouseDown={() => handleSliderMouseDown(primarySliderProperty)}
                 onMouseUp={handleSliderMouseUp}
-                onTouchStart={() => handleSliderMouseDown('fontSize')}
+                onTouchStart={() => handleSliderMouseDown(primarySliderProperty)}
                 onTouchEnd={handleSliderMouseUp}
-                min={showTopCaptionOptions ? 8 : Math.round(8 * textScaleFactor)}
-                max={showTopCaptionOptions ? 72 : Math.round(72 * textScaleFactor)}
+                min={primarySliderMin}
+                max={primarySliderMax}
                 step={1}
                 sx={{ 
                   flex: 1,
@@ -1929,15 +1990,15 @@ const CaptionEditor = ({
                 }}
               />
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 40 }}>
-                {activeSlider === `${panelId}-fontSize` ? (
+                {activeSlider === `${panelId}-${primarySliderProperty}` ? (
                   <Typography variant="caption" sx={{ color: '#ffffff', textAlign: 'center' }}>
-                    {getCurrentValue('fontSize')}
+                    {getCurrentValue(primarySliderProperty)}
                   </Typography>
                 ) : (
                   <IconButton
                     size="small"
-                    onClick={() => handleResetClick('format', 'fontSize')}
-                    disabled={isValueAtDefault('fontSize')}
+                    onClick={() => handleResetClick('format', primarySliderProperty)}
+                    disabled={isValueAtDefault(primarySliderProperty)}
                     sx={{ 
                       color: '#ffffff', 
                       p: 0.5,
