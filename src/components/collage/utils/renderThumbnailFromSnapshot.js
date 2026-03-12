@@ -5,6 +5,7 @@
 */
 
 import { layoutDefinitions } from '../config/layouts';
+import { TOP_CAPTION_DEFAULTS } from '../constants/topCaptionDefaults';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 
@@ -14,17 +15,6 @@ const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
 const isFloatingTextLayerId = (panelId) => (
   typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
 );
-const TOP_CAPTION_DEFAULTS = {
-  fontSize: 18,
-  fontWeight: 700,
-  fontStyle: 'normal',
-  fontFamily: 'IMPACT',
-  color: '#111111',
-  strokeWidth: 0,
-  textAlign: 'left',
-  captionSpacingY: 5,
-  backgroundColor: '#ffffff',
-};
 const getTopCaptionVerticalPadding = (fontSize, extraSpacingY = 0, strokeWidth = 0) => (
   Math.max(2, Math.ceil(fontSize * 0.08), Math.ceil(Math.max(0, strokeWidth) / 2))
   + Math.max(0, extraSpacingY)

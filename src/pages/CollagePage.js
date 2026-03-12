@@ -16,6 +16,10 @@ import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
+import {
+  TOP_CAPTION_DEFAULT_FONT_SIZE,
+  TOP_CAPTION_DEFAULT_SPACING_Y,
+} from "../components/collage/constants/topCaptionDefaults";
 import { get as getFromLibrary } from "../utils/library/storage";
 import { LibraryPickerDialog } from "../components/library";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
@@ -2198,11 +2202,11 @@ export default function CollagePage() {
         fontFamily: existingTopCaption.fontFamily || 'IMPACT',
         fontWeight: existingTopCaption.fontWeight ?? 700,
         fontStyle: existingTopCaption.fontStyle || 'normal',
-        fontSize: existingTopCaption.fontSize || 18,
+        fontSize: existingTopCaption.fontSize || TOP_CAPTION_DEFAULT_FONT_SIZE,
         color: existingTopCaption.color || '#111111',
         strokeWidth: existingTopCaption.strokeWidth ?? 0,
         textAlign: existingTopCaption.textAlign || 'left',
-        captionSpacingY: existingTopCaption.captionSpacingY ?? 5,
+        captionSpacingY: existingTopCaption.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y,
         ...(hasExplicitBackgroundColor
           ? {
             backgroundColor: existingTopCaption.backgroundColor,

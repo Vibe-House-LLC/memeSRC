@@ -48,6 +48,10 @@ import {
   toggleStyleInRanges,
   SELECTION_CACHE_TTL_MS,
 } from '../../../utils/inlineFormatting';
+import {
+  TOP_CAPTION_DEFAULT_FONT_SIZE,
+  TOP_CAPTION_DEFAULT_SPACING_Y,
+} from '../constants/topCaptionDefaults';
 
 // Color presets for text colors
 const TEXT_COLOR_PRESETS = [
@@ -82,9 +86,6 @@ const TOP_CAPTION_BACKGROUND_COLOR_PRESETS = [
 const INLINE_TAG_REGEX = /<\/?(b|i|u)>/i;
 const DEFAULT_FONT_OPTIONS = ['Arial', 'Impact', 'Georgia', 'Verdana', 'Courier New'];
 const VALID_TEXT_ALIGNMENTS = ['left', 'center', 'right'];
-const TOP_CAPTION_DEFAULT_FONT_SIZE = 18;
-const TOP_CAPTION_DEFAULT_SPACING_Y = 5;
-
 const normalizeTextAlign = (value) => (
   VALID_TEXT_ALIGNMENTS.includes(value) ? value : 'center'
 );
@@ -780,8 +781,10 @@ const CaptionEditor = ({
         baseFontSize = panelText.fontSize
           || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
       }
-      
-      return Math.round(baseFontSize * textScaleFactor);
+
+      return showTopCaptionOptions
+        ? Math.round(baseFontSize)
+        : Math.round(baseFontSize * textScaleFactor);
     }
     
     if (propertyName === 'strokeWidth') {
@@ -795,7 +798,9 @@ const CaptionEditor = ({
       const spacingY = currentValue !== undefined
         ? currentValue
         : (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_SPACING_Y : 0);
-      return Math.round(spacingY * textScaleFactor);
+      return showTopCaptionOptions
+        ? Math.round(spacingY)
+        : Math.round(spacingY * textScaleFactor);
     }
 
     if (propertyName === 'backgroundColor') {
@@ -1826,10 +1831,16 @@ const CaptionEditor = ({
                     if (panel && calculateOptimalFontSize) {
                       baseFontSize = calculateOptimalFontSize(cleanTextValue, panel.width, panel.height);
                     } else {
-                      baseFontSize = lastUsedTextSettings.fontSize || 26;
+                      baseFontSize = showTopCaptionOptions
+                        ? TOP_CAPTION_DEFAULT_FONT_SIZE
+                        : (lastUsedTextSettings.fontSize || 26);
                     }
                   } else {
-                    baseFontSize = panelText.fontSize || lastUsedTextSettings.fontSize || 26;
+                    baseFontSize = panelText.fontSize
+                      || (showTopCaptionOptions ? TOP_CAPTION_DEFAULT_FONT_SIZE : (lastUsedTextSettings.fontSize || 26));
+                  }
+                  if (showTopCaptionOptions) {
+                    return Math.round(baseFontSize);
                   }
                   return Math.round(baseFontSize * textScaleFactor);
                 })()}
@@ -1837,15 +1848,17 @@ const CaptionEditor = ({
                   if (e.type === 'mousedown') {
                     return;
                   }
-                  const baseFontSize = value / textScaleFactor;
+                  const baseFontSize = showTopCaptionOptions
+                    ? Number(value)
+                    : (Number(value) / textScaleFactor);
                   handleTextChange('fontSize', baseFontSize);
                 }}
                 onMouseDown={() => handleSliderMouseDown('fontSize')}
                 onMouseUp={handleSliderMouseUp}
                 onTouchStart={() => handleSliderMouseDown('fontSize')}
                 onTouchEnd={handleSliderMouseUp}
-                min={Math.round(8 * textScaleFactor)}
-                max={Math.round(72 * textScaleFactor)}
+                min={showTopCaptionOptions ? 8 : Math.round(8 * textScaleFactor)}
+                max={showTopCaptionOptions ? 72 : Math.round(72 * textScaleFactor)}
                 step={1}
                 sx={{ 
                   flex: 1,
@@ -1889,12 +1902,16 @@ const CaptionEditor = ({
                 </Box>
               </Tooltip>
               <Slider
-                value={Math.round((panelTexts[panelId]?.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y) * textScaleFactor)}
+                value={showTopCaptionOptions
+                  ? Math.round(panelTexts[panelId]?.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y)
+                  : Math.round((panelTexts[panelId]?.captionSpacingY ?? TOP_CAPTION_DEFAULT_SPACING_Y) * textScaleFactor)}
                 onChange={(e, value) => {
                   if (e.type === 'mousedown') {
                     return;
                   }
-                  const baseSpacingY = Number(value) / textScaleFactor;
+                  const baseSpacingY = showTopCaptionOptions
+                    ? Number(value)
+                    : (Number(value) / textScaleFactor);
                   handleTextChange('captionSpacingY', Math.max(0, baseSpacingY));
                 }}
                 onMouseDown={() => handleSliderMouseDown('captionSpacingY')}
@@ -1902,7 +1919,7 @@ const CaptionEditor = ({
                 onTouchStart={() => handleSliderMouseDown('captionSpacingY')}
                 onTouchEnd={handleSliderMouseUp}
                 min={0}
-                max={Math.round(100 * textScaleFactor)}
+                max={showTopCaptionOptions ? 100 : Math.round(100 * textScaleFactor)}
                 step={1}
                 sx={{
                   flex: 1,

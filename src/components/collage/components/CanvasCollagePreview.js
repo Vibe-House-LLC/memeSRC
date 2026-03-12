@@ -7,6 +7,7 @@ import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
+import { TOP_CAPTION_DEFAULTS } from '../constants/topCaptionDefaults';
 import {
   applyBorderDragDelta,
   buildStableBorderEdgeId,
@@ -215,17 +216,6 @@ const isFloatingTextLayerId = (panelId) => (
 );
 const TOP_CAPTION_PLACEHOLDER = 'Add Top Caption';
 const FLOATING_TEXT_LAYER_PLACEHOLDER = 'Add Text Layer';
-const TOP_CAPTION_DEFAULTS = {
-  fontSize: 18,
-  fontWeight: 700,
-  fontStyle: 'normal',
-  fontFamily: 'IMPACT',
-  color: '#111111',
-  strokeWidth: 0,
-  textAlign: 'left',
-  captionSpacingY: 5,
-  backgroundColor: '#ffffff',
-};
 const getTopCaptionVerticalPadding = (fontSize, extraSpacingY = 0, strokeWidth = 0) => (
   Math.max(2, Math.ceil(fontSize * 0.08), Math.ceil(Math.max(0, strokeWidth) / 2))
   + Math.max(0, extraSpacingY)
