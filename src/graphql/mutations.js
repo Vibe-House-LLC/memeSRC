@@ -2272,6 +2272,8 @@ export const createWebsiteSetting = /* GraphQL */ `
       openAIRateLimit
       nanoBananaRateLimit
       moderationThreshold
+      experimentsHostName
+      experimentsApiKey
       createdAt
       updatedAt
       __typename
@@ -2290,6 +2292,8 @@ export const updateWebsiteSetting = /* GraphQL */ `
       openAIRateLimit
       nanoBananaRateLimit
       moderationThreshold
+      experimentsHostName
+      experimentsApiKey
       createdAt
       updatedAt
       __typename
@@ -2308,6 +2312,8 @@ export const deleteWebsiteSetting = /* GraphQL */ `
       openAIRateLimit
       nanoBananaRateLimit
       moderationThreshold
+      experimentsHostName
+      experimentsApiKey
       createdAt
       updatedAt
       __typename

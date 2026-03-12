@@ -1357,6 +1357,8 @@ export const getWebsiteSetting = /* GraphQL */ `
       openAIRateLimit
       nanoBananaRateLimit
       moderationThreshold
+      experimentsHostName
+      experimentsApiKey
       createdAt
       updatedAt
       __typename
@@ -1377,6 +1379,8 @@ export const listWebsiteSettings = /* GraphQL */ `
         openAIRateLimit
         nanoBananaRateLimit
         moderationThreshold
+        experimentsHostName
+        experimentsApiKey
         createdAt
         updatedAt
         __typename
