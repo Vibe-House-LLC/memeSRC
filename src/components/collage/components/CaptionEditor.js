@@ -1528,7 +1528,12 @@ const CaptionEditor = ({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={handleColorTargetMenuOpen}
                 >
-                  <Palette sx={{ color: currentTextColor }} />
+                  <Palette
+                    sx={{
+                      color: '#ffffff',
+                      opacity: hasActiveColorSelection ? 1 : 0.88,
+                    }}
+                  />
                 </ToggleButton>
               </ToggleButtonGroup>
               <FormControl sx={{ flex: 1 }}>
@@ -1643,30 +1648,39 @@ const CaptionEditor = ({
                 anchorEl={alignmentAnchorEl}
                 open={Boolean(alignmentAnchorEl)}
                 onClose={handleAlignmentMenuClose}
+                MenuListProps={{
+                  autoFocusItem: false,
+                }}
                 PaperProps={{
                   sx: {
                     bgcolor: 'rgba(0, 0, 0, 0.96)',
                     color: '#ffffff',
                     border: '1px solid rgba(255,255,255,0.22)',
+                    '& .MuiMenuItem-root': {
+                      color: '#ffffff',
+                      '&:focus, &.Mui-focusVisible': {
+                        backgroundColor: 'transparent',
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                      },
+                    },
                   },
                 }}
               >
                 <MenuItem
-                  selected={currentTextAlign === 'left'}
                   onClick={() => handleAlignmentChange('left')}
                 >
                   <FormatAlignLeft sx={{ mr: 1 }} />
                   Left
                 </MenuItem>
                 <MenuItem
-                  selected={currentTextAlign === 'center'}
                   onClick={() => handleAlignmentChange('center')}
                 >
                   <FormatAlignCenter sx={{ mr: 1 }} />
                   Center
                 </MenuItem>
                 <MenuItem
-                  selected={currentTextAlign === 'right'}
                   onClick={() => handleAlignmentChange('right')}
                 >
                   <FormatAlignRight sx={{ mr: 1 }} />
@@ -1677,29 +1691,38 @@ const CaptionEditor = ({
                 anchorEl={colorTargetAnchorEl}
                 open={Boolean(colorTargetAnchorEl)}
                 onClose={handleColorTargetMenuClose}
+                MenuListProps={{
+                  autoFocusItem: false,
+                }}
                 PaperProps={{
                   sx: {
                     bgcolor: 'rgba(0, 0, 0, 0.96)',
                     color: '#ffffff',
                     border: '1px solid rgba(255,255,255,0.22)',
+                    '& .MuiMenuItem-root': {
+                      color: '#ffffff',
+                      '&:focus, &.Mui-focusVisible': {
+                        backgroundColor: 'transparent',
+                      },
+                      '&:hover': {
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                      },
+                    },
                   },
                 }}
               >
                 <MenuItem
-                  selected={activeInlineColorTarget === 'text'}
                   onClick={() => handleColorTargetSelect('text')}
                 >
                   Text Color
                 </MenuItem>
                 <MenuItem
-                  selected={activeInlineColorTarget === 'stroke'}
                   onClick={() => handleColorTargetSelect('stroke')}
                 >
                   Stroke Color
                 </MenuItem>
                 {showTopCaptionOptions && (
                   <MenuItem
-                    selected={activeInlineColorTarget === 'background'}
                     onClick={() => handleColorTargetSelect('background')}
                   >
                     Background Color
