@@ -36,12 +36,14 @@ import AddToCollageChooser from '../components/collage/AddToCollageChooser';
 import { renderThumbnailFromSnapshot } from '../components/collage/utils/renderThumbnailFromSnapshot';
 import {
   appendImageToSnapshot,
+  buildSingleImageSnapshot,
   buildSnapshotSignature,
   MAX_COLLAGE_IMAGES,
   normalizeSnapshot,
   replaceImageInSnapshot,
   snapshotImageFromPayload,
 } from '../components/collage/utils/snapshotEditing';
+import { getImageAspectRatio } from '../components/collage/utils/imageAspectRatio';
 import ReplaceCollageImageDialog from '../components/collage/ReplaceCollageImageDialog';
 import { saveImageToLibrary } from '../utils/library/saveImageToLibrary';
 import { get as getFromLibrary } from '../utils/library/storage';
@@ -3501,7 +3503,6 @@ const EditorPage = ({ shows }) => {
       addingToCollage,
       blobToDataUrl,
       captureCanvasBlob,
-      createProject,
       editorImageIntentBaseMeta,
       imageUploading,
       isProUser,
@@ -3546,9 +3547,19 @@ const EditorPage = ({ shows }) => {
       const project = await createProject({ name: 'Untitled Meme' });
       const projectId = project?.id;
       if (!projectId) throw new Error('Missing project id for collage project');
+      const imageRef = snapshotImageFromPayload(pendingCollagePayload.imagePayload);
+      const previewImage =
+        pendingCollagePayload.imagePayload?.displayUrl ||
+        pendingCollagePayload.imagePayload?.originalUrl ||
+        null;
+      const customAspectRatio = await getImageAspectRatio(previewImage || '');
       const { snapshot, thumbnail } = await persistCollageSnapshot(
         projectId,
-        appendImageToSnapshot(null, snapshotImageFromPayload(pendingCollagePayload.imagePayload)).snapshot
+        buildSingleImageSnapshot(imageRef, {
+          customAspectRatio,
+          borderThickness: 0,
+          singleImageAutoRestoreAspectRatioId: 'portrait',
+        })
       );
 
       trackUsageEvent('add_to_collage', {
@@ -3576,12 +3587,14 @@ const EditorPage = ({ shows }) => {
       setAddingToCollage(false);
     }
   }, [
-    appendImageToSnapshot,
+    buildSingleImageSnapshot,
     createProject,
     editorImageIntentBaseMeta,
+    getImageAspectRatio,
     pendingCollagePayload,
     persistCollageSnapshot,
     snapshotImageFromPayload,
+    trackUsageEvent,
     setMessage,
     setOpen,
     setSeverity,

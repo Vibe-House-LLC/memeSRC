@@ -111,6 +111,12 @@ export function normalizeSnapshot(
 
   const selectedAspectRatio = (snapshot?.selectedAspectRatio || aspectRatio || 'portrait') as AspectRatio;
   const customAspectRatio = normalizeCustomAspectRatio(snapshot?.customAspectRatio);
+  const singleImageAutoRestoreAspectRatioId = (
+    typeof snapshot?.singleImageAutoRestoreAspectRatioId === 'string' &&
+    snapshot.singleImageAutoRestoreAspectRatioId.trim().length > 0
+  )
+    ? snapshot.singleImageAutoRestoreAspectRatioId
+    : null;
   const selectedTemplateId = isTemplateIdCompatible(
     snapshot?.selectedTemplateId,
     desiredPanelCount,
@@ -130,6 +136,7 @@ export function normalizeSnapshot(
     selectedTemplateId: selectedTemplateId || null,
     selectedAspectRatio,
     customAspectRatio,
+    singleImageAutoRestoreAspectRatioId,
     panelCount: desiredPanelCount,
     borderThickness: snapshot?.borderThickness ?? 'medium',
     borderColor: snapshot?.borderColor ?? '#FFFFFF',
@@ -151,6 +158,36 @@ const buildAutoText = (subtitle: string, fontFamily?: string) => ({
   autoAssigned: true,
   subtitleShowing: true,
 });
+
+export function buildSingleImageSnapshot(
+  image: CollageImageRef,
+  options: {
+    customAspectRatio?: number;
+    borderThickness?: number | string;
+    borderColor?: string;
+    singleImageAutoRestoreAspectRatioId?: AspectRatio | null;
+  } = {}
+): CollageSnapshot {
+  const customAspectRatio = normalizeCustomAspectRatio(options.customAspectRatio) || 1;
+  const baseSnapshot: CollageSnapshot = {
+    version: 1,
+    images: [],
+    panelImageMapping: {},
+    panelTransforms: {},
+    panelTexts: {},
+    stickers: [],
+    selectedTemplateId: null,
+    selectedAspectRatio: 'custom',
+    customAspectRatio,
+    singleImageAutoRestoreAspectRatioId: options.singleImageAutoRestoreAspectRatioId || null,
+    panelCount: 1,
+    borderThickness: options.borderThickness ?? 0,
+    borderColor: options.borderColor ?? '#FFFFFF',
+    customLayout: null,
+  };
+
+  return appendImageToSnapshot(baseSnapshot, image, 'custom').snapshot;
+}
 
 export function appendImageToSnapshot(
   snapshot: CollageSnapshot | null | undefined,

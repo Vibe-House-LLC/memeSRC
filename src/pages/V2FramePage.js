@@ -66,12 +66,14 @@ import {
 import { renderThumbnailFromSnapshot } from '../components/collage/utils/renderThumbnailFromSnapshot';
 import {
   appendImageToSnapshot,
+  buildSingleImageSnapshot,
   buildSnapshotSignature,
   MAX_COLLAGE_IMAGES,
   normalizeSnapshot,
   replaceImageInSnapshot,
   snapshotImageFromPayload,
 } from '../components/collage/utils/snapshotEditing';
+import { getImageAspectRatio } from '../components/collage/utils/imageAspectRatio';
 import ReplaceCollageImageDialog from '../components/collage/ReplaceCollageImageDialog';
 import { get as getFromLibrary } from '../utils/library/storage';
 
@@ -1433,14 +1435,20 @@ useEffect(() => {
       const project = await createProject({ name: 'Untitled Meme' });
       const projectId = project?.id;
       if (!projectId) throw new Error('Missing project id for collage project');
-      const { snapshot, thumbnail } = await persistCollageSnapshot(
-        projectId,
-        appendImageToSnapshot(null, snapshotImageFromPayload(payloadWithKey.imagePayload)).snapshot
-      );
+      const imageRef = snapshotImageFromPayload(payloadWithKey.imagePayload);
       const previewImage =
         payloadWithKey.imagePayload?.displayUrl ||
         payloadWithKey.imagePayload?.originalUrl ||
         null;
+      const customAspectRatio = await getImageAspectRatio(previewImage || '');
+      const { snapshot, thumbnail } = await persistCollageSnapshot(
+        projectId,
+        buildSingleImageSnapshot(imageRef, {
+          customAspectRatio,
+          borderThickness: 0,
+          singleImageAutoRestoreAspectRatioId: 'portrait',
+        })
+      );
 
       trackUsageEvent('add_to_collage', {
         ...collageIntentMeta,
@@ -1465,10 +1473,11 @@ useEffect(() => {
       setAddingToCollage(false);
     }
   }, [
-    appendImageToSnapshot,
+    buildSingleImageSnapshot,
     collageIntentMeta,
     createProject,
     ensureCollagePayloadHasLibraryKey,
+    getImageAspectRatio,
     persistCollageSnapshot,
     snapshotImageFromPayload,
     trackUsageEvent,
@@ -2592,10 +2601,10 @@ useEffect(() => {
   const showAddToOptions = addToExpanded && !addToSelection && !collagePreview;
   const showLibraryActions = addToSelection === 'library' && savedToLibrary && !collagePreview;
   const showCollageTiles = addToSelection === 'collage' && !collagePreview;
-  const collagePreviewImage = collagePreview?.previewImage || collagePreview?.thumbnail;
-  const collagePreviewAlt = collagePreview?.previewImage
-    ? 'Image preview'
-    : collagePreview?.name || 'Collage preview';
+  const collagePreviewImage = collagePreview?.thumbnail || collagePreview?.previewImage || null;
+  const collagePreviewAlt = collagePreview?.thumbnail
+    ? collagePreview?.name || 'Collage preview'
+    : 'Image preview';
   const collageReady = Boolean(pendingCollagePayload);
   const recentCollage = useMemo(() => collageProjects[0] || null, [collageProjects]);
   const recentCollageThumbnail = recentCollage
