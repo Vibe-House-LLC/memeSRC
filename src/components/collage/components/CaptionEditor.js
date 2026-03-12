@@ -447,6 +447,21 @@ const CaptionEditor = ({
     hasCustomTextColor
     || hasExplicitStrokeColor
   );
+  const renderColorMenuDot = (color, sx = {}) => (
+    <Box
+      sx={{
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+        backgroundColor: color,
+        border: '1px solid rgba(255,255,255,0.35)',
+        boxSizing: 'border-box',
+        flexShrink: 0,
+        mr: 1.25,
+        ...sx,
+      }}
+    />
+  );
 
   // Calculate responsive dimensions based on panel size with mobile-friendly minimums
   const minPanelSize = Math.min(rect.width, rect.height);
@@ -1792,17 +1807,20 @@ const CaptionEditor = ({
                 <MenuItem
                   onClick={() => handleColorTargetSelect('text')}
                 >
+                  {renderColorMenuDot(normalizedCurrentTextColor)}
                   Text Color
                 </MenuItem>
                 <MenuItem
                   onClick={() => handleColorTargetSelect('stroke')}
                 >
+                  {renderColorMenuDot(normalizedCurrentStrokeColor, isOutlineDisabled ? { opacity: 0.45 } : undefined)}
                   Outline Color
                 </MenuItem>
                 {showTopCaptionOptions && (
                   <MenuItem
                     onClick={() => handleColorTargetSelect('background')}
                   >
+                    {renderColorMenuDot(normalizedTopCaptionBackgroundColor)}
                     Background Color
                   </MenuItem>
                 )}
