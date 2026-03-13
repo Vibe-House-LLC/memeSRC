@@ -4,12 +4,23 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   Slider,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
+import {
+  ArrowBackRounded,
+  BrushRounded,
+  CenterFocusStrongRounded,
+  FitScreenRounded,
+  OpenWithRounded,
+  ReplayRounded,
+  WaterDropRounded,
+  ZoomInRounded,
+} from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { ExportedStickerEdit, LoadedStickerSource, ViewTransform } from './stickerBrushMath';
@@ -84,6 +95,7 @@ export default function StickerBrushEditor({
   const transformRef = React.useRef<ViewTransform | null>(null);
   const minScaleRef = React.useRef(0.1);
   const renderFrameRef = React.useRef<number | null>(null);
+  const brushPreviewTimeoutRef = React.useRef<number | null>(null);
   const activePointersRef = React.useRef<Map<number, PointerPoint>>(new Map());
   const interactionModeRef = React.useRef<InteractionMode>('none');
   const drawSessionRef = React.useRef<DrawSession | null>(null);
@@ -113,6 +125,7 @@ export default function StickerBrushEditor({
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
   const [bottomBarHeight, setBottomBarHeight] = React.useState(152);
+  const [brushPreviewVisible, setBrushPreviewVisible] = React.useState(false);
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -147,6 +160,17 @@ export default function StickerBrushEditor({
     transformRef.current = normalized;
     scheduleRender();
   }, [clampTransform, scheduleRender]);
+
+  const revealBrushPreview = React.useCallback(() => {
+    setBrushPreviewVisible(true);
+    if (brushPreviewTimeoutRef.current != null) {
+      window.clearTimeout(brushPreviewTimeoutRef.current);
+    }
+    brushPreviewTimeoutRef.current = window.setTimeout(() => {
+      setBrushPreviewVisible(false);
+      brushPreviewTimeoutRef.current = null;
+    }, 900);
+  }, []);
 
   const resetViewToFit = React.useCallback(() => {
     if (!loadedSource || viewportSize.width <= 0 || viewportSize.height <= 0) return;
@@ -322,6 +346,9 @@ export default function StickerBrushEditor({
   React.useEffect(() => () => {
     if (renderFrameRef.current != null) {
       window.cancelAnimationFrame(renderFrameRef.current);
+    }
+    if (brushPreviewTimeoutRef.current != null) {
+      window.clearTimeout(brushPreviewTimeoutRef.current);
     }
   }, []);
 
@@ -563,6 +590,7 @@ export default function StickerBrushEditor({
     activePointersRef.current.clear();
     setInteraction('none');
     setPreviewResult(null);
+    setBrushPreviewVisible(false);
     refreshComposite();
   }, [clearPendingDraw, refreshComposite, setInteraction]);
 
@@ -615,9 +643,6 @@ export default function StickerBrushEditor({
     }
   }, [busy, commitBusy, onAdd, previewResult]);
 
-  const interactionHint = isMobile
-    ? 'Paint: 1 finger. Move/zoom: 2 fingers.'
-    : 'Paint: drag. Pan: Shift + drag. Zoom: wheel.';
   const previewHint = previewResult?.changed ? 'Preview the cropped sticker.' : 'Preview before adding.';
   const canvasCursor = !isMobile
     ? (
@@ -626,6 +651,23 @@ export default function StickerBrushEditor({
         : (panModifierPressed ? 'grab' : 'crosshair')
     )
     : 'crosshair';
+  const gestureCards = isMobile
+    ? [
+      { icon: <BrushRounded sx={{ fontSize: 18 }} />, title: 'Paint', detail: '1 finger' },
+      { icon: <OpenWithRounded sx={{ fontSize: 18 }} />, title: 'Move / Zoom', detail: '2 fingers' },
+    ]
+    : [
+      { icon: <BrushRounded sx={{ fontSize: 18 }} />, title: 'Paint', detail: 'Drag' },
+      { icon: <OpenWithRounded sx={{ fontSize: 18 }} />, title: 'Pan', detail: 'Shift + drag' },
+      { icon: <ZoomInRounded sx={{ fontSize: 18 }} />, title: 'Zoom', detail: 'Wheel' },
+    ];
+  const brushPreviewDiameter = clamp(brushSize, 14, Math.min(150, Math.max(80, viewportSize.width * 0.28 || 150)));
+  const brushPreviewTint = brushMode === 'erase'
+    ? alpha(theme.palette.error.main, Math.max(0.16, brushOpacity * 0.24))
+    : alpha(theme.palette.success.main, Math.max(0.16, brushOpacity * 0.24));
+  const brushPreviewBorder = brushMode === 'erase'
+    ? alpha(theme.palette.error.main, 0.78)
+    : alpha(theme.palette.success.main, 0.78);
   const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
   const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
   const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
@@ -663,6 +705,22 @@ export default function StickerBrushEditor({
     '&:hover': {
       backgroundColor: theme.palette.primary.dark,
       boxShadow: `0 6px 18px ${alpha(theme.palette.primary.main, 0.4)}`,
+    },
+  };
+  const utilityButtonSx = {
+    minHeight: 34,
+    borderRadius: 999,
+    px: 1.05,
+    gap: 0.45,
+    fontWeight: 700,
+    textTransform: 'none',
+    color: 'text.secondary',
+    border: '1px solid',
+    borderColor: alpha(theme.palette.divider, 0.9),
+    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.6 : 0.82),
+    '&:hover': {
+      borderColor: alpha(theme.palette.text.primary, 0.24),
+      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.96),
     },
   };
 
@@ -777,6 +835,30 @@ export default function StickerBrushEditor({
                 </Box>
               </Box>
             ) : null}
+
+            {!previewResult && brushPreviewVisible && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Box
+                  sx={{
+                    width: `${brushPreviewDiameter}px`,
+                    height: `${brushPreviewDiameter}px`,
+                    borderRadius: '50%',
+                    border: `2px solid ${brushPreviewBorder}`,
+                    bgcolor: brushPreviewTint,
+                    boxShadow: `0 10px 28px ${alpha(theme.palette.common.black, 0.16)}`,
+                  }}
+                />
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -826,22 +908,62 @@ export default function StickerBrushEditor({
       >
         <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
           <Stack spacing={0.8}>
-            <Typography
-              variant="caption"
-              sx={{
-                textAlign: 'center',
-                color: 'text.secondary',
-                fontWeight: 700,
-                letterSpacing: 0.1,
-                lineHeight: 1.15,
-              }}
-            >
-              {previewResult ? previewHint : interactionHint}
-            </Typography>
-
             {!previewResult && (
               <>
-                <Stack direction="row" spacing={0.9} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
+                    gap: 0.75,
+                  }}
+                >
+                  {gestureCards.map((card) => (
+                    <Box
+                      key={`${card.title}-${card.detail}`}
+                      sx={{
+                        minWidth: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.85,
+                        px: 1,
+                        py: 0.8,
+                        borderRadius: 1.35,
+                        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                        bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'text.primary',
+                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                          flexShrink: 0,
+                        }}
+                      >
+                        {card.icon}
+                      </Box>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, lineHeight: 1.05 }}>
+                          {card.title}
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.1 }}>
+                          {card.detail}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={0.8}
+                  sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between' }}
+                >
                   <ToggleButtonGroup
                     exclusive
                     size="small"
@@ -853,10 +975,11 @@ export default function StickerBrushEditor({
                     }}
                     sx={{
                       '& .MuiToggleButton-root': {
+                        flex: 1,
                         textTransform: 'none',
                         fontWeight: 700,
-                        px: isMobile ? 1.25 : 1.8,
-                        py: 0.45,
+                        px: isMobile ? 1.15 : 1.8,
+                        py: 0.55,
                       },
                     }}
                   >
@@ -864,70 +987,136 @@ export default function StickerBrushEditor({
                     <ToggleButton value="restore">Restore</ToggleButton>
                   </ToggleButtonGroup>
 
-                  <Stack direction="row" spacing={0.6}>
+                  <Stack direction="row" spacing={0.55} sx={{ justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
                     <Button
-                      variant="text"
+                      variant="contained"
                       onClick={resetViewToFit}
                       disabled={loading}
-                      sx={{ textTransform: 'none', minWidth: 0, px: 0.35, fontWeight: 700 }}
+                      startIcon={<FitScreenRounded sx={{ fontSize: 16 }} />}
+                      sx={utilityButtonSx}
                     >
                       Fit
                     </Button>
                     <Button
-                      variant="text"
+                      variant="contained"
                       onClick={handleRecenter}
                       disabled={loading || !loadedSource}
-                      sx={{ textTransform: 'none', minWidth: 0, px: 0.35, fontWeight: 700 }}
+                      startIcon={<CenterFocusStrongRounded sx={{ fontSize: 16 }} />}
+                      sx={utilityButtonSx}
                     >
                       Center
                     </Button>
                     <Button
-                      variant="text"
+                      variant="contained"
                       onClick={handleReset}
                       disabled={loading || !hasApproximateEdits}
-                      sx={{ textTransform: 'none', minWidth: 0, px: 0.35, fontWeight: 700 }}
+                      startIcon={<ReplayRounded sx={{ fontSize: 16 }} />}
+                      sx={utilityButtonSx}
                     >
                       Reset
                     </Button>
                   </Stack>
                 </Stack>
 
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                    gap: 1,
-                  }}
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.1 }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                        Size
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                        {Math.round(brushSize)}
-                      </Typography>
-                    </Stack>
+                <Stack spacing={0.65}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: 'center',
+                      px: 1,
+                      py: 0.55,
+                      borderRadius: 1.35,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'text.primary',
+                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                        flexShrink: 0,
+                      }}
+                    >
+                      <BrushRounded sx={{ fontSize: 17 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
+                      Brush
+                    </Typography>
                     <Slider
                       size="small"
                       value={brushSize}
                       min={12}
                       max={160}
                       step={1}
-                      onChange={(_, value) => setBrushSize(Array.isArray(value) ? value[0] : value)}
+                      onChange={(_, value) => {
+                        setBrushSize(Array.isArray(value) ? value[0] : value);
+                        revealBrushPreview();
+                      }}
                       aria-label="Brush size"
+                      sx={{ flex: 1, minWidth: 0 }}
                     />
-                  </Box>
+                    <Box
+                      sx={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                        bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.42 : 0.82),
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: `${Math.max(8, Math.min(28, brushSize * 0.2))}px`,
+                          height: `${Math.max(8, Math.min(28, brushSize * 0.2))}px`,
+                          borderRadius: '50%',
+                          border: `2px solid ${brushPreviewBorder}`,
+                          bgcolor: brushPreviewTint,
+                        }}
+                      />
+                    </Box>
+                  </Stack>
 
-                  <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.1 }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                        Opacity
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                        {Math.round(brushOpacity * 100)}%
-                      </Typography>
-                    </Stack>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: 'center',
+                      px: 1,
+                      py: 0.55,
+                      borderRadius: 1.35,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'text.primary',
+                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                        flexShrink: 0,
+                      }}
+                    >
+                      <WaterDropRounded sx={{ fontSize: 17 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
+                      Opacity
+                    </Typography>
                     <Slider
                       size="small"
                       value={Math.round(brushOpacity * 100)}
@@ -937,17 +1126,45 @@ export default function StickerBrushEditor({
                       onChange={(_, value) => {
                         const nextValue = Array.isArray(value) ? value[0] : value;
                         setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
+                        revealBrushPreview();
                       }}
                       aria-label="Brush opacity"
+                      sx={{ flex: 1, minWidth: 0 }}
                     />
-                  </Box>
-                </Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        minWidth: 42,
+                        textAlign: 'right',
+                        fontWeight: 800,
+                        color: 'text.secondary',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {Math.round(brushOpacity * 100)}%
+                    </Typography>
+                  </Stack>
+                </Stack>
               </>
             )}
 
+            {previewResult && (
+              <Typography
+                variant="caption"
+                sx={{
+                  textAlign: 'center',
+                  color: 'text.secondary',
+                  fontWeight: 700,
+                  letterSpacing: 0.12,
+                  lineHeight: 1.1,
+                }}
+              >
+                {previewHint}
+              </Typography>
+            )}
+
             <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'center' }}>
-              <Button
-                variant="contained"
+              <IconButton
                 onClick={() => {
                   if (previewResult) {
                     setPreviewResult(null);
@@ -956,10 +1173,16 @@ export default function StickerBrushEditor({
                   onBack();
                 }}
                 disabled={previewBusy || commitBusy || busy}
-                sx={neutralActionButtonSx}
+                aria-label={previewResult ? 'Back to edit' : 'Back'}
+                sx={{
+                  ...neutralActionButtonSx,
+                  width: 52,
+                  minWidth: 52,
+                  px: 0,
+                }}
               >
-                {previewResult ? 'Back to Edit' : 'Back'}
-              </Button>
+                <ArrowBackRounded />
+              </IconButton>
 
               <Button
                 variant="contained"

@@ -6,7 +6,7 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { ArrowBackRounded } from '@mui/icons-material';
 import StickerBrushEditor from './StickerBrushEditor';
 import type { ExportedStickerEdit } from './stickerBrushMath';
 import LibraryBrowser from '../../library/LibraryBrowser';
@@ -31,7 +31,6 @@ export default function StickerAddFlow({
   onResolveSelection,
   onCommit,
 }: StickerAddFlowProps) {
-  const theme = useTheme();
   const [step, setStep] = React.useState<'library' | 'editor'>('library');
   const [busy, setBusy] = React.useState(false);
   const [errorText, setErrorText] = React.useState('');
@@ -91,33 +90,40 @@ export default function StickerAddFlow({
   return (
     <Box
       sx={{
-        minHeight: { xs: 'calc(100dvh - 10px)', md: 'calc(100dvh - 36px)' },
+        width: '100%',
+        minHeight: { xs: 'calc(100svh - 28px)', md: 'calc(100dvh - 36px)' },
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: { xs: 0, md: 3 },
         overflow: 'hidden',
-        bgcolor: theme.palette.background.paper,
-        border: { xs: 'none', md: `1px solid ${alpha(theme.palette.divider, 0.9)}` },
+        bgcolor: 'transparent',
+        border: 'none',
+        borderRadius: 0,
       }}
     >
       <Box
         sx={{
-          px: { xs: 1.25, md: 1.5 },
-          py: 1,
+          px: { xs: 0.5, md: 0 },
+          py: 0.5,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 1,
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.75)}`,
         }}
       >
         <Button
           variant="text"
           onClick={handleBack}
           disabled={busy}
-          sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, px: 0.5 }}
+          startIcon={<ArrowBackRounded sx={{ fontSize: 18 }} />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            minWidth: 0,
+            px: 0.5,
+            '& .MuiButton-startIcon': { mr: 0.4 },
+          }}
         >
-          Back
+          Library
         </Button>
         <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 700 }}>
           Stickers
@@ -133,7 +139,7 @@ export default function StickerAddFlow({
         </Alert>
       ) : null}
 
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', px: { xs: 1, md: 1.25 }, pb: { xs: 1, md: 1.25 } }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', px: 0, pb: 0 }}>
         <AnyLibraryBrowser
           multiple={false}
           uploadEnabled
@@ -148,8 +154,13 @@ export default function StickerAddFlow({
             mt: 0,
             height: '100%',
             overflow: 'auto',
+            px: 0,
+            '& > .MuiBox-root:first-of-type': {
+              mt: 0,
+              mb: 0.75,
+            },
             '& .MuiTextField-root': {
-              mt: 0.25,
+              mt: 0,
             },
           }}
         />
