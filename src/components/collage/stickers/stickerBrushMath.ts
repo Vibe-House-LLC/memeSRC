@@ -41,6 +41,8 @@ export type PixelBounds = {
   height: number;
 };
 
+export type CheckerboardMode = 'light' | 'dark';
+
 export const STICKER_EDITOR_MAX_DIMENSION_PX = 1500;
 const CROPPED_STICKER_PADDING_PX = 2;
 
@@ -433,11 +435,18 @@ export const updateCompositeCanvas = (
   ctx.globalCompositeOperation = 'source-over';
 };
 
-const renderCheckerboard = (ctx: CanvasRenderingContext2D, width: number, height: number): void => {
+const renderCheckerboard = (
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  mode: CheckerboardMode
+): void => {
   const size = 18;
-  ctx.fillStyle = '#f4f5f7';
+  const baseColor = mode === 'dark' ? '#2b2f36' : '#f4f5f7';
+  const accentColor = mode === 'dark' ? '#1a1d22' : '#dde1e6';
+  ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = '#dde1e6';
+  ctx.fillStyle = accentColor;
   for (let y = 0; y < height; y += size) {
     for (let x = 0; x < width; x += size) {
       if (((x / size) + (y / size)) % 2 === 0) {
@@ -451,14 +460,16 @@ export const renderStickerViewport = ({
   targetCanvas,
   compositeCanvas,
   transform,
+  checkerboardMode = 'light',
 }: {
   targetCanvas: HTMLCanvasElement;
   compositeCanvas: HTMLCanvasElement;
   transform: ViewTransform;
+  checkerboardMode?: CheckerboardMode;
 }): void => {
   const ctx = getCanvasContext(targetCanvas);
   ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-  renderCheckerboard(ctx, targetCanvas.width, targetCanvas.height);
+  renderCheckerboard(ctx, targetCanvas.width, targetCanvas.height, checkerboardMode);
   ctx.save();
   ctx.translate(transform.offsetX, transform.offsetY);
   ctx.rotate(transform.rotation || 0);

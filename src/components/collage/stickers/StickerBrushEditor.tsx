@@ -14,8 +14,9 @@ import {
 import {
   ArrowBackRounded,
   BrushRounded,
-  CenterFocusStrongRounded,
+  DarkModeRounded,
   FitScreenRounded,
+  LightModeRounded,
   OpenWithRounded,
   RedoRounded,
   ReplayRounded,
@@ -25,17 +26,15 @@ import {
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import type { ExportedStickerEdit, LoadedStickerSource, ViewTransform } from './stickerBrushMath';
+import type { CheckerboardMode, ExportedStickerEdit, LoadedStickerSource, ViewTransform } from './stickerBrushMath';
 import {
   applyOverlayToMaskCanvas,
   clampTransformToViewport,
-  createCenteredTransformForBounds,
   cloneCanvas,
   createFitTransform,
   createOpaqueMaskCanvas,
   createTransparentCanvas,
   exportMaskedSticker,
-  getCanvasNonTransparentBounds,
   imageToScreenPoint,
   isMaskCanvasPristine,
   loadStickerSource,
@@ -120,6 +119,7 @@ export default function StickerBrushEditor({
     hasApproximateEdits: boolean;
     previewResult: ExportedStickerEdit | null;
   } | null>(null);
+  const checkerboardModeRef = React.useRef<CheckerboardMode>('dark');
   const renderFrameRef = React.useRef<number | null>(null);
   const brushPreviewTimeoutRef = React.useRef<number | null>(null);
   const activePointersRef = React.useRef<Map<number, PointerPoint>>(new Map());
@@ -154,6 +154,7 @@ export default function StickerBrushEditor({
   const [brushPreviewVisible, setBrushPreviewVisible] = React.useState(false);
   const [historyState, setHistoryState] = React.useState({ canUndo: false, canRedo: false });
   const [discardConfirmOpen, setDiscardConfirmOpen] = React.useState(false);
+  const [checkerboardMode, setCheckerboardMode] = React.useState<CheckerboardMode>('dark');
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -167,6 +168,7 @@ export default function StickerBrushEditor({
         targetCanvas: canvas,
         compositeCanvas: composite,
         transform,
+        checkerboardMode: checkerboardModeRef.current,
       });
     });
   }, []);
@@ -398,6 +400,11 @@ export default function StickerBrushEditor({
     }
     scheduleRender();
   }, [scheduleRender, screenMode, viewportSize.height, viewportSize.width]);
+
+  React.useEffect(() => {
+    checkerboardModeRef.current = checkerboardMode;
+    scheduleRender();
+  }, [checkerboardMode, scheduleRender]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
@@ -720,27 +727,6 @@ export default function StickerBrushEditor({
     refreshComposite();
   }, [clearPendingDraw, commitHistorySnapshot, refreshComposite, setInteraction]);
 
-  const handleRecenter = React.useCallback(() => {
-    const compositeCanvas = compositeCanvasRef.current;
-    const current = transformRef.current;
-    if (!compositeCanvas || !current || viewportSize.width <= 0 || viewportSize.height <= 0) return;
-
-    const visibleBounds = getCanvasNonTransparentBounds(compositeCanvas) || {
-      x: 0,
-      y: 0,
-      width: compositeCanvas.width,
-      height: compositeCanvas.height,
-    };
-
-    setUserTransform(createCenteredTransformForBounds({
-      bounds: visibleBounds,
-      viewportWidth: viewportSize.width,
-      viewportHeight: viewportSize.height,
-      scale: current.scale,
-      rotation: current.rotation,
-    }));
-  }, [setUserTransform, viewportSize.height, viewportSize.width]);
-
   const handlePreview = React.useCallback(async () => {
     const sourceCanvas = sourceCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
@@ -786,6 +772,29 @@ export default function StickerBrushEditor({
     ? 'Pinch to zoom, rotate, or pan'
     : 'Wheel to zoom, Shift + drag to pan';
   const previewImageSrc = previewResult?.dataUrl || imageSrc;
+  const previewCheckerboardSx = checkerboardMode === 'dark'
+    ? {
+      backgroundImage: `
+        linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.08) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.08) 75%)
+      `,
+      backgroundSize: '18px 18px',
+      backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0px',
+      backgroundColor: '#20242b',
+    }
+    : {
+      backgroundImage: `
+        linear-gradient(45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(0,0,0,0.06) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(0,0,0,0.06) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(0,0,0,0.06) 75%)
+      `,
+      backgroundSize: '18px 18px',
+      backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0px',
+      backgroundColor: '#f4f5f7',
+    };
   const handleUndo = React.useCallback(() => {
     if (historyIndexRef.current <= 0) return;
     restoreMaskFromHistory(historyIndexRef.current - 1);
@@ -862,10 +871,17 @@ export default function StickerBrushEditor({
     borderRadius: 1.35,
     color: 'text.primary',
     bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.7 : 0.88),
+    border: '1px solid',
+    borderColor: theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.14)
+      : alpha(theme.palette.common.white, 0.72),
     boxShadow: `0 8px 22px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.22 : 0.14)}`,
     backdropFilter: 'blur(14px)',
     '&:hover': {
       bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.84 : 0.97),
+      borderColor: theme.palette.mode === 'dark'
+        ? alpha(theme.palette.common.white, 0.2)
+        : alpha(theme.palette.common.white, 0.88),
     },
   };
 
@@ -937,15 +953,7 @@ export default function StickerBrushEditor({
                   alignItems: 'center',
                   justifyContent: 'center',
                   p: 2,
-                  backgroundImage: `
-                    linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
-                    linear-gradient(-45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
-                    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.08) 75%),
-                    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.08) 75%)
-                  `,
-                  backgroundSize: '18px 18px',
-                  backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0px',
-                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  ...previewCheckerboardSx,
                 }}
               >
                 <Box
@@ -1037,34 +1045,6 @@ export default function StickerBrushEditor({
               spacing={0.8}
               sx={{
                 position: 'absolute',
-                left: 12,
-                bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
-                zIndex: 2,
-              }}
-            >
-              <IconButton
-                onClick={resetViewToFit}
-                disabled={loading}
-                aria-label="Fit image"
-                sx={overlayIconButtonSx}
-              >
-                <FitScreenRounded sx={{ fontSize: 19 }} />
-              </IconButton>
-              <IconButton
-                onClick={handleRecenter}
-                disabled={loading || !loadedSource}
-                aria-label="Center visible sticker"
-                sx={overlayIconButtonSx}
-              >
-                <CenterFocusStrongRounded sx={{ fontSize: 19 }} />
-              </IconButton>
-            </Stack>
-
-            <Stack
-              direction="row"
-              spacing={0.8}
-              sx={{
-                position: 'absolute',
                 right: 12,
                 bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
                 zIndex: 2,
@@ -1089,6 +1069,37 @@ export default function StickerBrushEditor({
             </Stack>
           </>
         )}
+
+        <Stack
+          direction="row"
+          spacing={0.8}
+          sx={{
+            position: 'absolute',
+            left: 12,
+            bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
+            zIndex: 2,
+          }}
+        >
+          <IconButton
+            onClick={() => setCheckerboardMode((currentMode) => (currentMode === 'dark' ? 'light' : 'dark'))}
+            aria-label={checkerboardMode === 'dark' ? 'Use light checkerboard background' : 'Use dark checkerboard background'}
+            sx={overlayIconButtonSx}
+          >
+            {checkerboardMode === 'dark'
+              ? <LightModeRounded sx={{ fontSize: 19 }} />
+              : <DarkModeRounded sx={{ fontSize: 19 }} />}
+          </IconButton>
+          {screenMode === 'edit' && (
+            <IconButton
+              onClick={resetViewToFit}
+              disabled={loading || !loadedSource}
+              aria-label="Refit image"
+              sx={overlayIconButtonSx}
+            >
+              <FitScreenRounded sx={{ fontSize: 19 }} />
+            </IconButton>
+          )}
+        </Stack>
 
         {(loading || !loadedSource) && (
           <Stack
