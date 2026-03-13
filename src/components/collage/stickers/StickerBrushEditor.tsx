@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import {
   ArrowBackRounded,
+  BlurOnRounded,
   BrushRounded,
   DarkModeRounded,
   FitScreenRounded,
@@ -35,6 +36,8 @@ import {
   createOpaqueMaskCanvas,
   createTransparentCanvas,
   exportMaskedSticker,
+  getBrushFeatherCoreRatio,
+  getBrushFeatherOuterRadiusMultiplier,
   imageToScreenPoint,
   isMaskCanvasPristine,
   loadStickerSource,
@@ -140,6 +143,7 @@ export default function StickerBrushEditor({
   const [brushMode, setBrushMode] = React.useState<'erase' | 'restore'>('erase');
   const [brushSize, setBrushSize] = React.useState(44);
   const [brushOpacity, setBrushOpacity] = React.useState(1);
+  const [brushFeather, setBrushFeather] = React.useState(0.22);
   const [viewportSize, setViewportSize] = React.useState({ width: 0, height: 0 });
   const [loadedSource, setLoadedSource] = React.useState<LoadedStickerSource | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -485,6 +489,7 @@ export default function StickerBrushEditor({
       toY: end.y,
       radius,
       opacity: 1,
+      feather: brushFeather,
       mode: brushMode,
     });
     applyOverlayToMaskCanvas({
@@ -500,7 +505,7 @@ export default function StickerBrushEditor({
     setScreenMode('edit');
     setPreviewResult(null);
     refreshComposite();
-  }, [brushMode, brushOpacity, brushSize, refreshComposite]);
+  }, [brushFeather, brushMode, brushOpacity, brushSize, refreshComposite]);
 
   const setInteraction = React.useCallback((nextMode: InteractionMode) => {
     interactionModeRef.current = nextMode;
@@ -804,10 +809,22 @@ export default function StickerBrushEditor({
     if (historyIndexRef.current >= historySnapshotsRef.current.length - 1) return;
     restoreMaskFromHistory(historyIndexRef.current + 1);
   }, [restoreMaskFromHistory]);
-  const brushPreviewDiameter = clamp(brushSize, 14, Math.min(150, Math.max(80, viewportSize.width * 0.28 || 150)));
+  const brushPreviewOuterMultiplier = getBrushFeatherOuterRadiusMultiplier(brushFeather);
+  const brushPreviewDiameter = clamp(
+    brushSize * brushPreviewOuterMultiplier,
+    14,
+    Math.min(180, Math.max(92, viewportSize.width * 0.32 || 180))
+  );
+  const brushPreviewInnerStop = Math.max(
+    0,
+    Math.round((getBrushFeatherCoreRatio(brushFeather) / brushPreviewOuterMultiplier) * 100)
+  );
   const brushPreviewTint = brushMode === 'erase'
     ? alpha(theme.palette.error.main, Math.max(0.16, brushOpacity * 0.24))
     : alpha(theme.palette.success.main, Math.max(0.16, brushOpacity * 0.24));
+  const brushPreviewColor = brushMode === 'erase'
+    ? theme.palette.error.main
+    : theme.palette.success.main;
   const brushPreviewBorder = brushMode === 'erase'
     ? alpha(theme.palette.error.main, 0.78)
     : alpha(theme.palette.success.main, 0.78);
@@ -991,7 +1008,7 @@ export default function StickerBrushEditor({
                     height: `${brushPreviewDiameter}px`,
                     borderRadius: '50%',
                     border: `2px solid ${brushPreviewBorder}`,
-                    bgcolor: brushPreviewTint,
+                    background: `radial-gradient(circle, ${brushPreviewTint} 0%, ${brushPreviewTint} ${brushPreviewInnerStop}%, ${alpha(brushPreviewColor, 0.38)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.16))}%, ${alpha(brushPreviewColor, 0.12)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.48))}%, ${alpha(brushPreviewColor, 0.03)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.78))}%, ${alpha(brushPreviewColor, 0)} 100%)`,
                     boxShadow: `0 10px 28px ${alpha(theme.palette.common.black, 0.16)}`,
                   }}
                 />
@@ -1293,11 +1310,11 @@ export default function StickerBrushEditor({
                     >
                       <Box
                         sx={{
-                          width: `${Math.max(8, Math.min(28, brushSize * 0.2))}px`,
-                          height: `${Math.max(8, Math.min(28, brushSize * 0.2))}px`,
+                          width: `${Math.max(8, Math.min(28, brushSize * 0.2 * brushPreviewOuterMultiplier))}px`,
+                          height: `${Math.max(8, Math.min(28, brushSize * 0.2 * brushPreviewOuterMultiplier))}px`,
                           borderRadius: '50%',
                           border: `2px solid ${brushPreviewBorder}`,
-                          bgcolor: brushPreviewTint,
+                          background: `radial-gradient(circle, ${brushPreviewTint} 0%, ${brushPreviewTint} ${brushPreviewInnerStop}%, ${alpha(brushPreviewColor, 0.38)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.16))}%, ${alpha(brushPreviewColor, 0.12)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.48))}%, ${alpha(brushPreviewColor, 0.03)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.78))}%, ${alpha(brushPreviewColor, 0)} 100%)`,
                         }}
                       />
                     </Box>
@@ -1357,6 +1374,63 @@ export default function StickerBrushEditor({
                       }}
                     >
                       {Math.round(brushOpacity * 100)}%
+                    </Typography>
+                  </Stack>
+
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: 'center',
+                      px: 1,
+                      py: 0.55,
+                      borderRadius: 1.35,
+                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'text.primary',
+                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                        flexShrink: 0,
+                      }}
+                    >
+                      <BlurOnRounded sx={{ fontSize: 17 }} />
+                    </Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
+                      Feather
+                    </Typography>
+                    <Slider
+                      size="small"
+                      value={Math.round(brushFeather * 100)}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onChange={(_, value) => {
+                        const nextValue = Array.isArray(value) ? value[0] : value;
+                        setBrushFeather(clamp(nextValue / 100, 0, 1));
+                        revealBrushPreview();
+                      }}
+                      aria-label="Brush feather"
+                      sx={{ flex: 1, minWidth: 0 }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        minWidth: 42,
+                        textAlign: 'right',
+                        fontWeight: 800,
+                        color: 'text.secondary',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {Math.round(brushFeather * 100)}%
                     </Typography>
                   </Stack>
                 </Stack>

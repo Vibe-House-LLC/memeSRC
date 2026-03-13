@@ -7,6 +7,7 @@ export type BrushStroke = {
   toY: number;
   radius: number;
   opacity: number;
+  feather?: number;
   mode: BrushMode;
 };
 
@@ -109,6 +110,18 @@ export const createOpaqueMaskCanvas = (width: number, height: number): HTMLCanva
 };
 
 export const createTransparentCanvas = (width: number, height: number): HTMLCanvasElement => createCanvas(width, height);
+
+export const getBrushFeatherCoreRatio = (feather: number): number => {
+  const normalizedFeather = clamp(Number(feather || 0), 0, 1);
+  if (normalizedFeather <= 0.02) return 1;
+  return Math.pow(1 - normalizedFeather, 4.5);
+};
+
+export const getBrushFeatherOuterRadiusMultiplier = (feather: number): number => {
+  const normalizedFeather = clamp(Number(feather || 0), 0, 1);
+  if (normalizedFeather <= 0.02) return 1;
+  return 1 + (Math.pow(normalizedFeather, 2.2) * 1.6);
+};
 
 export const cloneCanvas = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
   const canvas = createCanvas(sourceCanvas.width, sourceCanvas.height);
@@ -240,28 +253,56 @@ export const stampBrushStrokeOnCanvas = (
 ): void => {
   const ctx = getCanvasContext(overlayCanvas);
   const radius = Math.max(0.5, Number(stroke.radius || 0));
+  const feather = clamp(Number(stroke.feather ?? 0), 0, 1);
+  const outerRadius = radius * getBrushFeatherOuterRadiusMultiplier(feather);
   const startX = Number(stroke.fromX);
   const startY = Number(stroke.fromY);
   const endX = Number(stroke.toX);
   const endY = Number(stroke.toY);
+  const deltaX = endX - startX;
+  const deltaY = endY - startY;
+  const distance = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
+  const spacing = Math.max(0.75, outerRadius * (feather > 0.02 ? 0.22 : 0.45));
+  const stepCount = Math.max(1, Math.ceil(distance / spacing));
+  const innerRadius = radius * getBrushFeatherCoreRatio(feather);
+
+  const drawStamp = (x: number, y: number) => {
+    ctx.beginPath();
+    ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+    if (feather <= 0.02) {
+      ctx.fillStyle = 'rgba(255,255,255,1)';
+      ctx.fill();
+      return;
+    }
+
+    const gradient = ctx.createRadialGradient(
+      x,
+      y,
+      Math.max(0, innerRadius),
+      x,
+      y,
+      outerRadius
+    );
+    const innerStop = clamp(innerRadius / outerRadius, 0, 0.98);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(innerStop, 'rgba(255,255,255,1)');
+    gradient.addColorStop(clamp(innerStop + ((1 - innerStop) * 0.16), 0, 1), 'rgba(255,255,255,0.38)');
+    gradient.addColorStop(clamp(innerStop + ((1 - innerStop) * 0.48), 0, 1), 'rgba(255,255,255,0.12)');
+    gradient.addColorStop(clamp(innerStop + ((1 - innerStop) * 0.78), 0, 1), 'rgba(255,255,255,0.03)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  };
 
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
-  ctx.strokeStyle = 'rgba(255,255,255,1)';
-  ctx.fillStyle = 'rgba(255,255,255,1)';
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = radius * 2;
-
-  ctx.beginPath();
-  ctx.moveTo(startX, startY);
-  ctx.lineTo(endX, endY);
-  ctx.stroke();
-
-  // Ensure taps produce a circular stamp even without movement.
-  ctx.beginPath();
-  ctx.arc(endX, endY, radius, 0, Math.PI * 2);
-  ctx.fill();
+  for (let stepIndex = 0; stepIndex <= stepCount; stepIndex += 1) {
+    const progress = stepCount === 0 ? 1 : (stepIndex / stepCount);
+    drawStamp(
+      startX + (deltaX * progress),
+      startY + (deltaY * progress)
+    );
+  }
   ctx.restore();
 };
 
