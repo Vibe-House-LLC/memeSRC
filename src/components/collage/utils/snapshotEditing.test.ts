@@ -3,10 +3,25 @@ import type { CollageSnapshot } from '../../../types/collage';
 import {
   appendImageToSnapshot,
   buildSingleImageSnapshot,
+  resolveAutoAppliedCollageBorderThickness,
 } from './snapshotEditing';
 
 describe('snapshotEditing', () => {
+  it('falls back to thin auto-applied borders when no saved preference exists', () => {
+    window.localStorage.removeItem('meme-src-collage-border-thickness');
+
+    expect(resolveAutoAppliedCollageBorderThickness('medium')).toBe('thin');
+  });
+
+  it('prefers the saved border thickness for auto-applied borders', () => {
+    window.localStorage.setItem('meme-src-collage-border-thickness', 'thick');
+
+    expect(resolveAutoAppliedCollageBorderThickness()).toBe('thick');
+  });
+
   it('restores the default portrait two-panel layout when appending a second auto-sized image', () => {
+    window.localStorage.removeItem('meme-src-collage-border-thickness');
+
     const firstImage = {
       url: 'https://example.com/first.jpg',
       subtitle: 'First caption',
@@ -22,7 +37,7 @@ describe('snapshotEditing', () => {
       customAspectRatio: 1.8,
       borderThickness: 0,
       singleImageAutoRestoreAspectRatioId: 'portrait',
-      singleImageAutoRestoreBorderThickness: 'medium',
+      singleImageAutoRestoreBorderThickness: 'thin',
     });
 
     const { snapshot } = appendImageToSnapshot(singleImageSnapshot, secondImage);
@@ -31,7 +46,7 @@ describe('snapshotEditing', () => {
     expect(snapshot.selectedAspectRatio).toBe('portrait');
     expect(snapshot.selectedTemplateId).toBe('split-vertical');
     expect(snapshot.singleImageAutoRestoreAspectRatioId).toBeNull();
-    expect(snapshot.borderThickness).toBe('medium');
+    expect(snapshot.borderThickness).toBe('thin');
     expect(snapshot.panelTransforms).toEqual({});
     expect(snapshot.panelTexts).toMatchObject({
       'panel-1': expect.objectContaining({ content: 'First caption', autoAssigned: true }),

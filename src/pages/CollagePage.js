@@ -16,6 +16,7 @@ import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
+import { resolveAutoAppliedCollageBorderThickness } from "../components/collage/utils/snapshotEditing";
 import {
   TOP_CAPTION_DEFAULT_FONT_SIZE,
   TOP_CAPTION_DEFAULT_SPACING_Y,
@@ -710,7 +711,7 @@ export default function CollagePage() {
           : selectedAspectRatio;
       }
       if (enteringSingleImageMode && singleImageAutoRestoreBorderThickness == null) {
-        setSingleImageAutoRestoreBorderThickness(borderThickness ?? 'medium');
+        setSingleImageAutoRestoreBorderThickness(resolveAutoAppliedCollageBorderThickness(borderThickness));
         if (!isNoBorderThickness(borderThickness)) {
           setBorderThickness(0);
         }

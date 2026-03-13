@@ -7,15 +7,63 @@ import type {
 } from '../../../types/collage';
 
 export const MAX_COLLAGE_IMAGES = 5;
+export const COLLAGE_BORDER_THICKNESS_STORAGE_KEY = 'meme-src-collage-border-thickness';
+export const DEFAULT_AUTO_COLLAGE_BORDER_THICKNESS = 'thin';
 
 const createPanelIds = (panelCount: number): string[] =>
   Array.from({ length: Math.max(1, panelCount) }, (_, idx) => `panel-${idx + 1}`);
+
+const normalizeBorderThickness = (value: unknown): number | string | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  }
+  return null;
+};
+
+const isNoBorderThickness = (value: unknown): boolean => (
+  value === 0 || String(value ?? '').trim().toLowerCase() === 'none'
+);
+
+const isMediumBorderThickness = (value: unknown): boolean => (
+  value === 2 || String(value ?? '').trim().toLowerCase() === 'medium'
+);
 
 const normalizeCustomAspectRatio = (value: unknown): number | undefined => {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue) || numericValue <= 0) return undefined;
   return Math.max(0.1, Math.min(10, numericValue));
 };
+
+export function getStoredCollageBorderThickness(): number | string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return normalizeBorderThickness(window.localStorage.getItem(COLLAGE_BORDER_THICKNESS_STORAGE_KEY));
+  } catch (_) {
+    return null;
+  }
+}
+
+export function resolveAutoAppliedCollageBorderThickness(
+  currentBorderThickness?: number | string | null
+): number | string {
+  const storedBorderThickness = getStoredCollageBorderThickness();
+  if (storedBorderThickness !== null && !isNoBorderThickness(storedBorderThickness)) {
+    return storedBorderThickness;
+  }
+
+  const normalizedCurrentBorderThickness = normalizeBorderThickness(currentBorderThickness);
+  if (
+    normalizedCurrentBorderThickness !== null
+    && !isNoBorderThickness(normalizedCurrentBorderThickness)
+    && !isMediumBorderThickness(normalizedCurrentBorderThickness)
+  ) {
+    return normalizedCurrentBorderThickness;
+  }
+
+  return DEFAULT_AUTO_COLLAGE_BORDER_THICKNESS;
+}
 
 const chooseTemplateId = (
   panelCount: number,

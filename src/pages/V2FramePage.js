@@ -71,6 +71,7 @@ import {
   MAX_COLLAGE_IMAGES,
   normalizeSnapshot,
   replaceImageInSnapshot,
+  resolveAutoAppliedCollageBorderThickness,
   snapshotImageFromPayload,
 } from '../components/collage/utils/snapshotEditing';
 import { getImageAspectRatio } from '../components/collage/utils/imageAspectRatio';
@@ -1447,7 +1448,7 @@ useEffect(() => {
           customAspectRatio,
           borderThickness: 0,
           singleImageAutoRestoreAspectRatioId: 'portrait',
-          singleImageAutoRestoreBorderThickness: 'medium',
+          singleImageAutoRestoreBorderThickness: resolveAutoAppliedCollageBorderThickness(),
         })
       );
 
