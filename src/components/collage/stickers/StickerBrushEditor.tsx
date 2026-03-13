@@ -64,6 +64,7 @@ type DrawSession = {
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 const DRAW_START_THRESHOLD_PX = 6;
+const FLOATING_CANVAS_CONTROL_GAP_PX = 16;
 
 const getDistance = (first: PointerPoint, second: PointerPoint): number => {
   const dx = second.x - first.x;
@@ -651,8 +652,9 @@ export default function StickerBrushEditor({
     )
     : 'crosshair';
   const navigationTip = isMobile
-    ? 'Pinch or 2-finger drag to zoom and move'
-    : 'Wheel to zoom. Shift + drag to move';
+    ? 'Two-finger drag to pan'
+    : 'Shift + drag to pan';
+  const editorBottomInset = bottomBarHeight + FLOATING_CANVAS_CONTROL_GAP_PX;
   const brushPreviewDiameter = clamp(brushSize, 14, Math.min(150, Math.max(80, viewportSize.width * 0.28 || 150)));
   const brushPreviewTint = brushMode === 'erase'
     ? alpha(theme.palette.error.main, Math.max(0.16, brushOpacity * 0.24))
@@ -889,7 +891,7 @@ export default function StickerBrushEditor({
               sx={{
                 position: 'absolute',
                 left: 12,
-                bottom: 14,
+                bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
                 zIndex: 2,
               }}
             >
@@ -936,7 +938,7 @@ export default function StickerBrushEditor({
         aria-hidden
         sx={{
           flexShrink: 0,
-          height: `${bottomBarHeight}px`,
+          height: `${editorBottomInset}px`,
         }}
       />
 
