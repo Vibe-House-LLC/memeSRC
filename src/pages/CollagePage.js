@@ -417,6 +417,7 @@ export default function CollagePage() {
       : selectedAspectRatio
   );
   const [singleImageAutoRestoreAspectRatioId, setSingleImageAutoRestoreAspectRatioId] = useState(null);
+  const [singleImageAutoRestoreBorderThickness, setSingleImageAutoRestoreBorderThickness] = useState(null);
   const pendingImageRatioRequestRef = useRef(0);
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -524,6 +525,11 @@ export default function CollagePage() {
 
     setBorderColorState(trimmedNextColor);
   }, [borderColor, isHydratingProject, panelTexts, setBorderColorState, updatePanelText]);
+
+  const handleBorderThicknessSelection = useCallback((nextBorderThickness) => {
+    setSingleImageAutoRestoreBorderThickness(null);
+    setBorderThickness(nextBorderThickness);
+  }, [setBorderThickness]);
 
   const clearAppendNavigationState = useCallback(() => {
     navigate(location.pathname, { replace: true, state: {} });
@@ -1000,6 +1006,7 @@ export default function CollagePage() {
     selectedAspectRatio,
     customAspectRatio,
     singleImageAutoRestoreAspectRatioId,
+    singleImageAutoRestoreBorderThickness,
     panelCount,
     borderThickness,
     borderColor,
@@ -1043,7 +1050,7 @@ export default function CollagePage() {
         return undefined;
       }
     })(),
-  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, customAspectRatio, singleImageAutoRestoreAspectRatioId, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
+  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, customAspectRatio, singleImageAutoRestoreAspectRatioId, singleImageAutoRestoreBorderThickness, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);
@@ -1348,6 +1355,11 @@ export default function CollagePage() {
     )
       ? snap.singleImageAutoRestoreAspectRatioId
       : null;
+    const persistedAutoRestoreBorderThickness = (
+      snap.singleImageAutoRestoreBorderThickness === undefined
+        ? null
+        : snap.singleImageAutoRestoreBorderThickness
+    );
 
     let templateForSnapshot = null;
     try {
@@ -1532,6 +1544,7 @@ export default function CollagePage() {
       setSingleImageAutoRestoreAspectRatioId(
         shouldRestoreSingleImageAutoCustom ? persistedAutoRestoreAspectRatioId : null
       );
+      setSingleImageAutoRestoreBorderThickness(persistedAutoRestoreBorderThickness);
       setPanelCount(nextPanelCount);
       setSelectedTemplate(templateForSnapshot || null);
       if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
@@ -2821,7 +2834,7 @@ export default function CollagePage() {
     aspectRatioPresets,
     layoutTemplates,
     borderThickness,
-    setBorderThickness,
+    setBorderThickness: handleBorderThicknessSelection,
     borderColor,
     setBorderColor: handleBorderColorSelection,
     borderThicknessOptions,

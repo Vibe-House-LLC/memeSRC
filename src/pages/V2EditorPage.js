@@ -3559,6 +3559,7 @@ const EditorPage = ({ shows }) => {
           customAspectRatio,
           borderThickness: 0,
           singleImageAutoRestoreAspectRatioId: 'portrait',
+          singleImageAutoRestoreBorderThickness: 'medium',
         })
       );
 

@@ -117,6 +117,11 @@ export function normalizeSnapshot(
   )
     ? snapshot.singleImageAutoRestoreAspectRatioId
     : null;
+  const singleImageAutoRestoreBorderThickness = (
+    snapshot?.singleImageAutoRestoreBorderThickness === undefined
+      ? null
+      : snapshot.singleImageAutoRestoreBorderThickness
+  );
   const selectedTemplateId = isTemplateIdCompatible(
     snapshot?.selectedTemplateId,
     desiredPanelCount,
@@ -137,6 +142,7 @@ export function normalizeSnapshot(
     selectedAspectRatio,
     customAspectRatio,
     singleImageAutoRestoreAspectRatioId,
+    singleImageAutoRestoreBorderThickness,
     panelCount: desiredPanelCount,
     borderThickness: snapshot?.borderThickness ?? 'medium',
     borderColor: snapshot?.borderColor ?? '#FFFFFF',
@@ -166,6 +172,7 @@ export function buildSingleImageSnapshot(
     borderThickness?: number | string;
     borderColor?: string;
     singleImageAutoRestoreAspectRatioId?: AspectRatio | null;
+    singleImageAutoRestoreBorderThickness?: number | string | null;
   } = {}
 ): CollageSnapshot {
   const customAspectRatio = normalizeCustomAspectRatio(options.customAspectRatio) || 1;
@@ -180,6 +187,7 @@ export function buildSingleImageSnapshot(
     selectedAspectRatio: 'custom',
     customAspectRatio,
     singleImageAutoRestoreAspectRatioId: options.singleImageAutoRestoreAspectRatioId || null,
+    singleImageAutoRestoreBorderThickness: options.singleImageAutoRestoreBorderThickness ?? null,
     panelCount: 1,
     borderThickness: options.borderThickness ?? 0,
     borderColor: options.borderColor ?? '#FFFFFF',
@@ -201,9 +209,33 @@ export function appendImageToSnapshot(
   }
 
   const nextImages = [...base.images, image];
-  const desiredPanelCount = Math.min(MAX_COLLAGE_IMAGES, Math.max(nextImages.length, 1));
+  const currentPanelCount = Math.max(1, base.panelCount || 1);
+  const desiredPanelCount = Math.min(
+    MAX_COLLAGE_IMAGES,
+    Math.max(currentPanelCount, nextImages.length, 1)
+  );
   const panelIds = createPanelIds(desiredPanelCount);
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
+
+  const shouldAutoRestoreSingleImageLayout = Boolean(
+    base.selectedAspectRatio === 'custom'
+    && base.singleImageAutoRestoreAspectRatioId
+    && currentPanelCount <= 1
+    && desiredPanelCount > 1
+  );
+  const shouldAutoRestoreSingleImageBorders = Boolean(
+    base.singleImageAutoRestoreBorderThickness !== null
+    && base.singleImageAutoRestoreBorderThickness !== undefined
+    && currentPanelCount <= 1
+    && desiredPanelCount > 1
+  );
+
+  const nextSelectedAspectRatio = shouldAutoRestoreSingleImageLayout
+    ? (base.singleImageAutoRestoreAspectRatioId as AspectRatio)
+    : base.selectedAspectRatio;
+  const nextBorderThickness = shouldAutoRestoreSingleImageBorders
+    ? base.singleImageAutoRestoreBorderThickness
+    : base.borderThickness;
 
   let nextImageIndex = baseCount;
   panelIds.forEach((panelId) => {
@@ -213,14 +245,32 @@ export function appendImageToSnapshot(
     nextImageIndex += 1;
   });
 
-  const selectedTemplateId = isTemplateIdCompatible(
-    base.selectedTemplateId,
-    desiredPanelCount,
-    base.selectedAspectRatio,
-    base.customAspectRatio
-  )
-    ? base.selectedTemplateId || null
-    : chooseTemplateId(desiredPanelCount, base.selectedAspectRatio, base.customAspectRatio);
+  const selectedTemplateId = shouldAutoRestoreSingleImageLayout
+    ? chooseTemplateId(
+      desiredPanelCount,
+      nextSelectedAspectRatio,
+      nextSelectedAspectRatio === 'custom' ? base.customAspectRatio : undefined
+    )
+    : (
+      isTemplateIdCompatible(
+        base.selectedTemplateId,
+        desiredPanelCount,
+        nextSelectedAspectRatio,
+        nextSelectedAspectRatio === 'custom' ? base.customAspectRatio : undefined
+      )
+        ? base.selectedTemplateId || null
+        : chooseTemplateId(
+          desiredPanelCount,
+          nextSelectedAspectRatio,
+          nextSelectedAspectRatio === 'custom' ? base.customAspectRatio : undefined
+        )
+    );
+
+  const layoutChanged = (
+    desiredPanelCount !== currentPanelCount
+    || nextSelectedAspectRatio !== base.selectedAspectRatio
+    || (selectedTemplateId || null) !== (base.selectedTemplateId || null)
+  );
 
   const panelTexts: Record<string, any> = { ...(base.panelTexts || {}) };
   if (image.subtitle && image.subtitleShowing) {
@@ -236,8 +286,19 @@ export function appendImageToSnapshot(
       ...base,
       images: nextImages,
       panelImageMapping,
+      panelTransforms: layoutChanged ? {} : (base.panelTransforms || {}),
+      selectedAspectRatio: nextSelectedAspectRatio,
+      singleImageAutoRestoreAspectRatioId: shouldAutoRestoreSingleImageLayout
+        ? null
+        : (base.singleImageAutoRestoreAspectRatioId || null),
+      singleImageAutoRestoreBorderThickness: shouldAutoRestoreSingleImageBorders
+        ? null
+        : (base.singleImageAutoRestoreBorderThickness ?? null),
       panelCount: desiredPanelCount,
+      borderThickness: nextBorderThickness,
       selectedTemplateId: selectedTemplateId || null,
+      customLayout: layoutChanged ? null : (base.customLayout ?? null),
+      panelDimensions: layoutChanged ? undefined : base.panelDimensions,
       panelTexts,
     },
     addedIndex: baseCount,

@@ -1447,6 +1447,7 @@ useEffect(() => {
           customAspectRatio,
           borderThickness: 0,
           singleImageAutoRestoreAspectRatioId: 'portrait',
+          singleImageAutoRestoreBorderThickness: 'medium',
         })
       );
 
