@@ -74,6 +74,18 @@ const FLOATING_CANVAS_CONTROL_GAP_PX = 16;
 const HISTORY_LIMIT = 40;
 const MIN_VIEW_SCALE = 0.005;
 const MAX_VIEW_SCALE = 512;
+const BRUSH_SIZE_MIN = 12;
+const BRUSH_SIZE_MAX = 120;
+const DEFAULT_BRUSH_SIZE = Math.round((BRUSH_SIZE_MIN + BRUSH_SIZE_MAX) / 2);
+const DEFAULT_BRUSH_OPACITY = 1;
+const DEFAULT_BRUSH_FEATHER = 0.15;
+const STICKER_BRUSH_PREFERENCES_STORAGE_KEY = 'meme-src-sticker-brush-preferences';
+
+type StoredBrushPreferences = {
+  size: number;
+  opacity: number;
+  feather: number;
+};
 
 const getDistance = (first: PointerPoint, second: PointerPoint): number => {
   const dx = second.x - first.x;
@@ -95,6 +107,32 @@ const getOrderedActivePoints = (pointers: Map<number, PointerPoint>): PointerPoi
     .sort(([firstId], [secondId]) => firstId - secondId)
     .map(([, point]) => point)
 );
+
+const getDefaultBrushPreferences = (): StoredBrushPreferences => ({
+  size: DEFAULT_BRUSH_SIZE,
+  opacity: DEFAULT_BRUSH_OPACITY,
+  feather: DEFAULT_BRUSH_FEATHER,
+});
+
+const getStoredBrushPreferences = (): StoredBrushPreferences => {
+  const defaults = getDefaultBrushPreferences();
+  if (typeof window === 'undefined') return defaults;
+
+  try {
+    const raw = window.localStorage.getItem(STICKER_BRUSH_PREFERENCES_STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw) as Partial<StoredBrushPreferences> | null;
+    if (!parsed || typeof parsed !== 'object') return defaults;
+
+    return {
+      size: clamp(Number(parsed.size ?? defaults.size), BRUSH_SIZE_MIN, BRUSH_SIZE_MAX),
+      opacity: clamp(Number(parsed.opacity ?? defaults.opacity), 0.05, 1),
+      feather: clamp(Number(parsed.feather ?? defaults.feather), 0, 1),
+    };
+  } catch (_) {
+    return defaults;
+  }
+};
 
 export default function StickerBrushEditor({
   imageSrc,
@@ -133,6 +171,7 @@ export default function StickerBrushEditor({
   const lastPanPointRef = React.useRef<PointerPoint | null>(null);
   const shiftPressedRef = React.useRef(false);
   const hasApproximateEditsRef = React.useRef(false);
+  const brushPreferencesDirtyRef = React.useRef(false);
   const pinchStateRef = React.useRef<{
     startDistance: number;
     startScale: number;
@@ -140,10 +179,11 @@ export default function StickerBrushEditor({
     startAngle: number;
     startMidImage: PointerPoint;
   } | null>(null);
+  const initialBrushPreferences = React.useMemo(() => getStoredBrushPreferences(), []);
   const [brushMode, setBrushMode] = React.useState<'erase' | 'restore'>('erase');
-  const [brushSize, setBrushSize] = React.useState(44);
-  const [brushOpacity, setBrushOpacity] = React.useState(1);
-  const [brushFeather, setBrushFeather] = React.useState(0.22);
+  const [brushSize, setBrushSize] = React.useState(initialBrushPreferences.size);
+  const [brushOpacity, setBrushOpacity] = React.useState(initialBrushPreferences.opacity);
+  const [brushFeather, setBrushFeather] = React.useState(initialBrushPreferences.feather);
   const [viewportSize, setViewportSize] = React.useState({ width: 0, height: 0 });
   const [loadedSource, setLoadedSource] = React.useState<LoadedStickerSource | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -409,6 +449,23 @@ export default function StickerBrushEditor({
     checkerboardModeRef.current = checkerboardMode;
     scheduleRender();
   }, [checkerboardMode, scheduleRender]);
+
+  React.useEffect(() => {
+    if (!brushPreferencesDirtyRef.current || typeof window === 'undefined') return;
+
+    try {
+      window.localStorage.setItem(
+        STICKER_BRUSH_PREFERENCES_STORAGE_KEY,
+        JSON.stringify({
+          size: brushSize,
+          opacity: brushOpacity,
+          feather: brushFeather,
+        })
+      );
+    } catch (_) {
+      // Ignore localStorage write failures.
+    }
+  }, [brushFeather, brushOpacity, brushSize]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
@@ -1281,15 +1338,16 @@ export default function StickerBrushEditor({
                       <BrushRounded sx={{ fontSize: 17 }} />
                     </Box>
                     <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
-                      Brush
+                      Size
                     </Typography>
                     <Slider
                       size="small"
                       value={brushSize}
-                      min={12}
-                      max={160}
+                      min={BRUSH_SIZE_MIN}
+                      max={BRUSH_SIZE_MAX}
                       step={1}
                       onChange={(_, value) => {
+                        brushPreferencesDirtyRef.current = true;
                         setBrushSize(Array.isArray(value) ? value[0] : value);
                         revealBrushPreview();
                       }}
@@ -1357,6 +1415,7 @@ export default function StickerBrushEditor({
                       step={1}
                       onChange={(_, value) => {
                         const nextValue = Array.isArray(value) ? value[0] : value;
+                        brushPreferencesDirtyRef.current = true;
                         setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
                         revealBrushPreview();
                       }}
@@ -1414,6 +1473,7 @@ export default function StickerBrushEditor({
                       step={1}
                       onChange={(_, value) => {
                         const nextValue = Array.isArray(value) ? value[0] : value;
+                        brushPreferencesDirtyRef.current = true;
                         setBrushFeather(clamp(nextValue / 100, 0, 1));
                         revealBrushPreview();
                       }}
