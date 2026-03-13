@@ -135,11 +135,6 @@ const [borderThickness, setBorderThickness] = useState(() => {
     localStorage.setItem('meme-src-collage-custom-color', borderColor);
   }, [borderColor]);
 
-  useEffect(() => {
-    if (hydrationModeRef.current) return;
-    localStorage.setItem('meme-src-collage-border-thickness', borderThickness);
-  }, [borderThickness]);
-
   /**
    * Reset all panel transforms (zoom/pan positions) to defaults.
    * Used when layout, aspect ratio, or template changes.

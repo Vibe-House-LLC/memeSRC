@@ -16,7 +16,10 @@ import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
-import { resolveAutoAppliedCollageBorderThickness } from "../components/collage/utils/snapshotEditing";
+import {
+  COLLAGE_BORDER_THICKNESS_STORAGE_KEY,
+  resolveAutoAppliedCollageBorderThickness,
+} from "../components/collage/utils/snapshotEditing";
 import {
   TOP_CAPTION_DEFAULT_FONT_SIZE,
   TOP_CAPTION_DEFAULT_SPACING_Y,
@@ -534,6 +537,9 @@ export default function CollagePage() {
   const handleBorderThicknessSelection = useCallback((nextBorderThickness) => {
     setSingleImageAutoRestoreBorderThickness(null);
     setBorderThickness(nextBorderThickness);
+    try {
+      localStorage.setItem(COLLAGE_BORDER_THICKNESS_STORAGE_KEY, nextBorderThickness);
+    } catch (_) { /* ignore storage write failures */ }
   }, [setBorderThickness]);
 
   const clearAppendNavigationState = useCallback(() => {
