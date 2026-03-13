@@ -136,6 +136,10 @@ const normalizeAspectRatioValue = (value, fallback = DEFAULT_CUSTOM_ASPECT_RATIO
   return Math.max(0.1, Math.min(10, parsedValue));
 };
 
+const isNoBorderThickness = (value) => (
+  value === 0 || String(value || '').trim().toLowerCase() === 'none'
+);
+
 const isStartFromScratchPlaceholder = (imageRef) => {
   if (!imageRef) return false;
   if (typeof imageRef === 'string') {
@@ -642,6 +646,12 @@ export default function CollagePage() {
     if (isHydratingProject) return;
 
     if (currentImageCount === 0) {
+      if (singleImageAutoRestoreBorderThickness !== null && singleImageAutoRestoreBorderThickness !== undefined) {
+        if (isNoBorderThickness(borderThickness)) {
+          setBorderThickness(singleImageAutoRestoreBorderThickness);
+        }
+        setSingleImageAutoRestoreBorderThickness(null);
+      }
       singleImageAutoCustomRef.current = false;
       singleImageAutoSourceRef.current = null;
       singleImageAutoEligibleRef.current = true;
@@ -655,6 +665,16 @@ export default function CollagePage() {
 
     const transitionedToMultipleImages = currentImageCount > 1 && previousImageCount <= 1;
     const transitionedToMultiplePanels = currentPanelCount > 1 && previousPanelCount <= 1;
+    if (
+      singleImageAutoRestoreBorderThickness !== null &&
+      singleImageAutoRestoreBorderThickness !== undefined &&
+      (transitionedToMultipleImages || transitionedToMultiplePanels)
+    ) {
+      if (isNoBorderThickness(borderThickness)) {
+        setBorderThickness(singleImageAutoRestoreBorderThickness);
+      }
+      setSingleImageAutoRestoreBorderThickness(null);
+    }
     if (singleImageAutoCustomRef.current && (transitionedToMultipleImages || transitionedToMultiplePanels)) {
       singleImageAutoCustomRef.current = false;
       singleImageAutoSourceRef.current = null;
@@ -688,6 +708,12 @@ export default function CollagePage() {
         singleImageRestoreAspectRatioRef.current = selectedAspectRatio === 'custom'
           ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
           : selectedAspectRatio;
+      }
+      if (enteringSingleImageMode && singleImageAutoRestoreBorderThickness == null) {
+        setSingleImageAutoRestoreBorderThickness(borderThickness ?? 'medium');
+        if (!isNoBorderThickness(borderThickness)) {
+          setBorderThickness(0);
+        }
       }
       const sourceChangedWhileAuto = Boolean(
         singleImageAutoCustomRef.current &&
@@ -731,7 +757,11 @@ export default function CollagePage() {
     panelCount,
     selectedAspectRatio,
     selectedImages,
+    borderThickness,
+    singleImageAutoRestoreBorderThickness,
     setSingleImageAutoRestoreAspectRatioId,
+    setSingleImageAutoRestoreBorderThickness,
+    setBorderThickness,
     setCustomAspectRatio,
     setSelectedAspectRatio,
     setSelectedTemplate,
