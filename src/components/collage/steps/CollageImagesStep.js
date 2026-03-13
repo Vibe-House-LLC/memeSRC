@@ -10,7 +10,6 @@ import ViewModuleRoundedIcon from '@mui/icons-material/ViewModuleRounded';
 
 // Import our new dynamic CollagePreview component
 import CollagePreview from '../components/CollagePreview';
-import { LibraryPickerDialog } from '../../library';
 import { resizeImage } from '../../../utils/library/resizeImage';
 import { UPLOAD_IMAGE_MAX_DIMENSION_PX, EDITOR_IMAGE_MAX_DIMENSION_PX } from '../../../constants/imageProcessing';
 
@@ -76,7 +75,7 @@ const CollageImagesStep = ({
   onPanelReorderAutoOpenHandled,
   onRemovePanelRequest,
   onAddTextRequest,
-  onAddStickerFromLibrary,
+  onAddStickerRequest,
   canManageStickers = false,
   showTopAddButton = true,
   showBottomAddButton = true,
@@ -98,9 +97,6 @@ const CollageImagesStep = ({
   const fileInputRef = useRef(null);
   const [addMenuAnchorEl, setAddMenuAnchorEl] = useState(null);
   const [addMenuPosition, setAddMenuPosition] = useState('end');
-  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
-  const [stickerPickerBusy, setStickerPickerBusy] = useState(false);
-  const [stickerPickerError, setStickerPickerError] = useState('');
   
   // Debug the props we're receiving
   debugLog("CollageImagesStep props:", {
@@ -191,7 +187,7 @@ const CollageImagesStep = ({
   };
   const isAddMenuOpen = Boolean(addMenuAnchorEl);
   const canAddText = typeof onAddTextRequest === 'function';
-  const canAddSticker = canManageStickers && typeof onAddStickerFromLibrary === 'function';
+  const canAddSticker = canManageStickers && typeof onAddStickerRequest === 'function';
   const openAddMenu = (event, position = 'end') => {
     setAddMenuPosition(position);
     setAddMenuAnchorEl(event.currentTarget);
@@ -214,34 +210,12 @@ const CollageImagesStep = ({
   const handleAddSticker = () => {
     closeAddMenu();
     if (!canAddSticker) return;
-    setStickerPickerError('');
-    setStickerPickerOpen(true);
+    onAddStickerRequest();
   };
   const handleAddPanel = () => {
     closeAddMenu();
     triggerAddPanelRequest(addMenuPosition);
   };
-  const closeStickerPicker = () => {
-    if (stickerPickerBusy) return;
-    setStickerPickerOpen(false);
-    setStickerPickerError('');
-  };
-  const handleStickerSelect = async (items) => {
-    if (!canAddSticker) return;
-    if (!Array.isArray(items) || items.length === 0) return;
-    setStickerPickerBusy(true);
-    setStickerPickerError('');
-    try {
-      await onAddStickerFromLibrary(items[0]);
-      setStickerPickerOpen(false);
-    } catch (error) {
-      console.error('Failed to add sticker from unified add menu', error);
-      setStickerPickerError('Unable to add that sticker right now.');
-    } finally {
-      setStickerPickerBusy(false);
-    }
-  };
-
   useEffect(() => {
     if (previewInteractionDisabled) {
       closeAddMenu();
@@ -407,24 +381,6 @@ const CollageImagesStep = ({
             <ListItemText primary="Add Panel" />
           </MenuItem>
         </Menu>
-        <LibraryPickerDialog
-          open={stickerPickerOpen}
-          onClose={closeStickerPicker}
-          title="Choose a sticker from your library"
-          onSelect={(items) => { void handleStickerSelect(items); }}
-          busy={stickerPickerBusy}
-          errorText={stickerPickerError}
-          browserProps={{
-            multiple: false,
-            uploadEnabled: true,
-            deleteEnabled: false,
-            showActionBar: false,
-            selectionEnabled: true,
-            previewOnClick: true,
-            showSelectToggle: true,
-            initialSelectMode: true,
-          }}
-        />
         {/* Hidden file input for Add Image button */}
         <input
           type="file"
@@ -530,7 +486,7 @@ CollageImagesStep.propTypes = {
   onPanelReorderAutoOpenHandled: PropTypes.func,
   onRemovePanelRequest: PropTypes.func,
   onAddTextRequest: PropTypes.func,
-  onAddStickerFromLibrary: PropTypes.func,
+  onAddStickerRequest: PropTypes.func,
   canManageStickers: PropTypes.bool,
   showTopAddButton: PropTypes.bool,
   showBottomAddButton: PropTypes.bool,

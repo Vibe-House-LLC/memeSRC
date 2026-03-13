@@ -44,7 +44,6 @@ import {
   Add,
 } from "@mui/icons-material";
 import { UserContext } from "../../../UserContext";
-import { LibraryPickerDialog } from "../../library";
 
 // Import styled components
 import { TemplateCard } from "../styled/CollageStyled";
@@ -408,8 +407,7 @@ const CollageLayoutSettings = ({
   borderThicknessOptions,
   stickers = [],
   canManageStickers = false,
-  onStickerLibraryOpenChange,
-  onAddStickerFromLibrary,
+  onAddStickerRequest,
   onMoveSticker,
   onRemoveSticker,
   onMovePanel,
@@ -434,9 +432,6 @@ const CollageLayoutSettings = ({
   const [colorLeftScroll, setColorLeftScroll] = useState(false);
   const [colorRightScroll, setColorRightScroll] = useState(false);
   const [uncontrolledActiveMobileSetting, setUncontrolledActiveMobileSetting] = useState('aspect-ratio');
-  const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
-  const [stickerLoading, setStickerLoading] = useState(false);
-  const [stickerError, setStickerError] = useState('');
   const [customRatioWidthInput, setCustomRatioWidthInput] = useState('1');
   const [customRatioHeightInput, setCustomRatioHeightInput] = useState('1');
   const [panelActionAnchorEl, setPanelActionAnchorEl] = useState(null);
@@ -501,18 +496,6 @@ const CollageLayoutSettings = ({
     if (nextTab) nextTab.focus();
   };
 
-  useEffect(() => {
-    if (typeof onStickerLibraryOpenChange === 'function') {
-      onStickerLibraryOpenChange(Boolean(stickerLibraryOpen));
-    }
-  }, [stickerLibraryOpen, onStickerLibraryOpenChange]);
-
-  useEffect(() => () => {
-    if (typeof onStickerLibraryOpenChange === 'function') {
-      onStickerLibraryOpenChange(false);
-    }
-  }, [onStickerLibraryOpenChange]);
-  
   // Get aspect ratio value based on selected preset
   const getAspectRatioValue = () => {
     if (selectedAspectRatio === 'custom') {
@@ -620,30 +603,8 @@ const CollageLayoutSettings = ({
   };
 
   const openStickerLibrary = () => {
-    if (!canManageStickers) return;
-    setStickerError('');
-    setStickerLibraryOpen(true);
-  };
-
-  const closeStickerLibrary = () => {
-    if (stickerLoading) return;
-    setStickerLibraryOpen(false);
-  };
-
-  const handleStickerLibrarySelect = async (items) => {
-    const selected = Array.isArray(items) ? items[0] : null;
-    if (!selected || typeof onAddStickerFromLibrary !== 'function') return;
-    setStickerLoading(true);
-    setStickerError('');
-    try {
-      await onAddStickerFromLibrary(selected);
-      setStickerLibraryOpen(false);
-    } catch (error) {
-      console.error('Failed to add sticker from library', error);
-      setStickerError('Unable to add that sticker right now.');
-    } finally {
-      setStickerLoading(false);
-    }
+    if (!canManageStickers || typeof onAddStickerRequest !== 'function') return;
+    onAddStickerRequest();
   };
   
   // Function to improve scroll experience - refactored for smooth and consistent behavior
@@ -1975,24 +1936,6 @@ const CollageLayoutSettings = ({
         )}
       </Box>
 
-      <LibraryPickerDialog
-        open={stickerLibraryOpen}
-        onClose={closeStickerLibrary}
-        title="Choose a sticker from your library"
-        onSelect={(arr) => { void handleStickerLibrarySelect(arr); }}
-        busy={stickerLoading}
-        errorText={stickerError}
-        browserProps={{
-          multiple: false,
-          uploadEnabled: true,
-          deleteEnabled: false,
-          showActionBar: false,
-          selectionEnabled: true,
-          previewOnClick: true,
-          showSelectToggle: true,
-          initialSelectMode: true,
-        }}
-      />
     </Box>
   );
 };

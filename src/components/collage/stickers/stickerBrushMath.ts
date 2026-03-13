@@ -1,0 +1,381 @@
+export type BrushMode = 'erase' | 'restore';
+
+export type BrushStroke = {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  radius: number;
+  opacity: number;
+  mode: BrushMode;
+};
+
+export type ViewTransform = {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+export type LoadedStickerSource = {
+  canvas: HTMLCanvasElement;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  originalWidth: number;
+  originalHeight: number;
+};
+
+export type ExportedStickerEdit = {
+  blob: Blob;
+  dataUrl: string;
+  width: number;
+  height: number;
+  changed: boolean;
+};
+
+export const STICKER_EDITOR_MAX_DIMENSION_PX = 1500;
+
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const createCanvas = (width: number, height: number): HTMLCanvasElement => {
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(width));
+  canvas.height = Math.max(1, Math.round(height));
+  return canvas;
+};
+
+const getCanvasContext = (canvas: HTMLCanvasElement): CanvasRenderingContext2D => {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Canvas context unavailable');
+  return ctx;
+};
+
+const canvasToBlob = async (canvas: HTMLCanvasElement, type = 'image/png'): Promise<Blob> => {
+  const blob = await new Promise<Blob | null>((resolve) => {
+    if (typeof canvas.toBlob === 'function') {
+      canvas.toBlob((nextBlob) => resolve(nextBlob), type);
+      return;
+    }
+    resolve(null);
+  });
+  if (blob) return blob;
+  const response = await fetch(canvas.toDataURL(type));
+  return await response.blob();
+};
+
+const loadImageElement = async (src: string): Promise<HTMLImageElement> => (
+  await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Unable to load sticker image'));
+    try {
+      image.crossOrigin = 'anonymous';
+    } catch (_) {
+      // Ignore cross-origin assignment failures for data URLs.
+    }
+    image.src = src;
+  })
+);
+
+export const createOpaqueMaskData = (width: number, height: number): Uint8ClampedArray => {
+  const data = new Uint8ClampedArray(Math.max(1, width * height * 4));
+  for (let index = 0; index < data.length; index += 4) {
+    data[index] = 255;
+    data[index + 1] = 255;
+    data[index + 2] = 255;
+    data[index + 3] = 255;
+  }
+  return data;
+};
+
+export const createOpaqueMaskCanvas = (width: number, height: number): HTMLCanvasElement => {
+  const canvas = createCanvas(width, height);
+  const ctx = getCanvasContext(canvas);
+  const imageData = ctx.createImageData(canvas.width, canvas.height);
+  imageData.data.set(createOpaqueMaskData(canvas.width, canvas.height));
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+};
+
+export const resetMaskCanvas = (maskCanvas: HTMLCanvasElement): void => {
+  const ctx = getCanvasContext(maskCanvas);
+  const imageData = ctx.createImageData(maskCanvas.width, maskCanvas.height);
+  imageData.data.set(createOpaqueMaskData(maskCanvas.width, maskCanvas.height));
+  ctx.putImageData(imageData, 0, 0);
+};
+
+const distanceToSegment = (
+  pointX: number,
+  pointY: number,
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number
+): number => {
+  const dx = endX - startX;
+  const dy = endY - startY;
+  if (dx === 0 && dy === 0) {
+    const singleDx = pointX - startX;
+    const singleDy = pointY - startY;
+    return Math.sqrt((singleDx * singleDx) + (singleDy * singleDy));
+  }
+
+  const lengthSq = (dx * dx) + (dy * dy);
+  const t = clamp((((pointX - startX) * dx) + ((pointY - startY) * dy)) / lengthSq, 0, 1);
+  const projX = startX + (t * dx);
+  const projY = startY + (t * dy);
+  const distX = pointX - projX;
+  const distY = pointY - projY;
+  return Math.sqrt((distX * distX) + (distY * distY));
+};
+
+export const applyBrushStrokeToMaskData = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  stroke: BrushStroke
+): number => {
+  const radius = Math.max(0.5, Number(stroke.radius || 0));
+  const opacity = clamp(Number(stroke.opacity || 0), 0, 1);
+  const amount = Math.max(1, Math.round(255 * opacity));
+  const minX = Math.max(0, Math.floor(Math.min(stroke.fromX, stroke.toX) - radius));
+  const maxX = Math.min(width - 1, Math.ceil(Math.max(stroke.fromX, stroke.toX) + radius));
+  const minY = Math.max(0, Math.floor(Math.min(stroke.fromY, stroke.toY) - radius));
+  const maxY = Math.min(height - 1, Math.ceil(Math.max(stroke.fromY, stroke.toY) + radius));
+
+  if (minX > maxX || minY > maxY) return 0;
+
+  let changedPixels = 0;
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      const distance = distanceToSegment(x + 0.5, y + 0.5, stroke.fromX, stroke.fromY, stroke.toX, stroke.toY);
+      if (distance > radius) continue;
+
+      const alphaIndex = ((y * width) + x) * 4 + 3;
+      const previous = data[alphaIndex];
+      const next = stroke.mode === 'erase'
+        ? Math.max(0, previous - amount)
+        : Math.min(255, previous + amount);
+      if (next === previous) continue;
+
+      data[alphaIndex - 3] = 255;
+      data[alphaIndex - 2] = 255;
+      data[alphaIndex - 1] = 255;
+      data[alphaIndex] = next;
+      changedPixels += 1;
+    }
+  }
+
+  return changedPixels;
+};
+
+const getStrokeBounds = (
+  stroke: BrushStroke,
+  width: number,
+  height: number
+): { x: number; y: number; width: number; height: number } | null => {
+  const radius = Math.max(0.5, Number(stroke.radius || 0));
+  const minX = clamp(Math.floor(Math.min(stroke.fromX, stroke.toX) - radius), 0, width);
+  const maxX = clamp(Math.ceil(Math.max(stroke.fromX, stroke.toX) + radius), 0, width);
+  const minY = clamp(Math.floor(Math.min(stroke.fromY, stroke.toY) - radius), 0, height);
+  const maxY = clamp(Math.ceil(Math.max(stroke.fromY, stroke.toY) + radius), 0, height);
+  const nextWidth = maxX - minX;
+  const nextHeight = maxY - minY;
+  if (nextWidth <= 0 || nextHeight <= 0) return null;
+  return { x: minX, y: minY, width: nextWidth, height: nextHeight };
+};
+
+export const applyBrushStrokeToMaskCanvas = (
+  maskCanvas: HTMLCanvasElement,
+  stroke: BrushStroke
+): number => {
+  const bounds = getStrokeBounds(stroke, maskCanvas.width, maskCanvas.height);
+  if (!bounds) return 0;
+
+  const ctx = getCanvasContext(maskCanvas);
+  const imageData = ctx.getImageData(bounds.x, bounds.y, bounds.width, bounds.height);
+  const changedPixels = applyBrushStrokeToMaskData(imageData.data, bounds.width, bounds.height, {
+    ...stroke,
+    fromX: stroke.fromX - bounds.x,
+    toX: stroke.toX - bounds.x,
+    fromY: stroke.fromY - bounds.y,
+    toY: stroke.toY - bounds.y,
+  });
+
+  if (changedPixels > 0) {
+    ctx.putImageData(imageData, bounds.x, bounds.y);
+  }
+
+  return changedPixels;
+};
+
+export const isMaskDataPristine = (data: Uint8ClampedArray): boolean => {
+  for (let index = 3; index < data.length; index += 4) {
+    if (data[index] !== 255) return false;
+  }
+  return true;
+};
+
+export const isMaskCanvasPristine = (maskCanvas: HTMLCanvasElement): boolean => {
+  const ctx = getCanvasContext(maskCanvas);
+  const imageData = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+  return isMaskDataPristine(imageData.data);
+};
+
+export const loadStickerSource = async (
+  src: string,
+  maxDimension = STICKER_EDITOR_MAX_DIMENSION_PX
+): Promise<LoadedStickerSource> => {
+  const image = await loadImageElement(src);
+  const originalWidth = Math.max(1, image.naturalWidth || image.width || 1);
+  const originalHeight = Math.max(1, image.naturalHeight || image.height || 1);
+  const scale = Math.min(1, maxDimension / Math.max(originalWidth, originalHeight));
+  const width = Math.max(1, Math.round(originalWidth * scale));
+  const height = Math.max(1, Math.round(originalHeight * scale));
+  const canvas = createCanvas(width, height);
+  const ctx = getCanvasContext(canvas);
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+
+  return {
+    canvas,
+    width,
+    height,
+    aspectRatio: width / height,
+    originalWidth,
+    originalHeight,
+  };
+};
+
+export const updateCompositeCanvas = (
+  compositeCanvas: HTMLCanvasElement,
+  sourceCanvas: HTMLCanvasElement,
+  maskCanvas: HTMLCanvasElement
+): void => {
+  if (compositeCanvas.width !== sourceCanvas.width || compositeCanvas.height !== sourceCanvas.height) {
+    compositeCanvas.width = sourceCanvas.width;
+    compositeCanvas.height = sourceCanvas.height;
+  }
+  const ctx = getCanvasContext(compositeCanvas);
+  ctx.clearRect(0, 0, compositeCanvas.width, compositeCanvas.height);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(sourceCanvas, 0, 0);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(maskCanvas, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+};
+
+const renderCheckerboard = (ctx: CanvasRenderingContext2D, width: number, height: number): void => {
+  const size = 18;
+  ctx.fillStyle = '#f4f5f7';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#dde1e6';
+  for (let y = 0; y < height; y += size) {
+    for (let x = 0; x < width; x += size) {
+      if (((x / size) + (y / size)) % 2 === 0) {
+        ctx.fillRect(x, y, size, size);
+      }
+    }
+  }
+};
+
+export const renderStickerViewport = ({
+  targetCanvas,
+  compositeCanvas,
+  transform,
+}: {
+  targetCanvas: HTMLCanvasElement;
+  compositeCanvas: HTMLCanvasElement;
+  transform: ViewTransform;
+}): void => {
+  const ctx = getCanvasContext(targetCanvas);
+  ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+  renderCheckerboard(ctx, targetCanvas.width, targetCanvas.height);
+  ctx.save();
+  ctx.translate(transform.offsetX, transform.offsetY);
+  ctx.scale(transform.scale, transform.scale);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(compositeCanvas, 0, 0);
+  ctx.restore();
+};
+
+export const createFitTransform = (
+  imageWidth: number,
+  imageHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  padding = 20
+): ViewTransform => {
+  const safeViewportWidth = Math.max(1, viewportWidth);
+  const safeViewportHeight = Math.max(1, viewportHeight);
+  const safeImageWidth = Math.max(1, imageWidth);
+  const safeImageHeight = Math.max(1, imageHeight);
+  const scale = Math.min(
+    (safeViewportWidth - (padding * 2)) / safeImageWidth,
+    (safeViewportHeight - (padding * 2)) / safeImageHeight
+  );
+  const nextScale = Math.max(scale, 0.01);
+  return {
+    scale: nextScale,
+    offsetX: (safeViewportWidth - (safeImageWidth * nextScale)) / 2,
+    offsetY: (safeViewportHeight - (safeImageHeight * nextScale)) / 2,
+  };
+};
+
+export const clampTransformToViewport = (
+  transform: ViewTransform,
+  imageWidth: number,
+  imageHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  minScale: number
+): ViewTransform => {
+  const scale = Math.max(minScale, transform.scale);
+  const scaledWidth = imageWidth * scale;
+  const scaledHeight = imageHeight * scale;
+
+  let offsetX = transform.offsetX;
+  let offsetY = transform.offsetY;
+
+  if (scaledWidth <= viewportWidth) {
+    offsetX = (viewportWidth - scaledWidth) / 2;
+  } else {
+    offsetX = clamp(offsetX, viewportWidth - scaledWidth, 0);
+  }
+
+  if (scaledHeight <= viewportHeight) {
+    offsetY = (viewportHeight - scaledHeight) / 2;
+  } else {
+    offsetY = clamp(offsetY, viewportHeight - scaledHeight, 0);
+  }
+
+  return { scale, offsetX, offsetY };
+};
+
+export const screenToImagePoint = (
+  x: number,
+  y: number,
+  transform: ViewTransform
+): { x: number; y: number } => ({
+  x: (x - transform.offsetX) / transform.scale,
+  y: (y - transform.offsetY) / transform.scale,
+});
+
+export const exportMaskedSticker = async ({
+  sourceCanvas,
+  maskCanvas,
+}: {
+  sourceCanvas: HTMLCanvasElement;
+  maskCanvas: HTMLCanvasElement;
+}): Promise<ExportedStickerEdit> => {
+  const output = createCanvas(sourceCanvas.width, sourceCanvas.height);
+  updateCompositeCanvas(output, sourceCanvas, maskCanvas);
+  const blob = await canvasToBlob(output, 'image/png');
+  return {
+    blob,
+    dataUrl: output.toDataURL('image/png'),
+    width: output.width,
+    height: output.height,
+    changed: !isMaskCanvasPristine(maskCanvas),
+  };
+};

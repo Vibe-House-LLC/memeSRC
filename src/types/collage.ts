@@ -4,8 +4,11 @@ export type AspectRatio = 'square' | 'landscape' | 'portrait' | string;
 
 export interface CollageImageMetadata {
   libraryKey?: string;
+  derivedFromLibraryKey?: string;
+  editedWithTransparency?: boolean;
   fontFamily?: string;
   source?: string;
+  sourceUrl?: string;
   // Allow additional metadata fields for future use cases
   [key: string]: any;
 }
