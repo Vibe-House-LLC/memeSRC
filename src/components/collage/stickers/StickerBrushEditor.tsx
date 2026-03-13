@@ -5,6 +5,8 @@ import {
   Button,
   CircularProgress,
   IconButton,
+  Menu,
+  MenuItem,
   Slider,
   Stack,
   ToggleButton,
@@ -16,6 +18,7 @@ import {
   BlurOnRounded,
   BrushRounded,
   DarkModeRounded,
+  ExpandMoreRounded,
   FitScreenRounded,
   LightModeRounded,
   OpenWithRounded,
@@ -67,6 +70,8 @@ type DrawSession = {
   lastPoint: PointerPoint;
   hasAppliedStroke: boolean;
 };
+
+type BrushControlKey = 'size' | 'opacity' | 'feather';
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 const DRAW_START_THRESHOLD_PX = 6;
@@ -199,6 +204,8 @@ export default function StickerBrushEditor({
   const [historyState, setHistoryState] = React.useState({ canUndo: false, canRedo: false });
   const [discardConfirmOpen, setDiscardConfirmOpen] = React.useState(false);
   const [checkerboardMode, setCheckerboardMode] = React.useState<CheckerboardMode>('dark');
+  const [activeBrushControl, setActiveBrushControl] = React.useState<BrushControlKey>('size');
+  const [brushControlMenuAnchorEl, setBrushControlMenuAnchorEl] = React.useState<HTMLElement | null>(null);
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -885,6 +892,90 @@ export default function StickerBrushEditor({
   const brushPreviewBorder = brushMode === 'erase'
     ? alpha(theme.palette.error.main, 0.78)
     : alpha(theme.palette.success.main, 0.78);
+  const activeBrushControlConfig = activeBrushControl === 'size'
+    ? {
+      key: 'size' as const,
+      label: 'Size',
+      icon: <BrushRounded sx={{ fontSize: 17 }} />,
+      sliderValue: brushSize,
+      sliderMin: BRUSH_SIZE_MIN,
+      sliderMax: BRUSH_SIZE_MAX,
+      sliderStep: 1,
+      ariaLabel: 'Brush size',
+      onChange: (_: Event, value: number | number[]) => {
+        brushPreferencesDirtyRef.current = true;
+        setBrushSize(Array.isArray(value) ? value[0] : value);
+        revealBrushPreview();
+      },
+      valueDisplay: (
+        <Box
+          sx={{
+            width: `${Math.max(8, Math.min(28, brushSize * 0.2 * brushPreviewOuterMultiplier))}px`,
+            height: `${Math.max(8, Math.min(28, brushSize * 0.2 * brushPreviewOuterMultiplier))}px`,
+            borderRadius: '50%',
+            border: `2px solid ${brushPreviewBorder}`,
+            background: `radial-gradient(circle, ${brushPreviewTint} 0%, ${brushPreviewTint} ${brushPreviewInnerStop}%, ${alpha(brushPreviewColor, 0.38)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.16))}%, ${alpha(brushPreviewColor, 0.12)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.48))}%, ${alpha(brushPreviewColor, 0.03)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.78))}%, ${alpha(brushPreviewColor, 0)} 100%)`,
+          }}
+        />
+      ),
+    }
+    : activeBrushControl === 'opacity'
+      ? {
+        key: 'opacity' as const,
+        label: 'Opacity',
+        icon: <WaterDropRounded sx={{ fontSize: 17 }} />,
+        sliderValue: Math.round(brushOpacity * 100),
+        sliderMin: 5,
+        sliderMax: 100,
+        sliderStep: 1,
+        ariaLabel: 'Brush opacity',
+        onChange: (_: Event, value: number | number[]) => {
+          const nextValue = Array.isArray(value) ? value[0] : value;
+          brushPreferencesDirtyRef.current = true;
+          setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
+          revealBrushPreview();
+        },
+        valueDisplay: (
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 800,
+              color: 'text.secondary',
+              textAlign: 'center',
+            }}
+          >
+            {Math.round(brushOpacity * 100)}%
+          </Typography>
+        ),
+      }
+      : {
+        key: 'feather' as const,
+        label: 'Feather',
+        icon: <BlurOnRounded sx={{ fontSize: 17 }} />,
+        sliderValue: Math.round(brushFeather * 100),
+        sliderMin: 0,
+        sliderMax: 100,
+        sliderStep: 1,
+        ariaLabel: 'Brush feather',
+        onChange: (_: Event, value: number | number[]) => {
+          const nextValue = Array.isArray(value) ? value[0] : value;
+          brushPreferencesDirtyRef.current = true;
+          setBrushFeather(clamp(nextValue / 100, 0, 1));
+          revealBrushPreview();
+        },
+        valueDisplay: (
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 800,
+              color: 'text.secondary',
+              textAlign: 'center',
+            }}
+          >
+            {Math.round(brushFeather * 100)}%
+          </Typography>
+        ),
+      };
   const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
   const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
   const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
@@ -1310,189 +1401,121 @@ export default function StickerBrushEditor({
                   </ToggleButtonGroup>
                 </Stack>
 
-                <Stack spacing={0.65}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: 'center',
+                    px: 1,
+                    py: 0.55,
+                    borderRadius: 1.35,
+                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                  }}
+                >
+                  <Button
+                    onClick={(event) => setBrushControlMenuAnchorEl(event.currentTarget)}
+                    endIcon={<ExpandMoreRounded sx={{ fontSize: 18 }} />}
                     sx={{
-                      alignItems: 'center',
-                      px: 1,
-                      py: 0.55,
-                      borderRadius: 1.35,
-                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                      minWidth: 112,
+                      px: 0.9,
+                      py: 0.45,
+                      borderRadius: 999,
+                      textTransform: 'none',
+                      fontWeight: 800,
+                      color: 'text.primary',
+                      bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                      justifyContent: 'space-between',
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.18 : 0.12),
+                      },
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'text.primary',
-                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
-                        flexShrink: 0,
-                      }}
-                    >
-                      <BrushRounded sx={{ fontSize: 17 }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      {activeBrushControlConfig.icon}
+                      <Typography variant="caption" sx={{ fontWeight: 800 }}>
+                        {activeBrushControlConfig.label}
+                      </Typography>
                     </Box>
-                    <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
-                      Size
-                    </Typography>
-                    <Slider
-                      size="small"
-                      value={brushSize}
-                      min={BRUSH_SIZE_MIN}
-                      max={BRUSH_SIZE_MAX}
-                      step={1}
-                      onChange={(_, value) => {
-                        brushPreferencesDirtyRef.current = true;
-                        setBrushSize(Array.isArray(value) ? value[0] : value);
-                        revealBrushPreview();
-                      }}
-                      aria-label="Brush size"
-                      sx={{ flex: 1, minWidth: 0 }}
-                    />
-                    <Box
-                      sx={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.42 : 0.82),
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: `${Math.max(8, Math.min(28, brushSize * 0.2 * brushPreviewOuterMultiplier))}px`,
-                          height: `${Math.max(8, Math.min(28, brushSize * 0.2 * brushPreviewOuterMultiplier))}px`,
-                          borderRadius: '50%',
-                          border: `2px solid ${brushPreviewBorder}`,
-                          background: `radial-gradient(circle, ${brushPreviewTint} 0%, ${brushPreviewTint} ${brushPreviewInnerStop}%, ${alpha(brushPreviewColor, 0.38)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.16))}%, ${alpha(brushPreviewColor, 0.12)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.48))}%, ${alpha(brushPreviewColor, 0.03)} ${Math.min(100, brushPreviewInnerStop + ((100 - brushPreviewInnerStop) * 0.78))}%, ${alpha(brushPreviewColor, 0)} 100%)`,
-                        }}
-                      />
-                    </Box>
-                  </Stack>
-
-                  <Stack
-                    direction="row"
-                    spacing={1}
+                  </Button>
+                  <Slider
+                    size="small"
+                    value={activeBrushControlConfig.sliderValue}
+                    min={activeBrushControlConfig.sliderMin}
+                    max={activeBrushControlConfig.sliderMax}
+                    step={activeBrushControlConfig.sliderStep}
+                    onChange={activeBrushControlConfig.onChange}
+                    aria-label={activeBrushControlConfig.ariaLabel}
+                    sx={{ flex: 1, minWidth: 0 }}
+                  />
+                  <Box
                     sx={{
+                      width: 46,
+                      height: 42,
+                      borderRadius: 999,
+                      display: 'flex',
                       alignItems: 'center',
-                      px: 1,
-                      py: 0.55,
-                      borderRadius: 1.35,
-                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                      justifyContent: 'center',
+                      bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.42 : 0.82),
+                      flexShrink: 0,
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'text.primary',
-                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
-                        flexShrink: 0,
-                      }}
-                    >
-                      <WaterDropRounded sx={{ fontSize: 17 }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
-                      Opacity
-                    </Typography>
-                    <Slider
-                      size="small"
-                      value={Math.round(brushOpacity * 100)}
-                      min={5}
-                      max={100}
-                      step={1}
-                      onChange={(_, value) => {
-                        const nextValue = Array.isArray(value) ? value[0] : value;
-                        brushPreferencesDirtyRef.current = true;
-                        setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
-                        revealBrushPreview();
-                      }}
-                      aria-label="Brush opacity"
-                      sx={{ flex: 1, minWidth: 0 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        minWidth: 42,
-                        textAlign: 'right',
-                        fontWeight: 800,
-                        color: 'text.secondary',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {Math.round(brushOpacity * 100)}%
-                    </Typography>
-                  </Stack>
-
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      alignItems: 'center',
-                      px: 1,
-                      py: 0.55,
-                      borderRadius: 1.35,
-                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
+                    {activeBrushControlConfig.valueDisplay}
+                  </Box>
+                  <Menu
+                    anchorEl={brushControlMenuAnchorEl}
+                    open={Boolean(brushControlMenuAnchorEl)}
+                    onClose={() => setBrushControlMenuAnchorEl(null)}
+                    PaperProps={{
+                      sx: {
+                        mt: 0.5,
+                        borderRadius: 2,
+                        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                      },
                     }}
                   >
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'text.primary',
-                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
-                        flexShrink: 0,
+                    <MenuItem
+                      selected={activeBrushControl === 'size'}
+                      onClick={() => {
+                        setActiveBrushControl('size');
+                        setBrushControlMenuAnchorEl(null);
                       }}
                     >
-                      <BlurOnRounded sx={{ fontSize: 17 }} />
-                    </Box>
-                    <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 42, flexShrink: 0 }}>
-                      Feather
-                    </Typography>
-                    <Slider
-                      size="small"
-                      value={Math.round(brushFeather * 100)}
-                      min={0}
-                      max={100}
-                      step={1}
-                      onChange={(_, value) => {
-                        const nextValue = Array.isArray(value) ? value[0] : value;
-                        brushPreferencesDirtyRef.current = true;
-                        setBrushFeather(clamp(nextValue / 100, 0, 1));
-                        revealBrushPreview();
-                      }}
-                      aria-label="Brush feather"
-                      sx={{ flex: 1, minWidth: 0 }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        minWidth: 42,
-                        textAlign: 'right',
-                        fontWeight: 800,
-                        color: 'text.secondary',
-                        flexShrink: 0,
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <BrushRounded sx={{ fontSize: 17 }} />
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          Size
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem
+                      selected={activeBrushControl === 'opacity'}
+                      onClick={() => {
+                        setActiveBrushControl('opacity');
+                        setBrushControlMenuAnchorEl(null);
                       }}
                     >
-                      {Math.round(brushFeather * 100)}%
-                    </Typography>
-                  </Stack>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <WaterDropRounded sx={{ fontSize: 17 }} />
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          Opacity
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                    <MenuItem
+                      selected={activeBrushControl === 'feather'}
+                      onClick={() => {
+                        setActiveBrushControl('feather');
+                        setBrushControlMenuAnchorEl(null);
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <BlurOnRounded sx={{ fontSize: 17 }} />
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          Feather
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  </Menu>
                 </Stack>
               </>
             )}
