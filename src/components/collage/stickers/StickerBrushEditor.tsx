@@ -643,7 +643,6 @@ export default function StickerBrushEditor({
     }
   }, [busy, commitBusy, onAdd, previewResult]);
 
-  const previewHint = previewResult?.changed ? 'Preview the cropped sticker.' : 'Preview before adding.';
   const canvasCursor = !isMobile
     ? (
       interactionMode === 'pan' || interactionMode === 'pinch'
@@ -651,16 +650,9 @@ export default function StickerBrushEditor({
         : (panModifierPressed ? 'grab' : 'crosshair')
     )
     : 'crosshair';
-  const gestureCards = isMobile
-    ? [
-      { icon: <BrushRounded sx={{ fontSize: 18 }} />, title: 'Paint', detail: '1 finger' },
-      { icon: <OpenWithRounded sx={{ fontSize: 18 }} />, title: 'Move / Zoom', detail: '2 fingers' },
-    ]
-    : [
-      { icon: <BrushRounded sx={{ fontSize: 18 }} />, title: 'Paint', detail: 'Drag' },
-      { icon: <OpenWithRounded sx={{ fontSize: 18 }} />, title: 'Pan', detail: 'Shift + drag' },
-      { icon: <ZoomInRounded sx={{ fontSize: 18 }} />, title: 'Zoom', detail: 'Wheel' },
-    ];
+  const navigationTip = isMobile
+    ? 'Pinch or 2-finger drag to zoom and move'
+    : 'Wheel to zoom. Shift + drag to move';
   const brushPreviewDiameter = clamp(brushSize, 14, Math.min(150, Math.max(80, viewportSize.width * 0.28 || 150)));
   const brushPreviewTint = brushMode === 'erase'
     ? alpha(theme.palette.error.main, Math.max(0.16, brushOpacity * 0.24))
@@ -670,8 +662,6 @@ export default function StickerBrushEditor({
     : alpha(theme.palette.success.main, 0.78);
   const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
   const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
-  const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
-  const neutralButtonHoverBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.36 : 0.22);
   const neutralButtonShadow = `0 4px 14px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.32 : 0.14)}`;
   const neutralActionButtonSx = {
     minHeight: 48,
@@ -682,12 +672,9 @@ export default function StickerBrushEditor({
     textTransform: 'none',
     color: 'text.primary',
     backgroundColor: neutralButtonBg,
-    border: '1px solid',
-    borderColor: neutralButtonBorder,
     boxShadow: neutralButtonShadow,
     '&:hover': {
       backgroundColor: neutralButtonHoverBg,
-      borderColor: neutralButtonHoverBorder,
       boxShadow: neutralButtonShadow,
     },
   };
@@ -698,8 +685,6 @@ export default function StickerBrushEditor({
     fontWeight: 700,
     textTransform: 'none',
     backgroundColor: theme.palette.primary.main,
-    border: '1px solid',
-    borderColor: alpha(theme.palette.primary.dark, 0.95),
     boxShadow: `0 6px 18px ${alpha(theme.palette.primary.main, 0.34)}`,
     color: 'primary.contrastText',
     '&:hover': {
@@ -707,20 +692,16 @@ export default function StickerBrushEditor({
       boxShadow: `0 6px 18px ${alpha(theme.palette.primary.main, 0.4)}`,
     },
   };
-  const utilityButtonSx = {
-    minHeight: 34,
-    borderRadius: 999,
-    px: 1.05,
-    gap: 0.45,
-    fontWeight: 700,
-    textTransform: 'none',
-    color: 'text.secondary',
-    border: '1px solid',
-    borderColor: alpha(theme.palette.divider, 0.9),
-    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.6 : 0.82),
+  const overlayIconButtonSx = {
+    width: 40,
+    height: 40,
+    borderRadius: 1.35,
+    color: 'text.primary',
+    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.7 : 0.88),
+    boxShadow: `0 8px 22px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.22 : 0.14)}`,
+    backdropFilter: 'blur(14px)',
     '&:hover': {
-      borderColor: alpha(theme.palette.text.primary, 0.24),
-      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.96),
+      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.84 : 0.97),
     },
   };
 
@@ -862,6 +843,76 @@ export default function StickerBrushEditor({
           </Box>
         </Box>
 
+        {!previewResult && (
+          <>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                zIndex: 2,
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.85,
+                px: 1,
+                py: 0.75,
+                borderRadius: 1.5,
+                color: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.96) : 'text.primary',
+                bgcolor: theme.palette.mode === 'dark'
+                  ? alpha(theme.palette.common.black, 0.5)
+                  : alpha(theme.palette.background.paper, 0.9),
+                backdropFilter: 'blur(14px)',
+                boxShadow: `0 10px 24px ${alpha(theme.palette.common.black, 0.14)}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.55, flexShrink: 0 }}>
+                <ZoomInRounded sx={{ fontSize: 16 }} />
+                <OpenWithRounded sx={{ fontSize: 16 }} />
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  display: 'block',
+                  fontWeight: 700,
+                  lineHeight: 1.15,
+                  letterSpacing: 0.08,
+                }}
+              >
+                {navigationTip}
+              </Typography>
+            </Box>
+
+            <Stack
+              direction="row"
+              spacing={0.8}
+              sx={{
+                position: 'absolute',
+                left: 12,
+                bottom: 14,
+                zIndex: 2,
+              }}
+            >
+              <IconButton
+                onClick={resetViewToFit}
+                disabled={loading}
+                aria-label="Fit image"
+                sx={overlayIconButtonSx}
+              >
+                <FitScreenRounded sx={{ fontSize: 19 }} />
+              </IconButton>
+              <IconButton
+                onClick={handleRecenter}
+                disabled={loading || !loadedSource}
+                aria-label="Center visible sticker"
+                sx={overlayIconButtonSx}
+              >
+                <CenterFocusStrongRounded sx={{ fontSize: 19 }} />
+              </IconButton>
+            </Stack>
+          </>
+        )}
+
         {(loading || !loadedSource) && (
           <Stack
             spacing={1}
@@ -910,55 +961,6 @@ export default function StickerBrushEditor({
           <Stack spacing={0.8}>
             {!previewResult && (
               <>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
-                    gap: 0.75,
-                  }}
-                >
-                  {gestureCards.map((card) => (
-                    <Box
-                      key={`${card.title}-${card.detail}`}
-                      sx={{
-                        minWidth: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.85,
-                        px: 1,
-                        py: 0.8,
-                        borderRadius: 1.35,
-                        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                        bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'text.primary',
-                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
-                          flexShrink: 0,
-                        }}
-                      >
-                        {card.icon}
-                      </Box>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="caption" sx={{ display: 'block', fontWeight: 800, lineHeight: 1.05 }}>
-                          {card.title}
-                        </Typography>
-                        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.1 }}>
-                          {card.detail}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
                   spacing={0.8}
@@ -974,48 +976,32 @@ export default function StickerBrushEditor({
                       }
                     }}
                     sx={{
+                      alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                      p: 0.35,
+                      borderRadius: 999,
+                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
                       '& .MuiToggleButton-root': {
                         flex: 1,
                         textTransform: 'none',
                         fontWeight: 700,
                         px: isMobile ? 1.15 : 1.8,
                         py: 0.55,
+                        border: 'none',
+                        borderRadius: 999,
+                        color: 'text.secondary',
+                        '&.Mui-selected': {
+                          color: 'text.primary',
+                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08),
+                        },
+                        '&.Mui-selected:hover': {
+                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.2 : 0.1),
+                        },
                       },
                     }}
                   >
                     <ToggleButton value="erase">Erase</ToggleButton>
                     <ToggleButton value="restore">Restore</ToggleButton>
                   </ToggleButtonGroup>
-
-                  <Stack direction="row" spacing={0.55} sx={{ justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
-                    <Button
-                      variant="contained"
-                      onClick={resetViewToFit}
-                      disabled={loading}
-                      startIcon={<FitScreenRounded sx={{ fontSize: 16 }} />}
-                      sx={utilityButtonSx}
-                    >
-                      Fit
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={handleRecenter}
-                      disabled={loading || !loadedSource}
-                      startIcon={<CenterFocusStrongRounded sx={{ fontSize: 16 }} />}
-                      sx={utilityButtonSx}
-                    >
-                      Center
-                    </Button>
-                    <Button
-                      variant="contained"
-                      onClick={handleReset}
-                      disabled={loading || !hasApproximateEdits}
-                      startIcon={<ReplayRounded sx={{ fontSize: 16 }} />}
-                      sx={utilityButtonSx}
-                    >
-                      Reset
-                    </Button>
-                  </Stack>
                 </Stack>
 
                 <Stack spacing={0.65}>
@@ -1027,7 +1013,6 @@ export default function StickerBrushEditor({
                       px: 1,
                       py: 0.55,
                       borderRadius: 1.35,
-                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
                       bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
                     }}
                   >
@@ -1070,7 +1055,6 @@ export default function StickerBrushEditor({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
                         bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.42 : 0.82),
                         flexShrink: 0,
                       }}
@@ -1095,7 +1079,6 @@ export default function StickerBrushEditor({
                       px: 1,
                       py: 0.55,
                       borderRadius: 1.35,
-                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
                       bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
                     }}
                   >
@@ -1148,21 +1131,6 @@ export default function StickerBrushEditor({
               </>
             )}
 
-            {previewResult && (
-              <Typography
-                variant="caption"
-                sx={{
-                  textAlign: 'center',
-                  color: 'text.secondary',
-                  fontWeight: 700,
-                  letterSpacing: 0.12,
-                  lineHeight: 1.1,
-                }}
-              >
-                {previewHint}
-              </Typography>
-            )}
-
             <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'center' }}>
               <IconButton
                 onClick={() => {
@@ -1200,9 +1168,25 @@ export default function StickerBrushEditor({
                 {(previewBusy || commitBusy || busy) ? (
                   <CircularProgress size={20} color="inherit" />
                 ) : (
-                  previewResult ? 'Use Sticker' : 'Add Sticker'
+                  previewResult ? 'Use Sticker' : 'Done'
                 )}
               </Button>
+
+              {!previewResult && (
+                <IconButton
+                  onClick={handleReset}
+                  disabled={loading || !hasApproximateEdits}
+                  aria-label="Reset sticker edits"
+                  sx={{
+                    ...neutralActionButtonSx,
+                    width: 52,
+                    minWidth: 52,
+                    px: 0,
+                  }}
+                >
+                  <ReplayRounded />
+                </IconButton>
+              )}
             </Stack>
           </Stack>
         </Box>
