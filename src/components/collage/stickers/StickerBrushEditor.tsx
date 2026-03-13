@@ -14,15 +14,18 @@ import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { ExportedStickerEdit, LoadedStickerSource, ViewTransform } from './stickerBrushMath';
 import {
-  applyBrushStrokeToMaskCanvas,
+  applyOverlayToMaskCanvas,
   clampTransformToViewport,
+  cloneCanvas,
   createFitTransform,
   createOpaqueMaskCanvas,
+  createTransparentCanvas,
   exportMaskedSticker,
   loadStickerSource,
   renderStickerViewport,
   resetMaskCanvas,
   screenToImagePoint,
+  stampBrushStrokeOnCanvas,
   STICKER_EDITOR_MAX_DIMENSION_PX,
   updateCompositeCanvas,
 } from './stickerBrushMath';
@@ -73,6 +76,8 @@ export default function StickerBrushEditor({
   const sourceCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const maskCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const compositeCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const strokeBaseMaskCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const strokeOverlayCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const transformRef = React.useRef<ViewTransform | null>(null);
   const minScaleRef = React.useRef(0.1);
   const renderFrameRef = React.useRef<number | null>(null);
@@ -295,25 +300,32 @@ export default function StickerBrushEditor({
   const applyStroke = React.useCallback((fromPoint: PointerPoint, toPoint: PointerPoint) => {
     const transform = transformRef.current;
     const maskCanvas = maskCanvasRef.current;
-    if (!transform || !maskCanvas) return;
+    const baseMaskCanvas = strokeBaseMaskCanvasRef.current;
+    const overlayCanvas = strokeOverlayCanvasRef.current;
+    if (!transform || !maskCanvas || !baseMaskCanvas || !overlayCanvas) return;
     const start = screenToImagePoint(fromPoint.x, fromPoint.y, transform);
     const end = screenToImagePoint(toPoint.x, toPoint.y, transform);
     const radius = Math.max(4, brushSize) / transform.scale / 2;
-    const changedPixels = applyBrushStrokeToMaskCanvas(maskCanvas, {
+    stampBrushStrokeOnCanvas(overlayCanvas, {
       fromX: start.x,
       fromY: start.y,
       toX: end.x,
       toY: end.y,
       radius,
-      opacity: brushOpacity,
+      opacity: 1,
       mode: brushMode,
     });
+    applyOverlayToMaskCanvas({
+      targetMaskCanvas: maskCanvas,
+      baseMaskCanvas,
+      overlayCanvas,
+      mode: brushMode,
+      opacity: brushOpacity,
+    });
 
-    if (changedPixels > 0) {
-      hasApproximateEditsRef.current = true;
-      setHasApproximateEdits(true);
-      refreshComposite();
-    }
+    hasApproximateEditsRef.current = true;
+    setHasApproximateEdits(true);
+    refreshComposite();
   }, [brushMode, brushOpacity, brushSize, refreshComposite]);
 
   const setInteraction = React.useCallback((nextMode: InteractionMode) => {
@@ -324,6 +336,15 @@ export default function StickerBrushEditor({
   const clearPendingDraw = React.useCallback(() => {
     drawingPointerIdRef.current = null;
     drawSessionRef.current = null;
+    strokeBaseMaskCanvasRef.current = null;
+    strokeOverlayCanvasRef.current = null;
+  }, []);
+
+  const beginStroke = React.useCallback(() => {
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return;
+    strokeBaseMaskCanvasRef.current = cloneCanvas(maskCanvas);
+    strokeOverlayCanvasRef.current = createTransparentCanvas(maskCanvas.width, maskCanvas.height);
   }, []);
 
   const beginPinch = React.useCallback(() => {
@@ -366,13 +387,14 @@ export default function StickerBrushEditor({
 
     setInteraction('draw');
     drawingPointerIdRef.current = event.pointerId;
+    beginStroke();
     drawSessionRef.current = {
       startPoint: point,
       lastPoint: point,
       hasAppliedStroke: false,
     };
     event.preventDefault();
-  }, [beginPinch, getCanvasLocalPoint, loadedSource, setInteraction]);
+  }, [beginPinch, beginStroke, getCanvasLocalPoint, loadedSource, setInteraction]);
 
   const handlePointerMove = React.useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const point = getCanvasLocalPoint(event);
@@ -522,8 +544,8 @@ export default function StickerBrushEditor({
   }, [busy, commitBusy, onAdd]);
 
   const interactionHint = isMobile
-    ? '1 finger paint. 2 fingers pan or pinch.'
-    : 'Drag to paint. Shift + drag pans. Wheel zooms.';
+    ? 'Paint: 1 finger. Move/zoom: 2 fingers.'
+    : 'Paint: drag. Pan: Shift + drag. Zoom: wheel.';
   const canvasCursor = !isMobile
     ? (
       interactionMode === 'pan' || interactionMode === 'pinch'
@@ -535,8 +557,8 @@ export default function StickerBrushEditor({
   return (
     <Box
       sx={{
-        minHeight: { xs: 'calc(100dvh - 10px)', md: 'calc(100dvh - 36px)' },
-        height: { xs: 'calc(100dvh - 10px)', md: 'calc(100dvh - 36px)' },
+        width: '100%',
+        minHeight: { xs: 'calc(100svh - 28px)', md: 'calc(100dvh - 72px)' },
         display: 'flex',
         flexDirection: 'column',
         borderRadius: { xs: 0, md: 3 },
@@ -545,69 +567,8 @@ export default function StickerBrushEditor({
         border: { xs: 'none', md: `1px solid ${alpha(theme.palette.divider, 0.9)}` },
       }}
     >
-      <Box
-        sx={{
-          px: { xs: 1.25, md: 1.5 },
-          py: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.75)}`,
-          gap: 1,
-          flexShrink: 0,
-        }}
-      >
-        <Button
-          variant="text"
-          onClick={onBack}
-          disabled={commitBusy || busy}
-          sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, px: 0.5 }}
-        >
-          Back
-        </Button>
-        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-          Sticker
-        </Typography>
-        <Button
-          variant="contained"
-          onClick={() => { void handleAdd(); }}
-          disabled={loading || commitBusy || busy || !loadedSource}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 800,
-            borderRadius: 999,
-            minWidth: 86,
-          }}
-        >
-          {commitBusy || busy ? <CircularProgress size={18} color="inherit" /> : 'Add'}
-        </Button>
-      </Box>
-
-      <Box
-        sx={{
-          px: { xs: 1.25, md: 1.5 },
-          py: 0.75,
-          borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
-          bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.88 : 0.94),
-          flexShrink: 0,
-        }}
-      >
-        <Typography
-          variant="caption"
-          sx={{
-            display: 'block',
-            textAlign: 'center',
-            fontWeight: 700,
-            letterSpacing: 0.15,
-            color: 'text.secondary',
-          }}
-        >
-          {interactionHint}
-        </Typography>
-      </Box>
-
       {editorError ? (
-        <Alert severity="error" sx={{ m: 1, flexShrink: 0 }}>
+        <Alert severity="error" sx={{ mx: 1, mt: 1, mb: 0, flexShrink: 0 }}>
           {editorError}
         </Alert>
       ) : null}
@@ -616,7 +577,7 @@ export default function StickerBrushEditor({
         ref={viewportRef}
         sx={{
           position: 'relative',
-          flex: 1,
+          flex: '1 1 auto',
           minHeight: 0,
           overflow: 'hidden',
           bgcolor: theme.palette.mode === 'dark' ? '#111317' : '#eff1f4',
@@ -672,15 +633,56 @@ export default function StickerBrushEditor({
       <Box
         sx={{
           flexShrink: 0,
-          px: { xs: 1.1, md: 1.5 },
+          px: { xs: 1.25, md: 1.5 },
           pt: 1,
           pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
           borderTop: `1px solid ${alpha(theme.palette.divider, 0.75)}`,
           bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.96 : 0.98),
+          boxShadow: `0 -8px 30px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.14)}`,
           backdropFilter: 'blur(18px)',
         }}
       >
         <Stack spacing={1}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <Button
+              variant="text"
+              onClick={onBack}
+              disabled={commitBusy || busy}
+              sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, px: 0.5 }}
+            >
+              Back
+            </Button>
+            <Typography
+              variant="caption"
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                px: 0.5,
+                textAlign: 'center',
+                color: 'text.secondary',
+                fontWeight: 700,
+                letterSpacing: 0.1,
+                lineHeight: 1.2,
+              }}
+            >
+              {interactionHint}
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={() => { void handleAdd(); }}
+              disabled={loading || commitBusy || busy || !loadedSource}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 800,
+                borderRadius: 999,
+                minWidth: 78,
+                px: 1.8,
+              }}
+            >
+              {commitBusy || busy ? <CircularProgress size={18} color="inherit" /> : 'Add'}
+            </Button>
+          </Stack>
+
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <ToggleButtonGroup
               exclusive
@@ -723,46 +725,54 @@ export default function StickerBrushEditor({
             </Stack>
           </Stack>
 
-          <Box>
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                Size
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                {Math.round(brushSize)}
-              </Typography>
-            </Stack>
-            <Slider
-              value={brushSize}
-              min={12}
-              max={160}
-              step={1}
-              onChange={(_, value) => setBrushSize(Array.isArray(value) ? value[0] : value)}
-              aria-label="Brush size"
-            />
-          </Box>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={{ xs: 0.9, md: 1.5 }}
+            sx={{ alignItems: 'stretch' }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.2 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                  Size
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                  {Math.round(brushSize)}
+                </Typography>
+              </Stack>
+              <Slider
+                size="small"
+                value={brushSize}
+                min={12}
+                max={160}
+                step={1}
+                onChange={(_, value) => setBrushSize(Array.isArray(value) ? value[0] : value)}
+                aria-label="Brush size"
+              />
+            </Box>
 
-          <Box>
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.25 }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                Opacity
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                {Math.round(brushOpacity * 100)}%
-              </Typography>
-            </Stack>
-            <Slider
-              value={Math.round(brushOpacity * 100)}
-              min={5}
-              max={100}
-              step={1}
-              onChange={(_, value) => {
-                const nextValue = Array.isArray(value) ? value[0] : value;
-                setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
-              }}
-              aria-label="Brush opacity"
-            />
-          </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.2 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                  Opacity
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                  {Math.round(brushOpacity * 100)}%
+                </Typography>
+              </Stack>
+              <Slider
+                size="small"
+                value={Math.round(brushOpacity * 100)}
+                min={5}
+                max={100}
+                step={1}
+                onChange={(_, value) => {
+                  const nextValue = Array.isArray(value) ? value[0] : value;
+                  setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
+                }}
+                aria-label="Brush opacity"
+              />
+            </Box>
+          </Stack>
         </Stack>
       </Box>
     </Box>

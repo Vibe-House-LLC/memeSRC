@@ -97,6 +97,20 @@ export const createOpaqueMaskCanvas = (width: number, height: number): HTMLCanva
   return canvas;
 };
 
+export const createTransparentCanvas = (width: number, height: number): HTMLCanvasElement => createCanvas(width, height);
+
+export const cloneCanvas = (sourceCanvas: HTMLCanvasElement): HTMLCanvasElement => {
+  const canvas = createCanvas(sourceCanvas.width, sourceCanvas.height);
+  const ctx = getCanvasContext(canvas);
+  ctx.drawImage(sourceCanvas, 0, 0);
+  return canvas;
+};
+
+export const clearCanvas = (canvas: HTMLCanvasElement): void => {
+  const ctx = getCanvasContext(canvas);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
+
 export const resetMaskCanvas = (maskCanvas: HTMLCanvasElement): void => {
   const ctx = getCanvasContext(maskCanvas);
   const imageData = ctx.createImageData(maskCanvas.width, maskCanvas.height);
@@ -207,6 +221,70 @@ export const applyBrushStrokeToMaskCanvas = (
   }
 
   return changedPixels;
+};
+
+export const stampBrushStrokeOnCanvas = (
+  overlayCanvas: HTMLCanvasElement,
+  stroke: BrushStroke
+): void => {
+  const ctx = getCanvasContext(overlayCanvas);
+  const radius = Math.max(0.5, Number(stroke.radius || 0));
+  const startX = Number(stroke.fromX);
+  const startY = Number(stroke.fromY);
+  const endX = Number(stroke.toX);
+  const endY = Number(stroke.toY);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = 'rgba(255,255,255,1)';
+  ctx.fillStyle = 'rgba(255,255,255,1)';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = radius * 2;
+
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+
+  // Ensure taps produce a circular stamp even without movement.
+  ctx.beginPath();
+  ctx.arc(endX, endY, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+};
+
+export const applyOverlayToMaskCanvas = ({
+  targetMaskCanvas,
+  baseMaskCanvas,
+  overlayCanvas,
+  mode,
+  opacity,
+}: {
+  targetMaskCanvas: HTMLCanvasElement;
+  baseMaskCanvas: HTMLCanvasElement;
+  overlayCanvas: HTMLCanvasElement;
+  mode: BrushMode;
+  opacity: number;
+}): void => {
+  if (
+    targetMaskCanvas.width !== baseMaskCanvas.width
+    || targetMaskCanvas.height !== baseMaskCanvas.height
+  ) {
+    targetMaskCanvas.width = baseMaskCanvas.width;
+    targetMaskCanvas.height = baseMaskCanvas.height;
+  }
+
+  const ctx = getCanvasContext(targetMaskCanvas);
+  ctx.clearRect(0, 0, targetMaskCanvas.width, targetMaskCanvas.height);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.drawImage(baseMaskCanvas, 0, 0);
+  ctx.globalAlpha = clamp(Number(opacity || 0), 0, 1);
+  ctx.globalCompositeOperation = mode === 'erase' ? 'destination-out' : 'source-over';
+  ctx.drawImage(overlayCanvas, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 };
 
 export const isMaskDataPristine = (data: Uint8ClampedArray): boolean => {
