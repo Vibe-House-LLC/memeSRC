@@ -16,7 +16,6 @@ import { useCollageState } from "../components/collage/hooks/useCollageState";
 import { createProject, upsertProject, buildSnapshotFromState, getProject as getProjectRecord, resolveTemplateSnapshot, subscribeToProject } from "../components/collage/utils/templates";
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
-import { getNextOverlayZIndex } from "../components/collage/utils/overlayOrder";
 import {
   TOP_CAPTION_DEFAULT_FONT_SIZE,
   TOP_CAPTION_DEFAULT_SPACING_Y,
@@ -1493,7 +1492,6 @@ export default function CollagePage() {
         metadata,
         aspectRatio: Number.isFinite(parsedAspectRatio) && parsedAspectRatio > 0 ? parsedAspectRatio : 1,
         angleDeg: Number.isFinite(parsedAngle) ? parsedAngle : 0,
-        zIndex: Number.isFinite(Number(ref.zIndex)) ? Number(ref.zIndex) : undefined,
         widthPercent: Number.isFinite(parsedWidth) ? parsedWidth : 28,
         xPercent: Number.isFinite(parsedX) ? parsedX : 36,
         yPercent: Number.isFinite(parsedY) ? parsedY : 12,
@@ -2273,31 +2271,10 @@ export default function CollagePage() {
         textBoxWidthPercent: 75,
         textPositionX: 0,
         textPositionY: 50,
-        zIndex: getNextOverlayZIndex(panelTexts, stickers),
       }, { replace: true });
       queuePanelTextAutoOpen(layerId);
     }
-  }, [getPanelIdsInOrder, lastUsedTextSettings, panelImageMapping, panelTexts, queuePanelTextAutoOpen, selectedImages, stickers, updatePanelText]);
-
-  useEffect(() => {
-    if (!location.state?.openTopCaptionOnLoad) return;
-    if (!projectId || !activeProjectId || projectId !== activeProjectId) return;
-    if (isHydratingProject) return;
-
-    handleAddTextRequested('top-caption');
-
-    const { openTopCaptionOnLoad: _omitTopCaption, ...rest } = location.state || {};
-    const nextState = Object.keys(rest).length > 0 ? rest : undefined;
-    navigate(location.pathname, { replace: true, state: nextState });
-  }, [
-    activeProjectId,
-    handleAddTextRequested,
-    isHydratingProject,
-    location.pathname,
-    location.state,
-    navigate,
-    projectId,
-  ]);
+  }, [getPanelIdsInOrder, lastUsedTextSettings, panelImageMapping, panelTexts, queuePanelTextAutoOpen, selectedImages, updatePanelText]);
 
   const handleAddPanelRequested = useCallback((position = 'end') => {
     if (isHydratingProject || isCreatingCollage) return;

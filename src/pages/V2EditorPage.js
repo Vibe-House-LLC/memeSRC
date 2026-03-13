@@ -34,7 +34,6 @@ import {
 } from '../components/collage/utils/templates';
 import AddToCollageChooser from '../components/collage/AddToCollageChooser';
 import { renderThumbnailFromSnapshot } from '../components/collage/utils/renderThumbnailFromSnapshot';
-import { buildV2EditorImportSnapshot } from '../components/collage/utils/importV2EditorToCollage';
 import {
   appendImageToSnapshot,
   buildSingleImageSnapshot,
@@ -321,12 +320,6 @@ const EditorPage = ({ shows }) => {
   const [layerActiveFormats, setLayerActiveFormats] = useState({});
 
   const [editorAspectRatio, setEditorAspectRatio] = useState(1);
-  const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
-  const [whiteSpaceValue, setWhiteSpaceValue] = useState(20);
-  const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
-  const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
-  const [isSliding, setIsSliding] = useState(false);
-  const safeCanvasHeight = Math.max(canvasSize?.height || 1, 1);
 
   const [loading, setLoading] = useState(true)
 
@@ -350,8 +343,6 @@ const EditorPage = ({ shows }) => {
   const [collageReplaceSelection, setCollageReplaceSelection] = useState(null);
   const [collageReplaceOptions, setCollageReplaceOptions] = useState([]);
   const [collageReplaceContext, setCollageReplaceContext] = useState(null);
-  const [topCaptionMigrationDialogOpen, setTopCaptionMigrationDialogOpen] = useState(false);
-  const [importingTopCaption, setImportingTopCaption] = useState(false);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
   const [snackbarOpen, setSnackBarOpen] = useState(false);
@@ -381,9 +372,7 @@ const EditorPage = ({ shows }) => {
   const [variationDisplayColumns, setVariationDisplayColumns] = useState(1);
 
   const isAuthenticated = Boolean(user && user !== false);
-  const isAdminUser = user?.['cognito:groups']?.includes('admins');
   const isProUser = user?.userDetails?.subscriptionStatus === 'active';
-  const hasCollageAccess = isProUser || isAdminUser;
 
   // const [earlyAccessComplete, setEarlyAccessComplete] = useState(false);
   // const [earlyAccessDisabled, setEarlyAccessDisabled] = useState(false);
@@ -3188,122 +3177,6 @@ const EditorPage = ({ shows }) => {
     reader.readAsDataURL(blob);
   }), []);
 
-  const buildCollageImportMetadata = useCallback(() => ({
-    source: 'V2EditorPage',
-    ...(editorProjectId ? { editorProjectId } : {}),
-    ...((confirmedCid || cid) ? { cid: confirmedCid || cid } : {}),
-    ...(season ? { season } : {}),
-    ...(episode ? { episode } : {}),
-    ...(frame ? { frame } : {}),
-  }), [cid, confirmedCid, editorProjectId, episode, frame, season]);
-
-  const exportBackgroundOnlyBlob = useCallback(async () => {
-    if (!editor?.canvas?.backgroundImage) {
-      throw new Error('No background image is available to import.');
-    }
-
-    const canvas = editor.canvas;
-    const objects = canvas.getObjects();
-    const previousVisibility = objects.map((object) => object.visible);
-    const cropWidth = typeof canvas.getWidth === 'function' ? canvas.getWidth() : canvas.width;
-
-    objects.forEach((object) => {
-      object.set('visible', false);
-    });
-    canvas.discardActiveObject();
-    canvas.renderAll();
-
-    try {
-      const dataUrl = canvas.toDataURL({
-        format: 'jpeg',
-        quality: 0.92,
-        multiplier: imageScale || 1,
-        left: 0,
-        top: whiteSpaceHeight,
-        width: cropWidth,
-        height: safeCanvasHeight,
-      });
-      const response = await fetch(dataUrl);
-      return await response.blob();
-    } finally {
-      objects.forEach((object, index) => {
-        object.set('visible', typeof previousVisibility[index] === 'boolean' ? previousVisibility[index] : true);
-      });
-      canvas.renderAll();
-    }
-  }, [editor, imageScale, safeCanvasHeight, whiteSpaceHeight]);
-
-  const resolveBackgroundImageForCollageImport = useCallback(async () => {
-    const backgroundImage = editor?.canvas?.backgroundImage;
-    if (!backgroundImage) {
-      throw new Error('Add or load an image before importing into collage.');
-    }
-
-    const metadata = buildCollageImportMetadata();
-    const element =
-      (typeof backgroundImage.getElement === 'function' && backgroundImage.getElement()) ||
-      backgroundImage._element ||
-      null;
-    const naturalWidth = Number(
-      backgroundImage.width ||
-      element?.naturalWidth ||
-      element?.width ||
-      (typeof editor.canvas?.getWidth === 'function' ? editor.canvas.getWidth() : editor.canvas?.width) ||
-      1
-    );
-    const naturalHeight = Number(
-      backgroundImage.height ||
-      element?.naturalHeight ||
-      element?.height ||
-      safeCanvasHeight ||
-      1
-    );
-    const directSource = [
-      typeof backgroundImage.getSrc === 'function' ? backgroundImage.getSrc() : '',
-      backgroundImage.src,
-      element?.currentSrc,
-      element?.src,
-    ].find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
-
-    if (typeof directSource === 'string' && directSource && !directSource.startsWith('blob:')) {
-      return {
-        imageRef: {
-          url: directSource,
-          metadata,
-        },
-        naturalWidth: naturalWidth > 0 ? naturalWidth : Math.max(canvasSize?.width || 1, 1),
-        naturalHeight: naturalHeight > 0 ? naturalHeight : Math.max(safeCanvasHeight || 1, 1),
-      };
-    }
-
-    const backgroundBlob = await exportBackgroundOnlyBlob();
-    if (!backgroundBlob) {
-      throw new Error('Unable to export the base image for collage import.');
-    }
-
-    const filename = generatedImageFilename || `collage-import-${Date.now()}.jpg`;
-    const libraryKey = await saveImageToLibrary(backgroundBlob, filename, {
-      level: 'private',
-      metadata,
-    });
-
-    return {
-      imageRef: {
-        libraryKey,
-        metadata,
-      },
-      naturalWidth: Math.max(canvasSize?.width || 1, 1),
-      naturalHeight: Math.max(safeCanvasHeight || 1, 1),
-    };
-  }, [
-    buildCollageImportMetadata,
-    canvasSize?.width,
-    editor,
-    exportBackgroundOnlyBlob,
-    generatedImageFilename,
-    safeCanvasHeight,
-  ]);
-
   const resolveSnapshotImageUrl = useCallback(
     async (imageRef) => {
       if (!imageRef) return null;
@@ -3660,97 +3533,6 @@ const EditorPage = ({ shows }) => {
     const entry = entries[0] || null;
     performAddToCollage(entry);
   }, [addingToCollage, imageUploading, isProUser, openSubscriptionDialog, performAddToCollage, textLayerEntries, trackSaveDialogAction]);
-
-  const handleOpenTopCaptionMigrationDialog = useCallback(() => {
-    setTopCaptionMigrationDialogOpen(true);
-  }, []);
-
-  const handleCloseTopCaptionMigrationDialog = useCallback(() => {
-    if (importingTopCaption) return;
-    setTopCaptionMigrationDialogOpen(false);
-  }, [importingTopCaption]);
-
-  const handleImportTopCaptionToCollage = useCallback(async () => {
-    if (!hasCollageAccess) {
-      setTopCaptionMigrationDialogOpen(false);
-      openSubscriptionDialog();
-      return;
-    }
-    if (importingTopCaption || imageUploading) return;
-    if (!editor?.canvas) {
-      setSeverity('error');
-      setMessage('Editor is still loading. Try again in a moment.');
-      setOpen(true);
-      return;
-    }
-
-    setImportingTopCaption(true);
-
-    try {
-      const backgroundImport = await resolveBackgroundImageForCollageImport();
-      const baseCanvasWidth = Math.max(
-        (typeof editor.canvas.getWidth === 'function' ? editor.canvas.getWidth() : editor.canvas.width) || 1,
-        1
-      );
-      const project = await createProject({ name: 'Untitled Meme' });
-      const projectId = project?.id;
-      if (!projectId) {
-        throw new Error('Missing collage project id.');
-      }
-
-      const snapshot = buildV2EditorImportSnapshot({
-        baseImage: backgroundImport,
-        canvasObjects: editor.canvas.getObjects(),
-        layerRawText,
-        whiteSpaceHeight,
-        baseCanvasWidth,
-        baseCanvasHeight: Math.max(safeCanvasHeight || 1, 1),
-      });
-
-      await persistCollageSnapshot(projectId, snapshot);
-
-      trackUsageEvent('v2_top_caption_migrated_to_collage', {
-        ...editorImageIntentBaseMeta,
-        projectId,
-        textLayerCount: textLayerEntries.length,
-        stickerLayerCount: editor.canvas.getObjects().filter((object) => object?.type === 'image').length,
-      });
-
-      setTopCaptionMigrationDialogOpen(false);
-      navigate(`/projects/${projectId}`, {
-        state: {
-          projectId,
-          openTopCaptionOnLoad: true,
-        },
-      });
-    } catch (error) {
-      console.error('Error importing V2 editor into collage:', error);
-      setSeverity('error');
-      setMessage(error?.message || 'Unable to import this image into the collage tool right now.');
-      setOpen(true);
-    } finally {
-      setImportingTopCaption(false);
-    }
-  }, [
-    buildV2EditorImportSnapshot,
-    createProject,
-    editor,
-    editorImageIntentBaseMeta,
-    imageUploading,
-    importingTopCaption,
-    hasCollageAccess,
-    layerRawText,
-    navigate,
-    openSubscriptionDialog,
-    persistCollageSnapshot,
-    resolveBackgroundImageForCollageImport,
-    safeCanvasHeight,
-    setMessage,
-    setOpen,
-    setSeverity,
-    textLayerEntries.length,
-    whiteSpaceHeight,
-  ]);
 
   const handleCollageChooserClose = useCallback(() => {
     setCollageChooserOpen(false);
@@ -4303,6 +4085,14 @@ const EditorPage = ({ shows }) => {
     selectedFid,
   ]);
 
+  // Add these state variables near the top of your component, with the other useState declarations
+  const [showWhiteSpaceSlider, setShowWhiteSpaceSlider] = useState(false);
+  const [whiteSpaceValue, setWhiteSpaceValue] = useState(20);
+  const [whiteSpaceHeight, setWhiteSpaceHeight] = useState(0);
+  const [whiteSpacePreview, setWhiteSpacePreview] = useState(0);
+  const [isSliding, setIsSliding] = useState(false);
+  const safeCanvasHeight = Math.max(canvasSize?.height || 1, 1);
+
   // Add this function to handle white space changes
   const handleWhiteSpaceChange = (newValue) => {
     const newWhiteSpaceHeight = (newValue / 100) * safeCanvasHeight;
@@ -4491,8 +4281,7 @@ const EditorPage = ({ shows }) => {
                       <Button
                         variant="contained"
                         fullWidth
-                        onClick={handleOpenTopCaptionMigrationDialog}
-                        disabled={importingTopCaption || imageUploading}
+                        onClick={toggleWhiteSpaceSlider}
                         sx={{
                           color: '#e5e7eb',
                           background: 'linear-gradient(45deg, #1f2937 30%, #374151 90%)',
@@ -4503,8 +4292,31 @@ const EditorPage = ({ shows }) => {
                           },
                         }}
                       >
-                        Add top caption
+                        Add White Space
                       </Button>
+
+                      {showWhiteSpaceSlider && (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography>Whitespace</Typography>
+                          <Slider
+                            value={(whiteSpacePreview / safeCanvasHeight) * 100}
+                            onChange={(event, newValue) => handleWhiteSpaceChange(newValue)}
+                            onChangeCommitted={applyWhiteSpace}
+                            onMouseDown={startWhiteSpaceChange}
+                            onTouchStart={startWhiteSpaceChange}
+                            aria-labelledby="white-space-slider"
+                            valueLabelDisplay="auto"
+                            min={0}
+                            max={100}
+                            step={1}
+                            sx={{ flexGrow: 1, zIndex: 100 }}
+                            valueLabelFormat={(value) => `${Math.round(value)}%`}
+                          />
+                          <IconButton onClick={toggleWhiteSpaceSlider} aria-label="close">
+                            <Close />
+                          </IconButton>
+                        </Stack>
+                      )}
                     </Stack>
                   </Grid>
                 </Grid>
@@ -5989,52 +5801,6 @@ const EditorPage = ({ shows }) => {
                   </Button>
                 </>
               )}
-            </DialogActions>
-          </Dialog>
-          <Dialog
-            open={topCaptionMigrationDialogOpen}
-            onClose={handleCloseTopCaptionMigrationDialog}
-            aria-labelledby="top-caption-migration-title"
-            fullWidth
-            maxWidth="sm"
-          >
-            <DialogTitle id="top-caption-migration-title">Top captions moved to collage</DialogTitle>
-            <DialogContent>
-              <DialogContentText>
-                The old V2 top caption tool is deprecated. Top captions now live in the new collage editor.
-              </DialogContentText>
-              <DialogContentText sx={{ mt: 2 }}>
-                We can import this editor state into a fresh single-panel collage with the same image ratio and carry over your current text and sticker layers so it looks the same before you add the new top caption.
-              </DialogContentText>
-            </DialogContent>
-            <DialogActions
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                justifyContent: 'center',
-                gap: 0,
-                px: 3,
-                pb: 3,
-                width: '100%',
-                '& > *': { width: '100%' },
-                '& > :not(:first-of-type)': { marginLeft: 0, marginTop: 1 },
-              }}
-            >
-              <LoadingButton
-                variant="contained"
-                loading={importingTopCaption}
-                disabled={imageUploading}
-                onClick={handleImportTopCaptionToCollage}
-              >
-                {hasCollageAccess ? 'Import into new collage' : 'Upgrade to use top captions'}
-              </LoadingButton>
-              <Button
-                onClick={handleCloseTopCaptionMigrationDialog}
-                disabled={importingTopCaption}
-              >
-                Cancel
-              </Button>
             </DialogActions>
           </Dialog>
           <Dialog
