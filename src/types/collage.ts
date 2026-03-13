@@ -45,6 +45,8 @@ export interface CollageSnapshot {
   selectedTemplateId: string | null;
   selectedAspectRatio: AspectRatio;
   customAspectRatio?: number;
+  singleImageAutoRestoreAspectRatioId?: AspectRatio | null;
+  singleImageAutoRestoreBorderThickness?: number | string | null;
   panelCount: number;
   borderThickness?: number | string;
   borderColor?: string;

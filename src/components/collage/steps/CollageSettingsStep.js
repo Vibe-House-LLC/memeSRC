@@ -274,39 +274,65 @@ const normalizeCustomAspectRatio = (value, fallback = 1) => {
   return Math.max(0.1, Math.min(10, numericValue));
 };
 
-const ratioToEditorInputs = (ratio) => {
-  const safeRatio = normalizeCustomAspectRatio(ratio, 1);
-  if (safeRatio >= 1) {
-    return {
-      width: Number((safeRatio * 100).toFixed(2)),
-      height: 100,
-    };
+const KNOWN_RATIO_PAIRS = [
+  { ratio: 1, width: 1, height: 1 },
+  { ratio: 4 / 5, width: 4, height: 5 },
+  { ratio: 2 / 3, width: 2, height: 3 },
+  { ratio: 9 / 16, width: 9, height: 16 },
+  { ratio: 4 / 3, width: 4, height: 3 },
+  { ratio: 3 / 2, width: 3, height: 2 },
+  { ratio: 16 / 9, width: 16, height: 9 },
+];
+
+const gcdInt = (a, b) => {
+  let x = Math.abs(Math.round(a));
+  let y = Math.abs(Math.round(b));
+  while (y !== 0) {
+    const remainder = x % y;
+    x = y;
+    y = remainder;
   }
+  return x || 1;
+};
+
+const findFriendlyRatioPair = (ratio) => {
+  const safeRatio = normalizeCustomAspectRatio(ratio, 1);
+  const knownPair = KNOWN_RATIO_PAIRS.find(({ ratio: knownRatio }) => Math.abs(knownRatio - safeRatio) < 0.01);
+  if (knownPair) {
+    return { width: knownPair.width, height: knownPair.height };
+  }
+
+  let bestPair = { width: 1, height: 1, error: Math.abs(1 - safeRatio) };
+  for (let height = 1; height <= 48; height += 1) {
+    const width = Math.max(1, Math.round(safeRatio * height));
+    const approximation = width / height;
+    const error = Math.abs(approximation - safeRatio);
+    const bestSize = bestPair.width + bestPair.height;
+    const nextSize = width + height;
+    if (error < bestPair.error - 0.0001 || (Math.abs(error - bestPair.error) < 0.0001 && nextSize < bestSize)) {
+      bestPair = { width, height, error };
+    }
+  }
+
+  const divisor = gcdInt(bestPair.width, bestPair.height);
   return {
-    width: 100,
-    height: Number((100 / safeRatio).toFixed(2)),
+    width: Math.max(1, Math.round(bestPair.width / divisor)),
+    height: Math.max(1, Math.round(bestPair.height / divisor)),
+  };
+};
+
+const ratioToFriendlyInputs = (ratio) => {
+  const { width, height } = findFriendlyRatioPair(ratio);
+  return {
+    width: String(width),
+    height: String(height),
   };
 };
 
 // Helper function to convert aspect ratio value to a friendly format
 const getFriendlyAspectRatio = (value) => {
-  if (value === 1) return '1:1';
-  
-  // Common aspect ratios with friendly names
-  if (Math.abs(value - 0.8) < 0.01) return '4:5';      // Portrait
-  if (Math.abs(value - 2/3) < 0.01) return '2:3';      // Added 2:3 ratio
-  if (Math.abs(value - 0.5625) < 0.01) return '9:16';  // Instagram Story
-  if (Math.abs(value - 1.33) < 0.01) return '4:3';     // Classic
-  if (Math.abs(value - 1.5) < 0.01) return '3:2';      // Added 3:2 ratio
-  if (Math.abs(value - 1.78) < 0.01) return '16:9';    // Landscape
-  
-  // For other values, find the closest simple fraction
-  if (value > 1) {
-    // Landscape orientation
-    return `${Math.round(value)}:1`;
-  }
-  // Portrait orientation
-  return `1:${Math.round(1/value)}`;
+  const { width, height } = findFriendlyRatioPair(value);
+  return `${width}:${height}`;
 };
 
 // Create a color swatch component for border color selection
@@ -411,8 +437,8 @@ const CollageLayoutSettings = ({
   const [stickerLibraryOpen, setStickerLibraryOpen] = useState(false);
   const [stickerLoading, setStickerLoading] = useState(false);
   const [stickerError, setStickerError] = useState('');
-  const [customRatioWidthInput, setCustomRatioWidthInput] = useState('100');
-  const [customRatioHeightInput, setCustomRatioHeightInput] = useState('100');
+  const [customRatioWidthInput, setCustomRatioWidthInput] = useState('1');
+  const [customRatioHeightInput, setCustomRatioHeightInput] = useState('1');
   const [panelActionAnchorEl, setPanelActionAnchorEl] = useState(null);
   const [panelActionTarget, setPanelActionTarget] = useState(null);
   
@@ -497,9 +523,9 @@ const CollageLayoutSettings = ({
   };
 
   useEffect(() => {
-    const { width, height } = ratioToEditorInputs(customAspectRatio);
-    setCustomRatioWidthInput(String(width));
-    setCustomRatioHeightInput(String(height));
+    const { width, height } = ratioToFriendlyInputs(customAspectRatio);
+    setCustomRatioWidthInput(width);
+    setCustomRatioHeightInput(height);
   }, [customAspectRatio]);
   
   // Get compatible templates based on panel count
@@ -567,21 +593,21 @@ const CollageLayoutSettings = ({
   };
 
   const applyCustomRatioInputs = () => {
-    const widthValue = Number(customRatioWidthInput);
-    const heightValue = Number(customRatioHeightInput);
+    const widthValue = Number(String(customRatioWidthInput || '').trim());
+    const heightValue = Number(String(customRatioHeightInput || '').trim());
     if (!Number.isFinite(widthValue) || !Number.isFinite(heightValue) || widthValue <= 0 || heightValue <= 0) {
-      const { width, height } = ratioToEditorInputs(customAspectRatio);
-      setCustomRatioWidthInput(String(width));
-      setCustomRatioHeightInput(String(height));
+      const { width, height } = ratioToFriendlyInputs(customAspectRatio);
+      setCustomRatioWidthInput(width);
+      setCustomRatioHeightInput(height);
       return;
     }
     const ratio = normalizeCustomAspectRatio(widthValue / heightValue, customAspectRatio);
     if (typeof setCustomAspectRatio === 'function') {
       setCustomAspectRatio(ratio);
     }
-    const normalizedInputs = ratioToEditorInputs(ratio);
-    setCustomRatioWidthInput(String(normalizedInputs.width));
-    setCustomRatioHeightInput(String(normalizedInputs.height));
+    const normalizedInputs = ratioToFriendlyInputs(ratio);
+    setCustomRatioWidthInput(normalizedInputs.width);
+    setCustomRatioHeightInput(normalizedInputs.height);
   };
   
   // Handle template selection
@@ -1332,10 +1358,10 @@ const CollageLayoutSettings = ({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <TextField
                 label="Width"
-                type="number"
+                type="text"
                 size="small"
                 value={customRatioWidthInput}
-                inputProps={{ min: 0.1, step: 0.1 }}
+                inputProps={{ inputMode: 'decimal' }}
                 onChange={(event) => setCustomRatioWidthInput(event.target.value)}
                 onBlur={applyCustomRatioInputs}
                 onKeyDown={(event) => {
@@ -1348,10 +1374,10 @@ const CollageLayoutSettings = ({
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 0.5 }}>:</Typography>
               <TextField
                 label="Height"
-                type="number"
+                type="text"
                 size="small"
                 value={customRatioHeightInput}
-                inputProps={{ min: 0.1, step: 0.1 }}
+                inputProps={{ inputMode: 'decimal' }}
                 onChange={(event) => setCustomRatioHeightInput(event.target.value)}
                 onBlur={applyCustomRatioInputs}
                 onKeyDown={(event) => {

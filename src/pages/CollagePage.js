@@ -17,6 +17,10 @@ import { createProject, upsertProject, buildSnapshotFromState, getProject as get
 import { renderThumbnailFromSnapshot } from "../components/collage/utils/renderThumbnailFromSnapshot";
 import { parsePanelIndexFromId } from "../components/collage/utils/panelId";
 import {
+  COLLAGE_BORDER_THICKNESS_STORAGE_KEY,
+  resolveAutoAppliedCollageBorderThickness,
+} from "../components/collage/utils/snapshotEditing";
+import {
   TOP_CAPTION_DEFAULT_FONT_SIZE,
   TOP_CAPTION_DEFAULT_SPACING_Y,
 } from "../components/collage/constants/topCaptionDefaults";
@@ -135,6 +139,10 @@ const normalizeAspectRatioValue = (value, fallback = DEFAULT_CUSTOM_ASPECT_RATIO
   if (!Number.isFinite(parsedValue) || parsedValue <= 0) return fallback;
   return Math.max(0.1, Math.min(10, parsedValue));
 };
+
+const isNoBorderThickness = (value) => (
+  value === 0 || String(value || '').trim().toLowerCase() === 'none'
+);
 
 const isStartFromScratchPlaceholder = (imageRef) => {
   if (!imageRef) return false;
@@ -416,6 +424,8 @@ export default function CollagePage() {
       ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
       : selectedAspectRatio
   );
+  const [singleImageAutoRestoreAspectRatioId, setSingleImageAutoRestoreAspectRatioId] = useState(null);
+  const [singleImageAutoRestoreBorderThickness, setSingleImageAutoRestoreBorderThickness] = useState(null);
   const pendingImageRatioRequestRef = useRef(0);
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -523,6 +533,14 @@ export default function CollagePage() {
 
     setBorderColorState(trimmedNextColor);
   }, [borderColor, isHydratingProject, panelTexts, setBorderColorState, updatePanelText]);
+
+  const handleBorderThicknessSelection = useCallback((nextBorderThickness) => {
+    setSingleImageAutoRestoreBorderThickness(null);
+    setBorderThickness(nextBorderThickness);
+    try {
+      localStorage.setItem(COLLAGE_BORDER_THICKNESS_STORAGE_KEY, nextBorderThickness);
+    } catch (_) { /* ignore storage write failures */ }
+  }, [setBorderThickness]);
 
   const clearAppendNavigationState = useCallback(() => {
     navigate(location.pathname, { replace: true, state: {} });
@@ -635,21 +653,39 @@ export default function CollagePage() {
     if (isHydratingProject) return;
 
     if (currentImageCount === 0) {
+      if (singleImageAutoRestoreBorderThickness !== null && singleImageAutoRestoreBorderThickness !== undefined) {
+        if (isNoBorderThickness(borderThickness)) {
+          setBorderThickness(singleImageAutoRestoreBorderThickness);
+        }
+        setSingleImageAutoRestoreBorderThickness(null);
+      }
       singleImageAutoCustomRef.current = false;
       singleImageAutoSourceRef.current = null;
       singleImageAutoEligibleRef.current = true;
       singleImageRestoreAspectRatioRef.current = selectedAspectRatio === 'custom'
         ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
         : selectedAspectRatio;
+      setSingleImageAutoRestoreAspectRatioId(null);
       pendingImageRatioRequestRef.current = 0;
       return;
     }
 
     const transitionedToMultipleImages = currentImageCount > 1 && previousImageCount <= 1;
     const transitionedToMultiplePanels = currentPanelCount > 1 && previousPanelCount <= 1;
+    if (
+      singleImageAutoRestoreBorderThickness !== null &&
+      singleImageAutoRestoreBorderThickness !== undefined &&
+      (transitionedToMultipleImages || transitionedToMultiplePanels)
+    ) {
+      if (isNoBorderThickness(borderThickness)) {
+        setBorderThickness(singleImageAutoRestoreBorderThickness);
+      }
+      setSingleImageAutoRestoreBorderThickness(null);
+    }
     if (singleImageAutoCustomRef.current && (transitionedToMultipleImages || transitionedToMultiplePanels)) {
       singleImageAutoCustomRef.current = false;
       singleImageAutoSourceRef.current = null;
+      setSingleImageAutoRestoreAspectRatioId(null);
       pendingImageRatioRequestRef.current = 0;
       const restoreAspectRatioId = singleImageRestoreAspectRatioRef.current || 'portrait';
       if (selectedAspectRatio !== restoreAspectRatioId) {
@@ -680,6 +716,12 @@ export default function CollagePage() {
           ? getClosestStandardAspectRatioId(customAspectRatio, aspectRatioPresets)
           : selectedAspectRatio;
       }
+      if (enteringSingleImageMode && singleImageAutoRestoreBorderThickness == null) {
+        setSingleImageAutoRestoreBorderThickness(resolveAutoAppliedCollageBorderThickness(borderThickness));
+        if (!isNoBorderThickness(borderThickness)) {
+          setBorderThickness(0);
+        }
+      }
       const sourceChangedWhileAuto = Boolean(
         singleImageAutoCustomRef.current &&
         sourceUrl &&
@@ -696,6 +738,7 @@ export default function CollagePage() {
         setSelectedAspectRatio('custom');
         singleImageAutoCustomRef.current = true;
         singleImageAutoSourceRef.current = '__START_FROM_SCRATCH__';
+        setSingleImageAutoRestoreAspectRatioId(singleImageRestoreAspectRatioRef.current || 'portrait');
         return;
       }
 
@@ -711,6 +754,7 @@ export default function CollagePage() {
         setSelectedAspectRatio('custom');
         singleImageAutoCustomRef.current = true;
         singleImageAutoSourceRef.current = sourceUrl;
+        setSingleImageAutoRestoreAspectRatioId(singleImageRestoreAspectRatioRef.current || 'portrait');
       });
       return;
     }
@@ -720,6 +764,11 @@ export default function CollagePage() {
     panelCount,
     selectedAspectRatio,
     selectedImages,
+    borderThickness,
+    singleImageAutoRestoreBorderThickness,
+    setSingleImageAutoRestoreAspectRatioId,
+    setSingleImageAutoRestoreBorderThickness,
+    setBorderThickness,
     setCustomAspectRatio,
     setSelectedAspectRatio,
     setSelectedTemplate,
@@ -993,6 +1042,8 @@ export default function CollagePage() {
     selectedTemplate,
     selectedAspectRatio,
     customAspectRatio,
+    singleImageAutoRestoreAspectRatioId,
+    singleImageAutoRestoreBorderThickness,
     panelCount,
     borderThickness,
     borderColor,
@@ -1036,7 +1087,7 @@ export default function CollagePage() {
         return undefined;
       }
     })(),
-  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, customAspectRatio, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
+  }), [selectedImages, stickers, panelImageMapping, panelTransforms, panelTexts, selectedTemplate, selectedAspectRatio, customAspectRatio, singleImageAutoRestoreAspectRatioId, singleImageAutoRestoreBorderThickness, panelCount, borderThickness, borderColor, previewCanvasWidth, previewCanvasHeight, liveCustomLayout, livePanelDimensions]);
 
   const currentSig = useMemo(() => computeSnapshotSignature(currentSnapshot), [currentSnapshot]);
   const currentSnapshotRef = useRef(currentSnapshot);
@@ -1335,6 +1386,17 @@ export default function CollagePage() {
       DEFAULT_CUSTOM_ASPECT_RATIO
     );
     const nextPanelCount = snap.panelCount || 1;
+    const persistedAutoRestoreAspectRatioId = (
+      typeof snap.singleImageAutoRestoreAspectRatioId === 'string' &&
+      snap.singleImageAutoRestoreAspectRatioId.trim().length > 0
+    )
+      ? snap.singleImageAutoRestoreAspectRatioId
+      : null;
+    const persistedAutoRestoreBorderThickness = (
+      snap.singleImageAutoRestoreBorderThickness === undefined
+        ? null
+        : snap.singleImageAutoRestoreBorderThickness
+    );
 
     let templateForSnapshot = null;
     try {
@@ -1420,6 +1482,18 @@ export default function CollagePage() {
         subtitleShowing: !!fallbackRef.subtitleShowing,
       };
     });
+    const shouldRestoreSingleImageAutoCustom = Boolean(
+      persistedAutoRestoreAspectRatioId &&
+      nextAspectRatio === 'custom' &&
+      nextPanelCount === 1 &&
+      imagesForState.length === 1
+    );
+    const restoredSingleImageSource = (() => {
+      if (!shouldRestoreSingleImageAutoCustom) return null;
+      const firstImage = imagesForState[0];
+      if (!firstImage) return null;
+      return firstImage.displayUrl || firstImage.originalUrl || '__START_FROM_SCRATCH__';
+    })();
 
     const resolveStickerRef = async (ref, index) => {
       if (!ref) return null;
@@ -1504,6 +1578,10 @@ export default function CollagePage() {
     const applyAll = () => {
       setCustomAspectRatio(nextCustomAspectRatio);
       setSelectedAspectRatio(nextAspectRatio);
+      setSingleImageAutoRestoreAspectRatioId(
+        shouldRestoreSingleImageAutoCustom ? persistedAutoRestoreAspectRatioId : null
+      );
+      setSingleImageAutoRestoreBorderThickness(persistedAutoRestoreBorderThickness);
       setPanelCount(nextPanelCount);
       setSelectedTemplate(templateForSnapshot || null);
       if (snap.borderThickness !== undefined) setBorderThickness(snap.borderThickness);
@@ -1520,6 +1598,15 @@ export default function CollagePage() {
       unstable_batchedUpdates(applyAll);
     } else {
       applyAll();
+    }
+
+    singleImageAutoCustomRef.current = shouldRestoreSingleImageAutoCustom;
+    singleImageAutoSourceRef.current = shouldRestoreSingleImageAutoCustom ? restoredSingleImageSource : null;
+    singleImageAutoEligibleRef.current = false;
+    if (shouldRestoreSingleImageAutoCustom) {
+      singleImageRestoreAspectRatioRef.current = persistedAutoRestoreAspectRatioId;
+    } else if (nextAspectRatio && nextAspectRatio !== 'custom') {
+      singleImageRestoreAspectRatioRef.current = nextAspectRatio;
     }
 
     const sig = computeSnapshotSignature(snap);
@@ -2747,6 +2834,7 @@ export default function CollagePage() {
     singleImageAutoCustomRef.current = false;
     singleImageAutoSourceRef.current = null;
     singleImageAutoEligibleRef.current = false;
+    setSingleImageAutoRestoreAspectRatioId(null);
     pendingImageRatioRequestRef.current = 0;
     if (nextAspectRatioId && nextAspectRatioId !== 'custom') {
       singleImageRestoreAspectRatioRef.current = nextAspectRatioId;
@@ -2758,6 +2846,7 @@ export default function CollagePage() {
     singleImageAutoCustomRef.current = false;
     singleImageAutoSourceRef.current = null;
     singleImageAutoEligibleRef.current = false;
+    setSingleImageAutoRestoreAspectRatioId(null);
     pendingImageRatioRequestRef.current = 0;
     setCustomAspectRatio(nextAspectRatioValue);
   }, [setCustomAspectRatio]);
@@ -2782,7 +2871,7 @@ export default function CollagePage() {
     aspectRatioPresets,
     layoutTemplates,
     borderThickness,
-    setBorderThickness,
+    setBorderThickness: handleBorderThicknessSelection,
     borderColor,
     setBorderColor: handleBorderColorSelection,
     borderThicknessOptions,

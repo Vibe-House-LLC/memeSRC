@@ -118,6 +118,8 @@ export function buildSnapshotFromState({
   selectedTemplate,
   selectedAspectRatio,
   customAspectRatio,
+  singleImageAutoRestoreAspectRatioId,
+  singleImageAutoRestoreBorderThickness,
   panelCount,
   borderThickness,
   borderColor,
@@ -156,6 +158,8 @@ export function buildSnapshotFromState({
   selectedTemplate: { id?: string } | null | undefined;
   selectedAspectRatio: string | undefined;
   customAspectRatio?: number;
+  singleImageAutoRestoreAspectRatioId?: AspectRatio | null;
+  singleImageAutoRestoreBorderThickness?: number | string | null;
   panelCount: number | undefined;
   borderThickness?: number | string;
   borderColor?: string;
@@ -290,6 +294,8 @@ export function buildSnapshotFromState({
     selectedTemplateId: selectedTemplate?.id || null,
     selectedAspectRatio: (selectedAspectRatio ?? 'square') as AspectRatio,
     customAspectRatio: normalizedCustomAspectRatio,
+    singleImageAutoRestoreAspectRatioId: singleImageAutoRestoreAspectRatioId || null,
+    singleImageAutoRestoreBorderThickness: singleImageAutoRestoreBorderThickness ?? null,
     panelCount: panelCount || 1,
     borderThickness,
     borderColor,

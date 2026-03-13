@@ -7,15 +7,63 @@ import type {
 } from '../../../types/collage';
 
 export const MAX_COLLAGE_IMAGES = 5;
+export const COLLAGE_BORDER_THICKNESS_STORAGE_KEY = 'meme-src-collage-border-thickness';
+export const DEFAULT_AUTO_COLLAGE_BORDER_THICKNESS = 'thin';
 
 const createPanelIds = (panelCount: number): string[] =>
   Array.from({ length: Math.max(1, panelCount) }, (_, idx) => `panel-${idx + 1}`);
+
+const normalizeBorderThickness = (value: unknown): number | string | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const trimmedValue = value.trim();
+    return trimmedValue.length > 0 ? trimmedValue : null;
+  }
+  return null;
+};
+
+const isNoBorderThickness = (value: unknown): boolean => (
+  value === 0 || String(value ?? '').trim().toLowerCase() === 'none'
+);
+
+const isMediumBorderThickness = (value: unknown): boolean => (
+  value === 2 || String(value ?? '').trim().toLowerCase() === 'medium'
+);
 
 const normalizeCustomAspectRatio = (value: unknown): number | undefined => {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue) || numericValue <= 0) return undefined;
   return Math.max(0.1, Math.min(10, numericValue));
 };
+
+export function getStoredCollageBorderThickness(): number | string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return normalizeBorderThickness(window.localStorage.getItem(COLLAGE_BORDER_THICKNESS_STORAGE_KEY));
+  } catch (_) {
+    return null;
+  }
+}
+
+export function resolveAutoAppliedCollageBorderThickness(
+  currentBorderThickness?: number | string | null
+): number | string {
+  const storedBorderThickness = getStoredCollageBorderThickness();
+  if (storedBorderThickness !== null && !isNoBorderThickness(storedBorderThickness)) {
+    return storedBorderThickness;
+  }
+
+  const normalizedCurrentBorderThickness = normalizeBorderThickness(currentBorderThickness);
+  if (
+    normalizedCurrentBorderThickness !== null
+    && !isNoBorderThickness(normalizedCurrentBorderThickness)
+    && !isMediumBorderThickness(normalizedCurrentBorderThickness)
+  ) {
+    return normalizedCurrentBorderThickness;
+  }
+
+  return DEFAULT_AUTO_COLLAGE_BORDER_THICKNESS;
+}
 
 const chooseTemplateId = (
   panelCount: number,
@@ -111,6 +159,17 @@ export function normalizeSnapshot(
 
   const selectedAspectRatio = (snapshot?.selectedAspectRatio || aspectRatio || 'portrait') as AspectRatio;
   const customAspectRatio = normalizeCustomAspectRatio(snapshot?.customAspectRatio);
+  const singleImageAutoRestoreAspectRatioId = (
+    typeof snapshot?.singleImageAutoRestoreAspectRatioId === 'string' &&
+    snapshot.singleImageAutoRestoreAspectRatioId.trim().length > 0
+  )
+    ? snapshot.singleImageAutoRestoreAspectRatioId
+    : null;
+  const singleImageAutoRestoreBorderThickness = (
+    snapshot?.singleImageAutoRestoreBorderThickness === undefined
+      ? null
+      : snapshot.singleImageAutoRestoreBorderThickness
+  );
   const selectedTemplateId = isTemplateIdCompatible(
     snapshot?.selectedTemplateId,
     desiredPanelCount,
@@ -130,6 +189,8 @@ export function normalizeSnapshot(
     selectedTemplateId: selectedTemplateId || null,
     selectedAspectRatio,
     customAspectRatio,
+    singleImageAutoRestoreAspectRatioId,
+    singleImageAutoRestoreBorderThickness,
     panelCount: desiredPanelCount,
     borderThickness: snapshot?.borderThickness ?? 'medium',
     borderColor: snapshot?.borderColor ?? '#FFFFFF',
@@ -152,6 +213,38 @@ const buildAutoText = (subtitle: string, fontFamily?: string) => ({
   subtitleShowing: true,
 });
 
+export function buildSingleImageSnapshot(
+  image: CollageImageRef,
+  options: {
+    customAspectRatio?: number;
+    borderThickness?: number | string;
+    borderColor?: string;
+    singleImageAutoRestoreAspectRatioId?: AspectRatio | null;
+    singleImageAutoRestoreBorderThickness?: number | string | null;
+  } = {}
+): CollageSnapshot {
+  const customAspectRatio = normalizeCustomAspectRatio(options.customAspectRatio) || 1;
+  const baseSnapshot: CollageSnapshot = {
+    version: 1,
+    images: [],
+    panelImageMapping: {},
+    panelTransforms: {},
+    panelTexts: {},
+    stickers: [],
+    selectedTemplateId: null,
+    selectedAspectRatio: 'custom',
+    customAspectRatio,
+    singleImageAutoRestoreAspectRatioId: options.singleImageAutoRestoreAspectRatioId || null,
+    singleImageAutoRestoreBorderThickness: options.singleImageAutoRestoreBorderThickness ?? null,
+    panelCount: 1,
+    borderThickness: options.borderThickness ?? 0,
+    borderColor: options.borderColor ?? '#FFFFFF',
+    customLayout: null,
+  };
+
+  return appendImageToSnapshot(baseSnapshot, image, 'custom').snapshot;
+}
+
 export function appendImageToSnapshot(
   snapshot: CollageSnapshot | null | undefined,
   image: CollageImageRef,
@@ -164,9 +257,33 @@ export function appendImageToSnapshot(
   }
 
   const nextImages = [...base.images, image];
-  const desiredPanelCount = Math.min(MAX_COLLAGE_IMAGES, Math.max(nextImages.length, 1));
+  const currentPanelCount = Math.max(1, base.panelCount || 1);
+  const desiredPanelCount = Math.min(
+    MAX_COLLAGE_IMAGES,
+    Math.max(currentPanelCount, nextImages.length, 1)
+  );
   const panelIds = createPanelIds(desiredPanelCount);
   const panelImageMapping = cleanPanelImageMapping(base.panelImageMapping, nextImages.length, panelIds);
+
+  const shouldAutoRestoreSingleImageLayout = Boolean(
+    base.selectedAspectRatio === 'custom'
+    && base.singleImageAutoRestoreAspectRatioId
+    && currentPanelCount <= 1
+    && desiredPanelCount > 1
+  );
+  const shouldAutoRestoreSingleImageBorders = Boolean(
+    base.singleImageAutoRestoreBorderThickness !== null
+    && base.singleImageAutoRestoreBorderThickness !== undefined
+    && currentPanelCount <= 1
+    && desiredPanelCount > 1
+  );
+
+  const nextSelectedAspectRatio = shouldAutoRestoreSingleImageLayout
+    ? (base.singleImageAutoRestoreAspectRatioId as AspectRatio)
+    : base.selectedAspectRatio;
+  const nextBorderThickness = shouldAutoRestoreSingleImageBorders
+    ? base.singleImageAutoRestoreBorderThickness
+    : base.borderThickness;
 
   let nextImageIndex = baseCount;
   panelIds.forEach((panelId) => {
@@ -176,14 +293,32 @@ export function appendImageToSnapshot(
     nextImageIndex += 1;
   });
 
-  const selectedTemplateId = isTemplateIdCompatible(
-    base.selectedTemplateId,
-    desiredPanelCount,
-    base.selectedAspectRatio,
-    base.customAspectRatio
-  )
-    ? base.selectedTemplateId || null
-    : chooseTemplateId(desiredPanelCount, base.selectedAspectRatio, base.customAspectRatio);
+  const selectedTemplateId = shouldAutoRestoreSingleImageLayout
+    ? chooseTemplateId(
+      desiredPanelCount,
+      nextSelectedAspectRatio,
+      nextSelectedAspectRatio === 'custom' ? base.customAspectRatio : undefined
+    )
+    : (
+      isTemplateIdCompatible(
+        base.selectedTemplateId,
+        desiredPanelCount,
+        nextSelectedAspectRatio,
+        nextSelectedAspectRatio === 'custom' ? base.customAspectRatio : undefined
+      )
+        ? base.selectedTemplateId || null
+        : chooseTemplateId(
+          desiredPanelCount,
+          nextSelectedAspectRatio,
+          nextSelectedAspectRatio === 'custom' ? base.customAspectRatio : undefined
+        )
+    );
+
+  const layoutChanged = (
+    desiredPanelCount !== currentPanelCount
+    || nextSelectedAspectRatio !== base.selectedAspectRatio
+    || (selectedTemplateId || null) !== (base.selectedTemplateId || null)
+  );
 
   const panelTexts: Record<string, any> = { ...(base.panelTexts || {}) };
   if (image.subtitle && image.subtitleShowing) {
@@ -199,8 +334,19 @@ export function appendImageToSnapshot(
       ...base,
       images: nextImages,
       panelImageMapping,
+      panelTransforms: layoutChanged ? {} : (base.panelTransforms || {}),
+      selectedAspectRatio: nextSelectedAspectRatio,
+      singleImageAutoRestoreAspectRatioId: shouldAutoRestoreSingleImageLayout
+        ? null
+        : (base.singleImageAutoRestoreAspectRatioId || null),
+      singleImageAutoRestoreBorderThickness: shouldAutoRestoreSingleImageBorders
+        ? null
+        : (base.singleImageAutoRestoreBorderThickness ?? null),
       panelCount: desiredPanelCount,
+      borderThickness: nextBorderThickness,
       selectedTemplateId: selectedTemplateId || null,
+      customLayout: layoutChanged ? null : (base.customLayout ?? null),
+      panelDimensions: layoutChanged ? undefined : base.panelDimensions,
       panelTexts,
     },
     addedIndex: baseCount,
