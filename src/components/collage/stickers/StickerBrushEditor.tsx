@@ -101,6 +101,13 @@ export default function StickerBrushEditor({
   const hasUserAdjustedViewRef = React.useRef(false);
   const historySnapshotsRef = React.useRef<HTMLCanvasElement[]>([]);
   const historyIndexRef = React.useRef(0);
+  const editSessionBaselineRef = React.useRef<{
+    mask: HTMLCanvasElement;
+    historySnapshots: HTMLCanvasElement[];
+    historyIndex: number;
+    hasApproximateEdits: boolean;
+    previewResult: ExportedStickerEdit | null;
+  } | null>(null);
   const minScaleRef = React.useRef(0.1);
   const renderFrameRef = React.useRef<number | null>(null);
   const brushPreviewTimeoutRef = React.useRef<number | null>(null);
@@ -130,11 +137,13 @@ export default function StickerBrushEditor({
   const [previewResult, setPreviewResult] = React.useState<ExportedStickerEdit | null>(null);
   const [previewBusy, setPreviewBusy] = React.useState(false);
   const [commitBusy, setCommitBusy] = React.useState(false);
+  const [screenMode, setScreenMode] = React.useState<'preview' | 'edit'>('preview');
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
   const [bottomBarHeight, setBottomBarHeight] = React.useState(152);
   const [brushPreviewVisible, setBrushPreviewVisible] = React.useState(false);
   const [historyState, setHistoryState] = React.useState({ canUndo: false, canRedo: false });
+  const [discardConfirmOpen, setDiscardConfirmOpen] = React.useState(false);
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -245,7 +254,47 @@ export default function StickerBrushEditor({
     historyIndexRef.current = nextIndex;
     hasApproximateEditsRef.current = !isMaskCanvasPristine(maskCanvas);
     setHasApproximateEdits(hasApproximateEditsRef.current);
+    setScreenMode('edit');
     setPreviewResult(null);
+    syncHistoryState();
+    refreshComposite();
+  }, [refreshComposite, syncHistoryState]);
+
+  const enterEditMode = React.useCallback(() => {
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return;
+    editSessionBaselineRef.current = {
+      mask: cloneCanvas(maskCanvas),
+      historySnapshots: historySnapshotsRef.current.map((snapshot) => cloneCanvas(snapshot)),
+      historyIndex: historyIndexRef.current,
+      hasApproximateEdits: hasApproximateEditsRef.current,
+      previewResult,
+    };
+    setDiscardConfirmOpen(false);
+    setScreenMode('edit');
+  }, [previewResult]);
+
+  const discardEditSession = React.useCallback(() => {
+    const baseline = editSessionBaselineRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!baseline || !maskCanvas) {
+      setDiscardConfirmOpen(false);
+      setScreenMode('preview');
+      return;
+    }
+
+    const ctx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    ctx.drawImage(baseline.mask, 0, 0);
+    historySnapshotsRef.current = baseline.historySnapshots.map((snapshot) => cloneCanvas(snapshot));
+    historyIndexRef.current = baseline.historyIndex;
+    hasApproximateEditsRef.current = baseline.hasApproximateEdits;
+    setHasApproximateEdits(baseline.hasApproximateEdits);
+    setPreviewResult(baseline.previewResult);
+    setDiscardConfirmOpen(false);
+    setScreenMode('preview');
     syncHistoryState();
     refreshComposite();
   }, [refreshComposite, syncHistoryState]);
@@ -297,7 +346,10 @@ export default function StickerBrushEditor({
         hasUserAdjustedViewRef.current = false;
         hasApproximateEditsRef.current = false;
         setHasApproximateEdits(false);
+        setScreenMode('preview');
         setPreviewResult(null);
+        setDiscardConfirmOpen(false);
+        editSessionBaselineRef.current = null;
         initializeHistory(maskCanvas);
         refreshComposite();
       } catch (error) {
@@ -328,7 +380,7 @@ export default function StickerBrushEditor({
   }, [loading, scheduleRender]);
 
   React.useEffect(() => {
-    if (previewResult || viewportSize.width <= 0 || viewportSize.height <= 0) return;
+    if (screenMode !== 'edit' || viewportSize.width <= 0 || viewportSize.height <= 0) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (canvas.width !== viewportSize.width || canvas.height !== viewportSize.height) {
@@ -336,7 +388,7 @@ export default function StickerBrushEditor({
       canvas.height = viewportSize.height;
     }
     scheduleRender();
-  }, [previewResult, scheduleRender, viewportSize.height, viewportSize.width]);
+  }, [scheduleRender, screenMode, viewportSize.height, viewportSize.width]);
 
   React.useEffect(() => {
     const bar = bottomBarRef.current;
@@ -356,7 +408,7 @@ export default function StickerBrushEditor({
       observer.disconnect();
       window.removeEventListener('resize', update);
     };
-  }, [isMobile, previewResult]);
+  }, [isMobile, previewResult, screenMode]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
@@ -449,6 +501,8 @@ export default function StickerBrushEditor({
 
     hasApproximateEditsRef.current = true;
     setHasApproximateEdits(true);
+    setScreenMode('edit');
+    setPreviewResult(null);
     refreshComposite();
   }, [brushMode, brushOpacity, brushSize, refreshComposite]);
 
@@ -651,6 +705,7 @@ export default function StickerBrushEditor({
     pinchStateRef.current = null;
     activePointersRef.current.clear();
     setInteraction('none');
+    setScreenMode('edit');
     setPreviewResult(null);
     setBrushPreviewVisible(false);
     commitHistorySnapshot(maskCanvas);
@@ -686,6 +741,8 @@ export default function StickerBrushEditor({
     try {
       const result = await exportMaskedSticker({ sourceCanvas, maskCanvas });
       setPreviewResult(result);
+      setDiscardConfirmOpen(false);
+      setScreenMode('preview');
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : 'Unable to preview this sticker right now.');
     } finally {
@@ -694,11 +751,14 @@ export default function StickerBrushEditor({
   }, [busy, commitBusy, previewBusy]);
 
   const handleAdd = React.useCallback(async () => {
-    if (!previewResult || commitBusy || busy) return;
+    const sourceCanvas = sourceCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!sourceCanvas || !maskCanvas || commitBusy || busy) return;
     setCommitBusy(true);
     setEditorError('');
     try {
-      await onAdd(previewResult);
+      const result = previewResult || await exportMaskedSticker({ sourceCanvas, maskCanvas });
+      await onAdd(result);
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : 'Unable to add this sticker right now.');
     } finally {
@@ -717,6 +777,7 @@ export default function StickerBrushEditor({
     ? 'Two-finger drag to pan'
     : 'Shift + drag to pan';
   const editorBottomInset = bottomBarHeight + FLOATING_CANVAS_CONTROL_GAP_PX;
+  const previewImageSrc = previewResult?.dataUrl || imageSrc;
   const handleUndo = React.useCallback(() => {
     if (historyIndexRef.current <= 0) return;
     restoreMaskFromHistory(historyIndexRef.current - 1);
@@ -735,6 +796,8 @@ export default function StickerBrushEditor({
     : alpha(theme.palette.success.main, 0.78);
   const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
   const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
+  const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
+  const neutralButtonHoverBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.36 : 0.22);
   const neutralButtonShadow = `0 4px 14px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.32 : 0.14)}`;
   const neutralActionButtonSx = {
     minHeight: 48,
@@ -745,10 +808,30 @@ export default function StickerBrushEditor({
     textTransform: 'none',
     color: 'text.primary',
     backgroundColor: neutralButtonBg,
+    border: '1px solid',
+    borderColor: neutralButtonBorder,
     boxShadow: neutralButtonShadow,
     '&:hover': {
       backgroundColor: neutralButtonHoverBg,
+      borderColor: neutralButtonHoverBorder,
       boxShadow: neutralButtonShadow,
+    },
+  };
+  const sideIconActionButtonSx = {
+    ...neutralActionButtonSx,
+    color: 'text.primary',
+    backgroundColor: neutralButtonBg,
+    boxShadow: neutralButtonShadow,
+    '&:hover': {
+      backgroundColor: neutralButtonHoverBg,
+      borderColor: neutralButtonHoverBorder,
+      boxShadow: neutralButtonShadow,
+    },
+    '&.Mui-disabled': {
+      color: 'text.disabled',
+      backgroundColor: alpha(theme.palette.action.disabledBackground, theme.palette.mode === 'dark' ? 0.25 : 0.5),
+      borderColor: alpha(theme.palette.action.disabledBackground, theme.palette.mode === 'dark' ? 0.3 : 0.65),
+      boxShadow: 'none',
     },
   };
   const primaryActionButtonSx = {
@@ -817,24 +900,24 @@ export default function StickerBrushEditor({
           }}
         >
           <Box
-            component={previewResult ? 'div' : 'canvas'}
-            ref={previewResult ? undefined : canvasRef}
-            onPointerDown={previewResult ? undefined : handlePointerDown}
-            onPointerMove={previewResult ? undefined : handlePointerMove}
-            onPointerUp={previewResult ? undefined : handlePointerUp}
-            onPointerCancel={previewResult ? undefined : handlePointerCancel}
-            onLostPointerCapture={previewResult ? undefined : handlePointerCancel}
-            onWheel={previewResult ? undefined : handleWheel}
+            component={screenMode === 'preview' ? 'div' : 'canvas'}
+            ref={screenMode === 'preview' ? undefined : canvasRef}
+            onPointerDown={screenMode === 'preview' ? undefined : handlePointerDown}
+            onPointerMove={screenMode === 'preview' ? undefined : handlePointerMove}
+            onPointerUp={screenMode === 'preview' ? undefined : handlePointerUp}
+            onPointerCancel={screenMode === 'preview' ? undefined : handlePointerCancel}
+            onLostPointerCapture={screenMode === 'preview' ? undefined : handlePointerCancel}
+            onWheel={screenMode === 'preview' ? undefined : handleWheel}
             sx={{
               width: '100%',
               height: '100%',
               display: 'block',
-              touchAction: previewResult ? 'auto' : 'none',
-              cursor: previewResult ? 'default' : canvasCursor,
+              touchAction: screenMode === 'preview' ? 'auto' : 'none',
+              cursor: screenMode === 'preview' ? 'default' : canvasCursor,
               position: 'relative',
             }}
           >
-            {previewResult ? (
+            {screenMode === 'preview' ? (
               <Box
                 sx={{
                   position: 'absolute',
@@ -844,19 +927,19 @@ export default function StickerBrushEditor({
                   justifyContent: 'center',
                   p: 2,
                   backgroundImage: `
-                    linear-gradient(45deg, #dde1e6 25%, transparent 25%),
-                    linear-gradient(-45deg, #dde1e6 25%, transparent 25%),
-                    linear-gradient(45deg, transparent 75%, #dde1e6 75%),
-                    linear-gradient(-45deg, transparent 75%, #dde1e6 75%)
+                    linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
+                    linear-gradient(-45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.08) 75%),
+                    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.08) 75%)
                   `,
                   backgroundSize: '18px 18px',
                   backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0px',
-                  backgroundColor: '#f4f5f7',
+                  backgroundColor: 'rgba(0,0,0,0.5)',
                 }}
               >
                 <Box
                   component="img"
-                  src={previewResult.dataUrl}
+                  src={previewImageSrc}
                   alt="Sticker preview"
                   sx={{
                     maxWidth: '100%',
@@ -869,28 +952,10 @@ export default function StickerBrushEditor({
                     filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18))',
                   }}
                 />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 12,
-                    left: 12,
-                    px: 1,
-                    py: 0.45,
-                    borderRadius: 999,
-                    fontSize: '0.68rem',
-                    letterSpacing: 0.3,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    color: alpha('#ffffff', 0.94),
-                    backgroundColor: alpha(theme.palette.common.black, 0.52),
-                  }}
-                >
-                  Preview
-                </Box>
               </Box>
             ) : null}
 
-            {!previewResult && brushPreviewVisible && (
+            {screenMode === 'edit' && brushPreviewVisible && (
               <Box
                 sx={{
                   position: 'absolute',
@@ -916,7 +981,7 @@ export default function StickerBrushEditor({
           </Box>
         </Box>
 
-        {!previewResult && (
+        {screenMode === 'edit' && (
           <>
             <Box
               sx={{
@@ -1059,8 +1124,63 @@ export default function StickerBrushEditor({
         }}
       >
         <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
-          <Stack spacing={0.8}>
-            {!previewResult && (
+          <Box sx={{ position: 'relative' }}>
+            {screenMode === 'edit' && discardConfirmOpen && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: 62,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  pointerEvents: 'none',
+                  zIndex: 2,
+                }}
+              >
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  sx={{
+                    alignItems: 'center',
+                    px: 1,
+                    py: 0.8,
+                    borderRadius: 1.5,
+                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.96),
+                    boxShadow: `0 12px 30px ${alpha(theme.palette.common.black, 0.18)}`,
+                    backdropFilter: 'blur(16px)',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary', px: 0.25 }}>
+                    Discard brush edits?
+                  </Typography>
+                  <Button
+                    variant="text"
+                    onClick={() => setDiscardConfirmOpen(false)}
+                    sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, px: 0.75 }}
+                  >
+                    Keep
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={discardEditSession}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      minWidth: 0,
+                      px: 1,
+                      borderRadius: 999,
+                    }}
+                  >
+                    Discard
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+
+            <Stack spacing={0.8}>
+            {screenMode === 'edit' && (
               <>
                 <Stack
                   direction={{ xs: 'column', sm: 'row' }}
@@ -1233,63 +1353,98 @@ export default function StickerBrushEditor({
             )}
 
             <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'center' }}>
-              <IconButton
-                onClick={() => {
-                  if (previewResult) {
-                    setPreviewResult(null);
-                    return;
-                  }
-                  onBack();
-                }}
-                disabled={previewBusy || commitBusy || busy}
-                aria-label={previewResult ? 'Back to edit' : 'Back'}
-                sx={{
-                  ...neutralActionButtonSx,
-                  width: 52,
-                  minWidth: 52,
-                  px: 0,
-                }}
-              >
-                <ArrowBackRounded />
-              </IconButton>
+              {screenMode === 'preview' ? (
+                <>
+                  <IconButton
+                    onClick={onBack}
+                    disabled={previewBusy || commitBusy || busy}
+                    aria-label="Back"
+                    sx={{
+                      ...sideIconActionButtonSx,
+                      width: 52,
+                      minWidth: 52,
+                      px: 0,
+                    }}
+                  >
+                    <ArrowBackRounded />
+                  </IconButton>
 
-              <Button
-                variant="contained"
-                onClick={() => {
-                  if (previewResult) {
-                    void handleAdd();
-                    return;
-                  }
-                  void handlePreview();
-                }}
-                disabled={loading || previewBusy || commitBusy || busy || !loadedSource}
-                size="large"
-                sx={primaryActionButtonSx}
-              >
-                {(previewBusy || commitBusy || busy) ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  previewResult ? 'Use Sticker' : 'Done'
-                )}
-              </Button>
+                  <Button
+                    variant="contained"
+                    onClick={() => { void handleAdd(); }}
+                    disabled={loading || previewBusy || commitBusy || busy || !loadedSource}
+                    size="large"
+                    sx={primaryActionButtonSx}
+                  >
+                    {(previewBusy || commitBusy || busy) ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      'Add Sticker'
+                    )}
+                  </Button>
 
-              {!previewResult && (
-                <IconButton
-                  onClick={handleReset}
-                  disabled={loading || !hasApproximateEdits}
-                  aria-label="Reset sticker edits"
-                  sx={{
-                    ...neutralActionButtonSx,
-                    width: 52,
-                    minWidth: 52,
-                    px: 0,
-                  }}
-                >
-                  <ReplayRounded />
-                </IconButton>
+                  <IconButton
+                    onClick={enterEditMode}
+                    disabled={loading || previewBusy || commitBusy || busy || !loadedSource}
+                    aria-label="Edit sticker"
+                    sx={{
+                      ...sideIconActionButtonSx,
+                      width: 52,
+                      minWidth: 52,
+                      px: 0,
+                    }}
+                  >
+                    <BrushRounded />
+                  </IconButton>
+                </>
+              ) : (
+                <>
+                  <IconButton
+                    onClick={() => setDiscardConfirmOpen(true)}
+                    disabled={loading || previewBusy || commitBusy || busy}
+                    aria-label="Go back without saving edits"
+                    sx={{
+                      ...sideIconActionButtonSx,
+                      width: 52,
+                      minWidth: 52,
+                      px: 0,
+                    }}
+                  >
+                    <ArrowBackRounded />
+                  </IconButton>
+
+                  <Button
+                    variant="contained"
+                    onClick={() => { void handlePreview(); }}
+                    disabled={loading || previewBusy || commitBusy || busy || !loadedSource}
+                    size="large"
+                    sx={primaryActionButtonSx}
+                  >
+                    {(previewBusy || busy) ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      'Done'
+                    )}
+                  </Button>
+
+                  <IconButton
+                    onClick={handleReset}
+                    disabled={loading || !hasApproximateEdits}
+                    aria-label="Reset sticker edits"
+                    sx={{
+                      ...sideIconActionButtonSx,
+                      width: 52,
+                      minWidth: 52,
+                      px: 0,
+                    }}
+                  >
+                    <ReplayRounded />
+                  </IconButton>
+                </>
               )}
             </Stack>
-          </Stack>
+            </Stack>
+          </Box>
         </Box>
       </Box>
     </Box>
