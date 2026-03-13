@@ -136,6 +136,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
   }, [borderColor]);
 
   useEffect(() => {
+    if (hydrationModeRef.current) return;
     localStorage.setItem('meme-src-collage-border-thickness', borderThickness);
   }, [borderThickness]);
 
