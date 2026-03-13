@@ -14,6 +14,13 @@ import {
   detectBorderZonesFromPanelRects,
   findBorderZoneByEdgeId,
 } from '../utils/borderZones';
+import {
+  TOP_CAPTION_PANEL_ID,
+  getOverlayStickerEntries,
+  getOverlayTextEntries,
+  isFloatingTextLayerId,
+  sortOverlayEntries,
+} from '../utils/overlayOrder';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const normalizeAngleDeg = (value) => {
@@ -209,11 +216,6 @@ const getContrastingMonoStroke = (textColor) => {
 };
 
 const rgbaString = (r, g, b, a = 1) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
-const TOP_CAPTION_PANEL_ID = '__top-caption__';
-const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
-const isFloatingTextLayerId = (panelId) => (
-  typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
-);
 const TOP_CAPTION_PLACEHOLDER = 'Add Top Caption';
 const FLOATING_TEXT_LAYER_PLACEHOLDER = 'Add Text Layer';
 const getTopCaptionVerticalPadding = (fontSize, extraSpacingY = 0, strokeWidth = 0) => (
@@ -2674,16 +2676,17 @@ const CanvasCollagePreview = ({
     // Check if any panel is in transform mode or reorder mode to hide all captions
     const anyPanelInTransformMode = Object.values(isTransformMode).some(enabled => enabled);
     const shouldHideCaptions = anyPanelInTransformMode || isReorderMode;
-    
-    const captionEntries = [];
+    const panelRectById = new Map();
+    const panelHasImageById = new Map();
 
     // Draw panel backgrounds/images first
     panelRects.forEach((rect) => {
       const { x, y, width, height, panelId } = rect;
+      panelRectById.set(panelId, rect);
       const imageIndex = panelImageMapping[panelId];
       const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      panelHasImageById.set(panelId, Boolean(hasImage));
       const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
-      const panelText = resolvePanelTextForCanvas(panelId);
 
       // Draw panel background
       ctx.fillStyle = hasImage
@@ -2741,8 +2744,6 @@ const CanvasCollagePreview = ({
 
           ctx.restore();
         }
-
-        captionEntries.push({ rect, panelText });
       } else {
         // Draw add icon for empty panels
         const iconSize = Math.min(width, height) * 0.3;
@@ -2769,55 +2770,79 @@ const CanvasCollagePreview = ({
       }
     });
 
-    if (floatingTextLayerIds.length > 0) {
-      floatingTextLayerIds.forEach((layerId) => {
-        const panelText = resolvePanelTextForCanvas(layerId);
-        if (!panelText || typeof panelText !== 'object') return;
-        captionEntries.push({ rect: floatingTextLayerRect, panelText });
-      });
-    }
+    const overlayEntries = sortOverlayEntries([
+      ...getOverlayTextEntries(panelTexts).map(({ panelId, panelText, fallbackOrder }) => {
+        if (isFloatingTextLayerId(panelId)) {
+          return {
+            kind: 'text',
+            candidate: panelText,
+            fallbackOrder,
+            rect: floatingTextLayerRect,
+            panelText,
+          };
+        }
 
-    // Draw stickers between images and captions so captions stay on top.
-    if (Array.isArray(stickers) && stickers.length > 0) {
-      const stickerPreviewAlpha = anyPanelInTransformMode ? 0.28 : 1;
-      stickers.forEach((sticker) => {
-        if (!sticker?.id) return;
+        const panelRect = panelRectById.get(panelId);
+        if (!panelRect || !panelHasImageById.get(panelId)) return null;
+        return {
+          kind: 'text',
+          candidate: panelText,
+          fallbackOrder,
+          rect: panelRect,
+          panelText,
+        };
+      }),
+      ...getOverlayStickerEntries(stickers).map(({ sticker, fallbackOrder }) => {
+        if (!sticker?.id) return null;
         const stickerImage = loadedStickers[sticker.id];
-        if (!stickerImage) return;
-        const stickerRect = getStickerRectPx(sticker, stickerImage);
-        if (!stickerRect) return;
+        if (!stickerImage) return null;
+        const rect = getStickerRectPx(sticker, stickerImage);
+        if (!rect) return null;
+        return {
+          kind: 'sticker',
+          candidate: sticker,
+          fallbackOrder,
+          sticker,
+          stickerImage,
+          rect,
+        };
+      }),
+    ].filter(Boolean));
 
+    const stickerPreviewAlpha = anyPanelInTransformMode ? 0.28 : 1;
+
+    // Draw text at the bottom of each image panel (or placeholder when no caption is set)
+    overlayEntries.forEach((entry) => {
+      if (entry.kind === 'sticker') {
         let contextSaved = false;
         try {
           ctx.save();
           contextSaved = true;
           ctx.globalAlpha = stickerPreviewAlpha;
-          if (Math.abs(stickerRect.angleDeg || 0) > 0.01) {
-            const centerX = stickerRect.x + (stickerRect.width / 2);
-            const centerY = stickerRect.y + (stickerRect.height / 2);
+          if (Math.abs(entry.rect.angleDeg || 0) > 0.01) {
+            const centerX = entry.rect.x + (entry.rect.width / 2);
+            const centerY = entry.rect.y + (entry.rect.height / 2);
             ctx.translate(centerX, centerY);
-            ctx.rotate((stickerRect.angleDeg * Math.PI) / 180);
+            ctx.rotate((entry.rect.angleDeg * Math.PI) / 180);
             ctx.drawImage(
-              stickerImage,
-              -(stickerRect.width / 2),
-              -(stickerRect.height / 2),
-              stickerRect.width,
-              stickerRect.height
+              entry.stickerImage,
+              -(entry.rect.width / 2),
+              -(entry.rect.height / 2),
+              entry.rect.width,
+              entry.rect.height
             );
             ctx.restore();
             return;
           }
-          ctx.drawImage(stickerImage, stickerRect.x, stickerRect.y, stickerRect.width, stickerRect.height);
+          ctx.drawImage(entry.stickerImage, entry.rect.x, entry.rect.y, entry.rect.width, entry.rect.height);
           ctx.restore();
         } catch (_) {
           if (contextSaved) ctx.restore();
-          // Ignore sticker draw failures so preview rendering still succeeds.
         }
-      });
-    }
+        return;
+      }
 
-    // Draw text at the bottom of each image panel (or placeholder when no caption is set)
-    captionEntries.forEach(({ rect, panelText }) => {
+      const { rect, panelText } = entry;
       const { x, y, width, height } = rect;
       const rawCaption = panelText.rawContent ?? panelText.content ?? '';
       const { cleanText, ranges } = parseFormattedText(rawCaption);
@@ -5302,16 +5327,17 @@ const CanvasCollagePreview = ({
         }
 
         drawTopCaptionLayer(exportCtx, { includePlaceholder: false });
-
-        const captionEntries = [];
+        const panelRectById = new Map();
+        const panelHasImageById = new Map();
 
         // Draw panel backgrounds/images first
         panelRects.forEach((rect) => {
           const { x, y, width, height, panelId } = rect;
+          panelRectById.set(panelId, rect);
           const imageIndex = panelImageMapping[panelId];
           const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+          panelHasImageById.set(panelId, Boolean(hasImage));
           const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
-          const panelText = panelTexts[panelId] || {};
 
           // Draw panel background
           exportCtx.fillStyle = hasImage
@@ -5360,8 +5386,6 @@ const CanvasCollagePreview = ({
 
               exportCtx.restore();
             }
-
-            captionEntries.push({ rect, panelText });
           } else {
             // Draw add icon for empty panels
             const iconSize = Math.min(width, height) * 0.3;
@@ -5384,16 +5408,8 @@ const CanvasCollagePreview = ({
           }
         });
 
-        if (floatingTextLayerIds.length > 0) {
-          floatingTextLayerIds.forEach((layerId) => {
-            const panelText = resolvePanelTextForCanvas(layerId);
-            if (!panelText || typeof panelText !== 'object') return;
-            captionEntries.push({ rect: floatingTextLayerRect, panelText });
-          });
-        }
-
         const drawStickerLayers = async () => {
-          if (!Array.isArray(stickers) || stickers.length === 0) return;
+          if (!Array.isArray(stickers) || stickers.length === 0) return new Map();
 
           const loadStickerImage = (src) => new Promise((done) => {
             if (!src) {
@@ -5414,33 +5430,74 @@ const CanvasCollagePreview = ({
             const src = sticker.originalUrl || sticker.thumbnailUrl || '';
             return loadStickerImage(src);
           }));
-
-          stickers.forEach((sticker, index) => {
-            if (!sticker) return;
-            const img = assets[index];
-            if (!img) return;
-            const rect = getStickerRectPx(sticker, img);
-            if (!rect) return;
-            try {
-              if (Math.abs(rect.angleDeg || 0) > 0.01) {
-                const centerX = rect.x + (rect.width / 2);
-                const centerY = rect.y + (rect.height / 2);
-                exportCtx.save();
-                exportCtx.translate(centerX, centerY);
-                exportCtx.rotate((rect.angleDeg * Math.PI) / 180);
-                exportCtx.drawImage(img, -(rect.width / 2), -(rect.height / 2), rect.width, rect.height);
-                exportCtx.restore();
-                return;
-              }
-              exportCtx.drawImage(img, rect.x, rect.y, rect.width, rect.height);
-            } catch (_) {
-              // Ignore sticker draw failures so export still succeeds.
+          return stickers.reduce((acc, sticker, index) => {
+            if (sticker?.id && assets[index]) {
+              acc.set(sticker.id, assets[index]);
             }
-          });
+            return acc;
+          }, new Map());
         };
 
-        const drawCaptions = () => {
-          captionEntries.forEach(({ rect, panelText }) => {
+        const drawOverlayEntries = (stickerAssets) => {
+          const overlayEntries = sortOverlayEntries([
+            ...getOverlayTextEntries(panelTexts).map(({ panelId, panelText, fallbackOrder }) => {
+              if (isFloatingTextLayerId(panelId)) {
+                return {
+                  kind: 'text',
+                  candidate: panelText,
+                  fallbackOrder,
+                  rect: floatingTextLayerRect,
+                  panelText,
+                };
+              }
+
+              const panelRect = panelRectById.get(panelId);
+              if (!panelRect || !panelHasImageById.get(panelId)) return null;
+              return {
+                kind: 'text',
+                candidate: panelText,
+                fallbackOrder,
+                rect: panelRect,
+                panelText,
+              };
+            }),
+            ...getOverlayStickerEntries(stickers).map(({ sticker, fallbackOrder }) => {
+              if (!sticker?.id) return null;
+              const img = stickerAssets?.get(sticker.id);
+              if (!img) return null;
+              const rect = getStickerRectPx(sticker, img);
+              if (!rect) return null;
+              return {
+                kind: 'sticker',
+                candidate: sticker,
+                fallbackOrder,
+                rect,
+                img,
+              };
+            }),
+          ].filter(Boolean));
+
+          overlayEntries.forEach((entry) => {
+            if (entry.kind === 'sticker') {
+              try {
+                if (Math.abs(entry.rect.angleDeg || 0) > 0.01) {
+                  const centerX = entry.rect.x + (entry.rect.width / 2);
+                  const centerY = entry.rect.y + (entry.rect.height / 2);
+                  exportCtx.save();
+                  exportCtx.translate(centerX, centerY);
+                  exportCtx.rotate((entry.rect.angleDeg * Math.PI) / 180);
+                  exportCtx.drawImage(entry.img, -(entry.rect.width / 2), -(entry.rect.height / 2), entry.rect.width, entry.rect.height);
+                  exportCtx.restore();
+                  return;
+                }
+                exportCtx.drawImage(entry.img, entry.rect.x, entry.rect.y, entry.rect.width, entry.rect.height);
+              } catch (_) {
+                // Ignore sticker draw failures so export still succeeds.
+              }
+              return;
+            }
+
+            const { rect, panelText } = entry;
             const { x, y, width, height } = rect;
             const rawCaption = panelText.rawContent ?? panelText.content ?? '';
             const { cleanText, ranges } = parseFormattedText(rawCaption);
@@ -5613,7 +5670,7 @@ const CanvasCollagePreview = ({
         Promise.resolve()
           .then(drawStickerLayers)
           .catch(() => undefined)
-          .then(drawCaptions)
+          .then((stickerAssets) => drawOverlayEntries(stickerAssets || new Map()))
           .finally(() => {
             exportCanvas.toBlob(resolve, 'image/png');
           });
@@ -5704,6 +5761,10 @@ const CanvasCollagePreview = ({
         })
         .filter(Boolean)
     : [];
+  const textFallbackOrderByPanelId = getOverlayTextEntries(panelTexts).reduce((next, entry) => {
+    next[entry.panelId] = entry.fallbackOrder;
+    return next;
+  }, {});
   const panelTextLayers = panelRects
     .map((panel) => {
       const imageIndex = panelImageMapping[panel.panelId];
@@ -5715,6 +5776,7 @@ const CanvasCollagePreview = ({
       return {
         panelId: panel.panelId,
         panel,
+        panelText,
         bounds,
         isActive: activeTextLayerId === panel.panelId,
       };
@@ -5729,6 +5791,7 @@ const CanvasCollagePreview = ({
       return {
         panelId: layerId,
         panel: floatingTextLayerRect,
+        panelText,
         bounds,
         isActive: activeTextLayerId === layerId,
         isFloating: true,
@@ -5736,6 +5799,23 @@ const CanvasCollagePreview = ({
     })
     .filter(Boolean);
   const textLayers = [...panelTextLayers, ...floatingTextLayers];
+  const overlayHitboxLayers = sortOverlayEntries([
+    ...stickerLayers.map((layer) => ({
+      kind: 'sticker',
+      candidate: layer.sticker,
+      fallbackOrder: layer.index,
+      ...layer,
+    })),
+    ...textLayers.map((layer, index) => ({
+      kind: 'text',
+      candidate: layer.panelText,
+      fallbackOrder: textFallbackOrderByPanelId[layer.panelId] ?? (1000 + index),
+      ...layer,
+    })),
+  ]).map((entry, orderIndex) => ({
+    ...entry,
+    orderIndex,
+  }));
   const textLayerBoundsByPanelId = textLayers.reduce((next, layer) => {
     if (!layer?.panelId || !layer?.bounds) return next;
     const controlRect = {
@@ -5824,211 +5904,46 @@ const CanvasCollagePreview = ({
           }}
       />
 
-      {/* Sticker interaction hitboxes stay clipped; control handles can render outside the preview bounds. */}
-      {stickerLayers.length > 0 && (
-        <>
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'hidden',
-              zIndex: 30,
-              pointerEvents: 'none',
-            }}
-          >
-            {stickerLayers.map(({ sticker, index, rect }) => (
-              <Box
-                key={`sticker-layer-${sticker.id}`}
-                onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'move')}
-                sx={{
-                  position: 'absolute',
-                  left: rect.x,
-                  top: rect.y,
-                  width: rect.width,
-                  height: rect.height,
-                  zIndex: 1 + index,
-                  pointerEvents: anyPanelInTransformMode ? 'none' : 'auto',
-                  cursor: stickerInteraction?.stickerId === sticker.id
-                    ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
-                    : (activeStickerId === sticker.id ? 'grab' : 'pointer'),
-                  touchAction: (activeStickerId === sticker.id || stickerInteraction?.stickerId === sticker.id)
-                    ? 'none'
-                    : 'pan-y pinch-zoom',
-                  transformOrigin: 'center center',
-                  transform: `rotate(${rect.angleDeg || 0}deg)`,
-                }}
-              />
-            ))}
-          </Box>
-
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'visible',
-              zIndex: 32,
-              pointerEvents: 'none',
-            }}
-          >
-            {stickerLayers.map(({ sticker, index, rect, isActive }) => {
-              if (!isActive || anyPanelInTransformMode) return null;
-              const handleSize = componentWidth < 560 ? 30 : 22;
-              const rotateHandleSize = componentWidth < 560 ? 26 : 20;
-              const deleteHandleSize = componentWidth < 560 ? 28 : 22;
-              const doneHandleSize = componentWidth < 560 ? 28 : 22;
-
+      {!anyPanelInTransformMode && !isReorderMode && overlayHitboxLayers.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+            zIndex: 30,
+            pointerEvents: 'none',
+          }}
+        >
+          {overlayHitboxLayers.map((layer) => {
+            if (layer.kind === 'sticker') {
               return (
                 <Box
-                  key={`sticker-controls-${sticker.id}`}
+                  key={`overlay-hitbox-sticker-${layer.sticker.id}`}
+                  onPointerDown={(event) => handleStickerPointerDown(event, layer.sticker, 'move')}
                   sx={{
                     position: 'absolute',
-                    left: rect.x,
-                    top: rect.y,
-                    width: rect.width,
-                    height: rect.height,
-                    zIndex: 1 + index,
-                    pointerEvents: 'none',
+                    left: layer.rect.x,
+                    top: layer.rect.y,
+                    width: layer.rect.width,
+                    height: layer.rect.height,
+                    zIndex: 1 + layer.orderIndex,
+                    pointerEvents: 'auto',
+                    cursor: stickerInteraction?.stickerId === layer.sticker.id
+                      ? ((stickerInteraction?.mode === 'move' || stickerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
+                      : (layer.isActive ? 'grab' : 'pointer'),
+                    touchAction: (layer.isActive || stickerInteraction?.stickerId === layer.sticker.id)
+                      ? 'none'
+                      : 'pan-y pinch-zoom',
                     transformOrigin: 'center center',
-                    transform: `rotate(${rect.angleDeg || 0}deg)`,
+                    transform: `rotate(${layer.rect.angleDeg || 0}deg)`,
                   }}
-                >
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      border: '2px solid rgba(33, 150, 243, 0.95)',
-                      borderRadius: 1,
-                      boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: -18,
-                      width: 2,
-                      height: 14,
-                      transform: 'translateX(-50%)',
-                      backgroundColor: 'rgba(255,255,255,0.9)',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                  <Box
-                    onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'rotate')}
-                    sx={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: -(rotateHandleSize + 14),
-                      width: rotateHandleSize,
-                      height: rotateHandleSize,
-                      transform: 'translateX(-50%)',
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(117, 117, 117, 0.96)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
-                        ? 'grabbing'
-                        : 'grab',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
-                  </Box>
-                  <Box
-                    onPointerDown={handleStickerDone}
-                    sx={{
-                      position: 'absolute',
-                      left: -(doneHandleSize * 0.35),
-                      top: -(doneHandleSize * 0.35),
-                      width: doneHandleSize,
-                      height: doneHandleSize,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(67, 160, 71, 0.96)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      color: '#ffffff',
-                      cursor: 'pointer',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Check sx={{ fontSize: doneHandleSize * 0.62 }} />
-                  </Box>
-                  <Box
-                    onPointerDown={(event) => handleStickerDelete(event, sticker.id)}
-                    sx={{
-                      position: 'absolute',
-                      right: -(deleteHandleSize * 0.35),
-                      top: -(deleteHandleSize * 0.35),
-                      width: deleteHandleSize,
-                      height: deleteHandleSize,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(229, 57, 53, 0.96)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      color: '#ffffff',
-                      cursor: 'pointer',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <DeleteOutline sx={{ fontSize: deleteHandleSize * 0.62 }} />
-                  </Box>
-                  <Box
-                    onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
-                    sx={{
-                      position: 'absolute',
-                      right: -(handleSize * 0.35),
-                      bottom: -(handleSize * 0.35),
-                      width: handleSize,
-                      height: handleSize,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      cursor: 'nwse-resize',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
-                  </Box>
-                </Box>
+                />
               );
-            })}
-          </Box>
-        </>
-      )}
+            }
 
-      {!anyPanelInTransformMode && !isReorderMode && textLayers.length > 0 && (
-        <>
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'hidden',
-              zIndex: 33,
-              pointerEvents: 'none',
-            }}
-          >
-            {textLayers.map((layer) => (
+            return (
               <Box
-                key={`text-layer-hitbox-${layer.panelId}`}
+                key={`overlay-hitbox-text-${layer.panelId}`}
                 onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'move')}
                 sx={{
                   position: 'absolute',
@@ -6036,6 +5951,7 @@ const CanvasCollagePreview = ({
                   top: layer.bounds.controlY,
                   width: layer.bounds.controlWidth,
                   height: layer.bounds.controlHeight,
+                  zIndex: 1 + layer.orderIndex,
                   pointerEvents: 'auto',
                   cursor: textLayerInteraction?.panelId === layer.panelId
                     ? ((textLayerInteraction?.mode === 'move' || textLayerInteraction?.mode === 'rotate') ? 'grabbing' : 'grab')
@@ -6048,158 +5964,314 @@ const CanvasCollagePreview = ({
                   transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
                 }}
               />
-            ))}
-          </Box>
+            );
+          })}
+        </Box>
+      )}
 
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'visible',
-              zIndex: 34,
-              pointerEvents: 'none',
-            }}
-          >
-            {textLayers.map((layer) => {
-              if (!layer.isActive) return null;
-              const handleSize = componentWidth < 560 ? 28 : 22;
-              const rotateHandleSize = componentWidth < 560 ? 24 : 18;
-              const actionHandleSize = componentWidth < 560 ? 28 : 22;
-              return (
+      {stickerLayers.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'visible',
+            zIndex: 32,
+            pointerEvents: 'none',
+          }}
+        >
+          {stickerLayers.map(({ sticker, index, rect, isActive }) => {
+            if (!isActive || anyPanelInTransformMode) return null;
+            const handleSize = componentWidth < 560 ? 30 : 22;
+            const rotateHandleSize = componentWidth < 560 ? 26 : 20;
+            const deleteHandleSize = componentWidth < 560 ? 28 : 22;
+            const doneHandleSize = componentWidth < 560 ? 28 : 22;
+
+            return (
+              <Box
+                key={`sticker-controls-${sticker.id}`}
+                sx={{
+                  position: 'absolute',
+                  left: rect.x,
+                  top: rect.y,
+                  width: rect.width,
+                  height: rect.height,
+                  zIndex: 1 + index,
+                  pointerEvents: 'none',
+                  transformOrigin: 'center center',
+                  transform: `rotate(${rect.angleDeg || 0}deg)`,
+                }}
+              >
                 <Box
-                  key={`text-layer-controls-${layer.panelId}`}
                   sx={{
                     position: 'absolute',
-                    left: layer.bounds.controlX,
-                    top: layer.bounds.controlY,
-                    width: layer.bounds.controlWidth,
-                    height: layer.bounds.controlHeight,
+                    inset: 0,
+                    border: '2px solid rgba(33, 150, 243, 0.95)',
+                    borderRadius: 1,
+                    boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
                     pointerEvents: 'none',
-                    transformOrigin: 'center center',
-                    transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: -18,
+                    width: 2,
+                    height: 14,
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <Box
+                  onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'rotate')}
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: -(rotateHandleSize + 14),
+                    width: rotateHandleSize,
+                    height: rotateHandleSize,
+                    transform: 'translateX(-50%)',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(117, 117, 117, 0.96)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    cursor: stickerInteraction?.stickerId === sticker.id && stickerInteraction?.mode === 'rotate'
+                      ? 'grabbing'
+                      : 'grab',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      inset: 0,
-                      border: '2px solid rgba(33, 150, 243, 0.95)',
-                      borderRadius: 1,
-                      boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: -18,
-                      width: 2,
-                      height: 14,
-                      transform: 'translateX(-50%)',
-                      backgroundColor: 'rgba(255,255,255,0.9)',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                  <Box
-                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'rotate')}
-                    sx={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: -(rotateHandleSize + 14),
-                      width: rotateHandleSize,
-                      height: rotateHandleSize,
-                      transform: 'translateX(-50%)',
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(117, 117, 117, 0.96)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      cursor: textLayerInteraction?.panelId === layer.panelId && textLayerInteraction?.mode === 'rotate'
-                        ? 'grabbing'
-                        : 'grab',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
-                  </Box>
-                  <Box
-                    onPointerDown={handleTextLayerDone}
-                    sx={{
-                      position: 'absolute',
-                      left: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
-                      top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
-                      width: actionHandleSize,
-                      height: actionHandleSize,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(67, 160, 71, 0.96)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      color: '#ffffff',
-                      cursor: 'pointer',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Check sx={{ fontSize: actionHandleSize * 0.62 }} />
-                  </Box>
-                  <Box
-                    onPointerDown={(event) => handleTextLayerEdit(event, layer.panelId)}
-                    sx={{
-                      position: 'absolute',
-                      right: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
-                      top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
-                      width: actionHandleSize,
-                      height: actionHandleSize,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(33, 150, 243, 0.96)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      color: '#ffffff',
-                      cursor: 'pointer',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Subtitles sx={{ fontSize: actionHandleSize * 0.58 }} />
-                  </Box>
-                  <Box
-                    onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize')}
-                    sx={{
-                      position: 'absolute',
-                      right: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
-                      bottom: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
-                      width: handleSize,
-                      height: handleSize,
-                      borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.95)',
-                      backgroundColor: 'rgba(33, 150, 243, 0.95)',
-                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
-                      cursor: 'nwse-resize',
-                      pointerEvents: 'auto',
-                      touchAction: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
-                  </Box>
+                  <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
                 </Box>
-              );
-            })}
-          </Box>
-        </>
+                <Box
+                  onPointerDown={handleStickerDone}
+                  sx={{
+                    position: 'absolute',
+                    left: -(doneHandleSize * 0.35),
+                    top: -(doneHandleSize * 0.35),
+                    width: doneHandleSize,
+                    height: doneHandleSize,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(67, 160, 71, 0.96)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Check sx={{ fontSize: doneHandleSize * 0.62 }} />
+                </Box>
+                <Box
+                  onPointerDown={(event) => handleStickerDelete(event, sticker.id)}
+                  sx={{
+                    position: 'absolute',
+                    right: -(deleteHandleSize * 0.35),
+                    top: -(deleteHandleSize * 0.35),
+                    width: deleteHandleSize,
+                    height: deleteHandleSize,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(229, 57, 53, 0.96)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DeleteOutline sx={{ fontSize: deleteHandleSize * 0.62 }} />
+                </Box>
+                <Box
+                  onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
+                  sx={{
+                    position: 'absolute',
+                    right: -(handleSize * 0.35),
+                    bottom: -(handleSize * 0.35),
+                    width: handleSize,
+                    height: handleSize,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    cursor: 'nwse-resize',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+
+      {!anyPanelInTransformMode && !isReorderMode && textLayers.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'visible',
+            zIndex: 34,
+            pointerEvents: 'none',
+          }}
+        >
+          {textLayers.map((layer) => {
+            if (!layer.isActive) return null;
+            const handleSize = componentWidth < 560 ? 28 : 22;
+            const rotateHandleSize = componentWidth < 560 ? 24 : 18;
+            const actionHandleSize = componentWidth < 560 ? 28 : 22;
+            return (
+              <Box
+                key={`text-layer-controls-${layer.panelId}`}
+                sx={{
+                  position: 'absolute',
+                  left: layer.bounds.controlX,
+                  top: layer.bounds.controlY,
+                  width: layer.bounds.controlWidth,
+                  height: layer.bounds.controlHeight,
+                  pointerEvents: 'none',
+                  transformOrigin: 'center center',
+                  transform: `rotate(${layer.bounds.textRotation || 0}deg)`,
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    border: '2px solid rgba(33, 150, 243, 0.95)',
+                    borderRadius: 1,
+                    boxShadow: '0 0 0 1px rgba(255,255,255,0.9), 0 6px 20px rgba(0,0,0,0.28)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: -18,
+                    width: 2,
+                    height: 14,
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <Box
+                  onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'rotate')}
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: -(rotateHandleSize + 14),
+                    width: rotateHandleSize,
+                    height: rotateHandleSize,
+                    transform: 'translateX(-50%)',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(117, 117, 117, 0.96)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    cursor: textLayerInteraction?.panelId === layer.panelId && textLayerInteraction?.mode === 'rotate'
+                      ? 'grabbing'
+                      : 'grab',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <RotateRight sx={{ fontSize: rotateHandleSize * 0.66, color: '#ffffff' }} />
+                </Box>
+                <Box
+                  onPointerDown={handleTextLayerDone}
+                  sx={{
+                    position: 'absolute',
+                    left: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                    top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                    width: actionHandleSize,
+                    height: actionHandleSize,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(67, 160, 71, 0.96)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Check sx={{ fontSize: actionHandleSize * 0.62 }} />
+                </Box>
+                <Box
+                  onPointerDown={(event) => handleTextLayerEdit(event, layer.panelId)}
+                  sx={{
+                    position: 'absolute',
+                    right: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                    top: -(actionHandleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                    width: actionHandleSize,
+                    height: actionHandleSize,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(33, 150, 243, 0.96)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Subtitles sx={{ fontSize: actionHandleSize * 0.58 }} />
+                </Box>
+                <Box
+                  onPointerDown={(event) => handleTextLayerPointerDown(event, layer, 'resize')}
+                  sx={{
+                    position: 'absolute',
+                    right: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                    bottom: -(handleSize * TEXT_LAYER_HANDLE_OVERHANG_RATIO),
+                    width: handleSize,
+                    height: handleSize,
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.95)',
+                    backgroundColor: 'rgba(33, 150, 243, 0.95)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                    cursor: 'nwse-resize',
+                    pointerEvents: 'auto',
+                    touchAction: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <OpenInFull sx={{ fontSize: handleSize * 0.56, color: '#ffffff', transform: 'rotate(90deg)' }} />
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
       )}
 
       {textLayerInteraction?.mode === 'move' && textLayerSnapGuide?.panelRect && (textLayerSnapGuide.x !== null || textLayerSnapGuide.y !== null) && (

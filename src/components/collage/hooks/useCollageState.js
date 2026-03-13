@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCall
 import { unstable_batchedUpdates } from 'react-dom';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 import { parsePanelIndexFromId } from '../utils/panelId';
+import {
+  getExplicitZIndex,
+  getNextOverlayZIndex,
+  getOverlayTextEntries,
+  sortOverlayEntries,
+} from '../utils/overlayOrder';
 
 // Debug flag - opt-in via localStorage while in development
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -282,6 +288,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
   useEffect(() => {
     latestImagesRef.current = selectedImages;
   }, [selectedImages]);
+  const latestPanelTextsRef = useRef({});
+  useEffect(() => {
+    latestPanelTextsRef.current = panelTexts;
+  }, [panelTexts]);
   const latestStickersRef = useRef([]);
   useEffect(() => {
     latestStickersRef.current = stickers;
@@ -725,6 +735,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
       const yPercentRaw = Number(stickerInput.yPercent);
       const defaultXPercent = clamp(36 + offset, 4, 88);
       const defaultYPercent = clamp(12 + offset, 4, 72);
+      const explicitZIndex = Number(stickerInput.zIndex);
+      const nextZIndex = Number.isFinite(explicitZIndex)
+        ? explicitZIndex
+        : getNextOverlayZIndex(latestPanelTextsRef.current, prev);
 
       return [
         ...(Array.isArray(prev) ? prev : []),
@@ -737,6 +751,7 @@ const [borderThickness, setBorderThickness] = useState(() => {
             : {},
           aspectRatio,
           angleDeg,
+          zIndex: nextZIndex,
           widthPercent,
           xPercent: Number.isFinite(xPercentRaw) ? clamp(xPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultXPercent,
           yPercent: Number.isFinite(yPercentRaw) ? clamp(yPercentRaw, STICKER_POSITION_MIN, STICKER_POSITION_MAX) : defaultYPercent,
@@ -768,6 +783,10 @@ const [borderThickness, setBorderThickness] = useState(() => {
             ? normalizeAngleDeg(angleRaw)
             : normalizeAngleDeg(Number(sticker.angleDeg));
         }
+        if (updates.zIndex !== undefined) {
+          const zIndexRaw = Number(updates.zIndex);
+          next.zIndex = Number.isFinite(zIndexRaw) ? zIndexRaw : sticker.zIndex;
+        }
         if (updates.xPercent !== undefined) {
           const xRaw = Number(updates.xPercent);
           next.xPercent = Number.isFinite(xRaw)
@@ -789,17 +808,70 @@ const [borderThickness, setBorderThickness] = useState(() => {
     if (!stickerId) return;
     const step = Number(direction);
     if (!Number.isFinite(step) || step === 0) return;
-    setStickers((prev) => {
-      if (!Array.isArray(prev) || prev.length <= 1) return prev;
-      const fromIndex = prev.findIndex((sticker) => sticker?.id === stickerId);
-      if (fromIndex < 0) return prev;
-      const toIndex = clamp(fromIndex + (step > 0 ? 1 : -1), 0, prev.length - 1);
-      if (toIndex === fromIndex) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
+    const stickersState = Array.isArray(latestStickersRef.current) ? latestStickersRef.current : [];
+    if (stickersState.length <= 1) return;
+    const panelTextsState = (
+      latestPanelTextsRef.current && typeof latestPanelTextsRef.current === 'object'
+    ) ? latestPanelTextsRef.current : {};
+
+    const overlayEntries = [
+      ...stickersState.map((sticker, index) => ({
+        kind: 'sticker',
+        id: sticker?.id,
+        candidate: sticker,
+        fallbackOrder: index,
+      })),
+      ...getOverlayTextEntries(panelTextsState).map(({ panelId, panelText, fallbackOrder }) => ({
+        kind: 'text',
+        id: panelId,
+        candidate: panelText,
+        fallbackOrder,
+      })),
+    ];
+    const sortedEntries = sortOverlayEntries(overlayEntries);
+    const fromIndex = sortedEntries.findIndex((entry) => entry.kind === 'sticker' && entry.id === stickerId);
+    if (fromIndex < 0) return;
+    const toIndex = clamp(fromIndex + (step > 0 ? 1 : -1), 0, sortedEntries.length - 1);
+    if (toIndex === fromIndex) return;
+
+    const reorderedEntries = [...sortedEntries];
+    const [movedEntry] = reorderedEntries.splice(fromIndex, 1);
+    reorderedEntries.splice(toIndex, 0, movedEntry);
+
+    const stickerZIndexMap = new Map();
+    const nextPanelTexts = { ...panelTextsState };
+    reorderedEntries.forEach((entry, index) => {
+      if (entry.kind === 'sticker' && entry.id) {
+        stickerZIndexMap.set(entry.id, index);
+      }
+      if (entry.kind === 'text' && entry.id && nextPanelTexts[entry.id] && typeof nextPanelTexts[entry.id] === 'object') {
+        nextPanelTexts[entry.id] = {
+          ...nextPanelTexts[entry.id],
+          zIndex: index,
+        };
+      }
     });
+
+    const nextStickers = stickersState.map((sticker, index) => {
+      if (!sticker) return sticker;
+      const nextZIndex = sticker.id ? stickerZIndexMap.get(sticker.id) : undefined;
+      const fallbackZIndex = getExplicitZIndex(sticker) ?? index;
+      return {
+        ...sticker,
+        zIndex: typeof nextZIndex === 'number' ? nextZIndex : fallbackZIndex,
+      };
+    });
+
+    const run = () => {
+      setPanelTexts(nextPanelTexts);
+      setStickers(nextStickers);
+    };
+
+    if (typeof unstable_batchedUpdates === 'function') {
+      unstable_batchedUpdates(run);
+    } else {
+      run();
+    }
   }, []);
 
   const removeSticker = useCallback((stickerId) => {

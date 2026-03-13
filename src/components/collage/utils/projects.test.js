@@ -142,4 +142,36 @@ describe('collage projects util', () => {
     expect(savedSticker.url).toBe('https://cdn.example.com/sticker.png');
     expect(savedSticker.thumbnailUrl).toBe('https://cdn.example.com/sticker-thumb.png');
   });
+
+  it('persists sticker z-index values in snapshots', () => {
+    const snap = buildSnapshotFromState({
+      selectedImages: [],
+      selectedStickers: [
+        {
+          id: 'sticker-z',
+          originalUrl: 'https://cdn.example.com/sticker-z.png',
+          zIndex: 9,
+        },
+      ],
+      panelImageMapping: {},
+      panelTransforms: {},
+      panelTexts: {},
+      selectedTemplate: { id: 't-1' },
+      selectedAspectRatio: 'square',
+      panelCount: 1,
+      borderThickness: 0,
+      borderColor: '#fff',
+      customLayout: null,
+      canvasWidth: 1000,
+      canvasHeight: 1000,
+    });
+
+    expect(snap.stickers).toEqual([
+      {
+        id: 'sticker-z',
+        url: 'https://cdn.example.com/sticker-z.png',
+        zIndex: 9,
+      },
+    ]);
+  });
 });

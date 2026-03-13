@@ -8,13 +8,15 @@ import { layoutDefinitions } from '../config/layouts';
 import { TOP_CAPTION_DEFAULTS } from '../constants/topCaptionDefaults';
 import { get as getFromLibrary } from '../../../utils/library/storage';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
+import {
+  getOverlayStickerEntries,
+  getOverlayTextEntries,
+  isFloatingTextLayerId,
+  TOP_CAPTION_PANEL_ID,
+  sortOverlayEntries,
+} from './overlayOrder';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const TOP_CAPTION_PANEL_ID = '__top-caption__';
-const FLOATING_TEXT_LAYER_ID_PREFIX = '__text-layer__-';
-const isFloatingTextLayerId = (panelId) => (
-  typeof panelId === 'string' && panelId.startsWith(FLOATING_TEXT_LAYER_ID_PREFIX)
-);
 const getTopCaptionVerticalPadding = (fontSize, extraSpacingY = 0, strokeWidth = 0) => (
   Math.max(2, Math.ceil(fontSize * 0.08), Math.ceil(Math.max(0, strokeWidth) / 2))
   + Math.max(0, extraSpacingY)
@@ -840,11 +842,15 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
     ctx.restore();
   };
 
-  // Draw panels: images and panel-bound captions (to mirror final export)
+  const rectByPanelId = new Map();
+  const panelHasImageById = new Map();
+
+  // Draw panels: images and base imagery first.
   rects.forEach(({ x, y, width: w, height: h, panelId }) => {
+    rectByPanelId.set(panelId, { x, y, width: w, height: h, panelId });
     const imageIndex = snap.panelImageMapping?.[panelId];
     const hasImage = typeof imageIndex === 'number' && loaded[imageIndex];
-    const panelText = (snap.panelTexts && snap.panelTexts[panelId]) || {};
+    panelHasImageById.set(panelId, Boolean(hasImage));
     ctx.fillStyle = hasImage ? 'rgba(0,0,0,0.03)' : 'rgba(0,0,0,0.3)';
     ctx.fillRect(x, y, w, h);
 
@@ -870,44 +876,55 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
         ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledW, scaledH);
         ctx.restore();
       }
-      drawTextLayerInRect({ x, y, width: w, height: h }, panelText);
     }
   });
 
-  // Draw floating text layers anchored to the full collage area (below top caption).
-  const floatingTextLayers = (snap.panelTexts && typeof snap.panelTexts === 'object')
-    ? Object.entries(snap.panelTexts).filter(([panelId]) => isFloatingTextLayerId(panelId))
-    : [];
-  if (floatingTextLayers.length > 0) {
-    const floatingRect = {
-      x: 0,
-      y: topCaptionHeight,
-      width,
-      height: imageAreaHeight,
-    };
-    floatingTextLayers.forEach(([, panelText]) => {
-      drawTextLayerInRect(floatingRect, panelText);
-    });
-  }
-
-  // Draw global sticker overlays (top-most, across the full collage canvas)
   const stickerRefs = Array.isArray(snap.stickers) ? snap.stickers : [];
-  if (stickerRefs.length > 0) {
-    const loadedStickers = await Promise.all(stickerRefs.map(loadImageFromRef));
-    stickerRefs.forEach((stickerRef, index) => {
-      const img = loadedStickers[index];
-      if (!img) return;
+  const loadedStickers = stickerRefs.length > 0
+    ? await Promise.all(stickerRefs.map(loadImageFromRef))
+    : [];
+  const floatingRect = {
+    x: 0,
+    y: topCaptionHeight,
+    width,
+    height: imageAreaHeight,
+  };
+  const overlayEntries = sortOverlayEntries([
+    ...getOverlayTextEntries(snap.panelTexts).map(({ panelId, panelText, fallbackOrder }) => {
+      if (isFloatingTextLayerId(panelId)) {
+        return {
+          kind: 'text',
+          candidate: panelText,
+          fallbackOrder,
+          panelText,
+          rect: floatingRect,
+        };
+      }
 
-      const ratioRaw = Number(stickerRef?.aspectRatio);
-      const angleRaw = Number(stickerRef?.angleDeg);
+      const panelRect = rectByPanelId.get(panelId);
+      if (!panelRect || !panelHasImageById.get(panelId)) return null;
+      return {
+        kind: 'text',
+        candidate: panelText,
+        fallbackOrder,
+        panelText,
+        rect: panelRect,
+      };
+    }),
+    ...getOverlayStickerEntries(stickerRefs).map(({ sticker, fallbackOrder }) => {
+      const img = loadedStickers[fallbackOrder] || null;
+      if (!img) return null;
+
+      const ratioRaw = Number(sticker?.aspectRatio);
+      const angleRaw = Number(sticker?.angleDeg);
       const imageRatio = img.naturalWidth && img.naturalHeight
         ? (img.naturalWidth / img.naturalHeight)
         : 1;
       const aspectRatio = Number.isFinite(ratioRaw) && ratioRaw > 0 ? ratioRaw : imageRatio || 1;
       const angleDeg = Number.isFinite(angleRaw) ? angleRaw : 0;
-      const widthRaw = Number(stickerRef?.widthPercent);
-      const xRaw = Number(stickerRef?.xPercent);
-      const yRaw = Number(stickerRef?.yPercent);
+      const widthRaw = Number(sticker?.widthPercent);
+      const xRaw = Number(sticker?.xPercent);
+      const yRaw = Number(sticker?.yPercent);
       const widthPercent = Number.isFinite(widthRaw) ? widthRaw : 28;
       const widthPx = clamp((widthPercent / 100) * width, 12, width * 0.98);
       const heightPx = clamp(widthPx / aspectRatio, 12, totalHeight * 0.98);
@@ -920,23 +937,44 @@ export async function renderThumbnailFromSnapshot(snap, { maxDim = 256 } = {}) {
       const xPx = clamp((Number.isFinite(xRaw) ? xRaw : 36) / 100 * width, minX, maxX);
       const yPx = clamp((Number.isFinite(yRaw) ? yRaw : 12) / 100 * totalHeight, minY, maxY);
 
-      try {
-        if (Math.abs(angleDeg) > 0.01) {
-          const centerX = xPx + (widthPx / 2);
-          const centerY = yPx + (heightPx / 2);
-          ctx.save();
-          ctx.translate(centerX, centerY);
-          ctx.rotate((angleDeg * Math.PI) / 180);
-          ctx.drawImage(img, -(widthPx / 2), -(heightPx / 2), widthPx, heightPx);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, xPx, yPx, widthPx, heightPx);
-        }
-      } catch (_) {
-        // Ignore sticker draw failures so thumbnail generation still succeeds.
+      return {
+        kind: 'sticker',
+        candidate: sticker,
+        fallbackOrder,
+        img,
+        rect: {
+          x: xPx,
+          y: yPx,
+          width: widthPx,
+          height: heightPx,
+          angleDeg,
+        },
+      };
+    }),
+  ].filter(Boolean));
+
+  overlayEntries.forEach((entry) => {
+    if (entry.kind === 'text') {
+      drawTextLayerInRect(entry.rect, entry.panelText);
+      return;
+    }
+
+    try {
+      if (Math.abs(entry.rect.angleDeg) > 0.01) {
+        const centerX = entry.rect.x + (entry.rect.width / 2);
+        const centerY = entry.rect.y + (entry.rect.height / 2);
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate((entry.rect.angleDeg * Math.PI) / 180);
+        ctx.drawImage(entry.img, -(entry.rect.width / 2), -(entry.rect.height / 2), entry.rect.width, entry.rect.height);
+        ctx.restore();
+      } else {
+        ctx.drawImage(entry.img, entry.rect.x, entry.rect.y, entry.rect.width, entry.rect.height);
       }
-    });
-  }
+    } catch (_) {
+      // Ignore sticker draw failures so thumbnail generation still succeeds.
+    }
+  });
 
   return canvas.toDataURL('image/jpeg', 0.92);
 }
