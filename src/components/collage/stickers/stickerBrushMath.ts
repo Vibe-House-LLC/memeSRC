@@ -33,7 +33,15 @@ export type ExportedStickerEdit = {
   changed: boolean;
 };
 
+export type PixelBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export const STICKER_EDITOR_MAX_DIMENSION_PX = 1500;
+const CROPPED_STICKER_PADDING_PX = 2;
 
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
@@ -300,6 +308,81 @@ export const isMaskCanvasPristine = (maskCanvas: HTMLCanvasElement): boolean => 
   return isMaskDataPristine(imageData.data);
 };
 
+export const getNonTransparentPixelBounds = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number
+): PixelBounds | null => {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = data[((y * width) + x) * 4 + 3];
+      if (alpha <= 0) continue;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  if (maxX < minX || maxY < minY) return null;
+  return {
+    x: minX,
+    y: minY,
+    width: (maxX - minX) + 1,
+    height: (maxY - minY) + 1,
+  };
+};
+
+export const cropCanvasToNonTransparentBounds = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+  const ctx = getCanvasContext(canvas);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const bounds = getNonTransparentPixelBounds(imageData.data, canvas.width, canvas.height);
+
+  if (!bounds) {
+    return createCanvas(1, 1);
+  }
+
+  const paddedBounds = {
+    x: Math.max(0, bounds.x - CROPPED_STICKER_PADDING_PX),
+    y: Math.max(0, bounds.y - CROPPED_STICKER_PADDING_PX),
+    width: 0,
+    height: 0,
+  };
+  const right = Math.min(canvas.width, bounds.x + bounds.width + CROPPED_STICKER_PADDING_PX);
+  const bottom = Math.min(canvas.height, bounds.y + bounds.height + CROPPED_STICKER_PADDING_PX);
+  paddedBounds.width = right - paddedBounds.x;
+  paddedBounds.height = bottom - paddedBounds.y;
+
+  if (
+    paddedBounds.x === 0
+    && paddedBounds.y === 0
+    && paddedBounds.width === canvas.width
+    && paddedBounds.height === canvas.height
+  ) {
+    return canvas;
+  }
+
+  const cropped = createCanvas(paddedBounds.width, paddedBounds.height);
+  const croppedCtx = getCanvasContext(cropped);
+  croppedCtx.drawImage(
+    canvas,
+    paddedBounds.x,
+    paddedBounds.y,
+    paddedBounds.width,
+    paddedBounds.height,
+    0,
+    0,
+    paddedBounds.width,
+    paddedBounds.height
+  );
+  return cropped;
+};
+
 export const loadStickerSource = async (
   src: string,
   maxDimension = STICKER_EDITOR_MAX_DIMENSION_PX
@@ -446,14 +529,16 @@ export const exportMaskedSticker = async ({
   sourceCanvas: HTMLCanvasElement;
   maskCanvas: HTMLCanvasElement;
 }): Promise<ExportedStickerEdit> => {
-  const output = createCanvas(sourceCanvas.width, sourceCanvas.height);
-  updateCompositeCanvas(output, sourceCanvas, maskCanvas);
+  const changed = !isMaskCanvasPristine(maskCanvas);
+  const composited = createCanvas(sourceCanvas.width, sourceCanvas.height);
+  updateCompositeCanvas(composited, sourceCanvas, maskCanvas);
+  const output = changed ? cropCanvasToNonTransparentBounds(composited) : composited;
   const blob = await canvasToBlob(output, 'image/png');
   return {
     blob,
     dataUrl: output.toDataURL('image/png'),
     width: output.width,
     height: output.height,
-    changed: !isMaskCanvasPristine(maskCanvas),
+    changed,
   };
 };

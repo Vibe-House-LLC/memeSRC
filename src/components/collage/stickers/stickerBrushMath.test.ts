@@ -3,6 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import {
   applyBrushStrokeToMaskData,
   createOpaqueMaskData,
+  getNonTransparentPixelBounds,
   isMaskDataPristine,
 } from './stickerBrushMath';
 
@@ -81,5 +82,56 @@ describe('stickerBrushMath', () => {
     });
 
     expect(data[((6 * 12) + 6) * 4 + 3]).toBeLessThan(255);
+  });
+
+  test('finds the tight bounds of visible pixels', () => {
+    const width = 7;
+    const height = 6;
+    const data = new Uint8ClampedArray(width * height * 4);
+    const setPixel = (x: number, y: number, alpha: number) => {
+      const index = ((y * width) + x) * 4;
+      data[index] = 255;
+      data[index + 1] = 255;
+      data[index + 2] = 255;
+      data[index + 3] = alpha;
+    };
+
+    setPixel(2, 1, 255);
+    setPixel(4, 3, 180);
+    setPixel(3, 2, 90);
+
+    expect(getNonTransparentPixelBounds(data, width, height)).toEqual({
+      x: 2,
+      y: 1,
+      width: 3,
+      height: 3,
+    });
+  });
+
+  test('returns null when all pixels are transparent', () => {
+    const data = new Uint8ClampedArray(5 * 4 * 4);
+
+    expect(getNonTransparentPixelBounds(data, 5, 4)).toBeNull();
+  });
+
+  test('bounds can be safely expanded without exceeding the canvas edges', () => {
+    const width = 8;
+    const height = 8;
+    const data = new Uint8ClampedArray(width * height * 4);
+    const setPixel = (x: number, y: number) => {
+      const index = ((y * width) + x) * 4;
+      data[index + 3] = 255;
+    };
+
+    setPixel(0, 1);
+    setPixel(6, 7);
+
+    const bounds = getNonTransparentPixelBounds(data, width, height);
+    expect(bounds).toEqual({
+      x: 0,
+      y: 1,
+      width: 7,
+      height: 7,
+    });
   });
 });
