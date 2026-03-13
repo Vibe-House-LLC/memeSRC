@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'; // Add useCall
 import { unstable_batchedUpdates } from 'react-dom';
 import { getLayoutsForPanelCount } from '../config/CollageConfig';
 import { parsePanelIndexFromId } from '../utils/panelId';
+import { resolveAutoAppliedCollageBorderThickness } from '../utils/snapshotEditing';
 
 // Debug flag - opt-in via localStorage while in development
 const DEBUG_MODE = process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && (() => {
@@ -106,10 +107,7 @@ export const useCollageState = () => {
 const [panelCount, setPanelCount] = useState(2); // Default panel count of 2
 const [finalImage, setFinalImage] = useState(null);
 const [isCreatingCollage, setIsCreatingCollage] = useState(false);
-const [borderThickness, setBorderThickness] = useState(() => {
-    const savedBorderThickness = localStorage.getItem('meme-src-collage-border-thickness');
-    return savedBorderThickness || 'medium'; // Default to medium border thickness
-  });
+const [borderThickness, setBorderThickness] = useState(() => resolveAutoAppliedCollageBorderThickness());
 
   const [borderColor, setBorderColor] = useState(() => {
     const savedCustomColor = localStorage.getItem('meme-src-collage-custom-color');
