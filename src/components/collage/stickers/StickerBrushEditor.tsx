@@ -16,11 +16,13 @@ import type { ExportedStickerEdit, LoadedStickerSource, ViewTransform } from './
 import {
   applyOverlayToMaskCanvas,
   clampTransformToViewport,
+  createCenteredTransformForBounds,
   cloneCanvas,
   createFitTransform,
   createOpaqueMaskCanvas,
   createTransparentCanvas,
   exportMaskedSticker,
+  getCanvasNonTransparentBounds,
   loadStickerSource,
   renderStickerViewport,
   resetMaskCanvas,
@@ -71,6 +73,7 @@ export default function StickerBrushEditor({
 }: StickerBrushEditorProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const bottomBarRef = React.useRef<HTMLDivElement | null>(null);
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const sourceCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -104,9 +107,12 @@ export default function StickerBrushEditor({
   const [loading, setLoading] = React.useState(true);
   const [editorError, setEditorError] = React.useState<string>('');
   const [hasApproximateEdits, setHasApproximateEdits] = React.useState(false);
+  const [previewResult, setPreviewResult] = React.useState<ExportedStickerEdit | null>(null);
+  const [previewBusy, setPreviewBusy] = React.useState(false);
   const [commitBusy, setCommitBusy] = React.useState(false);
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
+  const [bottomBarHeight, setBottomBarHeight] = React.useState(152);
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -209,6 +215,7 @@ export default function StickerBrushEditor({
         setLoadedSource(source);
         hasApproximateEditsRef.current = false;
         setHasApproximateEdits(false);
+        setPreviewResult(null);
         refreshComposite();
       } catch (error) {
         if (cancelled) return;
@@ -236,6 +243,37 @@ export default function StickerBrushEditor({
   React.useEffect(() => {
     if (!loading) scheduleRender();
   }, [loading, scheduleRender]);
+
+  React.useEffect(() => {
+    if (previewResult || viewportSize.width <= 0 || viewportSize.height <= 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (canvas.width !== viewportSize.width || canvas.height !== viewportSize.height) {
+      canvas.width = viewportSize.width;
+      canvas.height = viewportSize.height;
+    }
+    scheduleRender();
+  }, [previewResult, scheduleRender, viewportSize.height, viewportSize.width]);
+
+  React.useEffect(() => {
+    const bar = bottomBarRef.current;
+    if (!bar) return undefined;
+
+    const update = () => {
+      const nextHeight = Math.max(1, Math.round(bar.getBoundingClientRect().height));
+      setBottomBarHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    window.addEventListener('resize', update);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [isMobile, previewResult]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
@@ -524,28 +562,63 @@ export default function StickerBrushEditor({
     pinchStateRef.current = null;
     activePointersRef.current.clear();
     setInteraction('none');
+    setPreviewResult(null);
     refreshComposite();
   }, [clearPendingDraw, refreshComposite, setInteraction]);
 
-  const handleAdd = React.useCallback(async () => {
+  const handleRecenter = React.useCallback(() => {
+    const compositeCanvas = compositeCanvasRef.current;
+    const current = transformRef.current;
+    if (!compositeCanvas || !current || viewportSize.width <= 0 || viewportSize.height <= 0) return;
+
+    const visibleBounds = getCanvasNonTransparentBounds(compositeCanvas) || {
+      x: 0,
+      y: 0,
+      width: compositeCanvas.width,
+      height: compositeCanvas.height,
+    };
+
+    setTransform(createCenteredTransformForBounds({
+      bounds: visibleBounds,
+      viewportWidth: viewportSize.width,
+      viewportHeight: viewportSize.height,
+      scale: current.scale,
+    }));
+  }, [setTransform, viewportSize.height, viewportSize.width]);
+
+  const handlePreview = React.useCallback(async () => {
     const sourceCanvas = sourceCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
-    if (!sourceCanvas || !maskCanvas || commitBusy || busy) return;
-    setCommitBusy(true);
+    if (!sourceCanvas || !maskCanvas || previewBusy || commitBusy || busy) return;
+    setPreviewBusy(true);
     setEditorError('');
     try {
       const result = await exportMaskedSticker({ sourceCanvas, maskCanvas });
-      await onAdd(result);
+      setPreviewResult(result);
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : 'Unable to preview this sticker right now.');
+    } finally {
+      setPreviewBusy(false);
+    }
+  }, [busy, commitBusy, previewBusy]);
+
+  const handleAdd = React.useCallback(async () => {
+    if (!previewResult || commitBusy || busy) return;
+    setCommitBusy(true);
+    setEditorError('');
+    try {
+      await onAdd(previewResult);
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : 'Unable to add this sticker right now.');
     } finally {
       setCommitBusy(false);
     }
-  }, [busy, commitBusy, onAdd]);
+  }, [busy, commitBusy, onAdd, previewResult]);
 
   const interactionHint = isMobile
     ? 'Paint: 1 finger. Move/zoom: 2 fingers.'
     : 'Paint: drag. Pan: Shift + drag. Zoom: wheel.';
+  const previewHint = previewResult?.changed ? 'Preview the cropped sticker.' : 'Preview before adding.';
   const canvasCursor = !isMobile
     ? (
       interactionMode === 'pan' || interactionMode === 'pinch'
@@ -553,6 +626,45 @@ export default function StickerBrushEditor({
         : (panModifierPressed ? 'grab' : 'crosshair')
     )
     : 'crosshair';
+  const neutralButtonBg = alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 1);
+  const neutralButtonHoverBg = alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.62 : 1);
+  const neutralButtonBorder = alpha(theme.palette.divider, theme.palette.mode === 'dark' ? 0.95 : 0.82);
+  const neutralButtonHoverBorder = alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.36 : 0.22);
+  const neutralButtonShadow = `0 4px 14px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.32 : 0.14)}`;
+  const neutralActionButtonSx = {
+    minHeight: 48,
+    minWidth: isMobile ? 52 : undefined,
+    px: isMobile ? 1.25 : 2,
+    borderRadius: 1.5,
+    fontWeight: 700,
+    textTransform: 'none',
+    color: 'text.primary',
+    backgroundColor: neutralButtonBg,
+    border: '1px solid',
+    borderColor: neutralButtonBorder,
+    boxShadow: neutralButtonShadow,
+    '&:hover': {
+      backgroundColor: neutralButtonHoverBg,
+      borderColor: neutralButtonHoverBorder,
+      boxShadow: neutralButtonShadow,
+    },
+  };
+  const primaryActionButtonSx = {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 1.5,
+    fontWeight: 700,
+    textTransform: 'none',
+    backgroundColor: theme.palette.primary.main,
+    border: '1px solid',
+    borderColor: alpha(theme.palette.primary.dark, 0.95),
+    boxShadow: `0 6px 18px ${alpha(theme.palette.primary.main, 0.34)}`,
+    color: 'primary.contrastText',
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+      boxShadow: `0 6px 18px ${alpha(theme.palette.primary.main, 0.4)}`,
+    },
+  };
 
   return (
     <Box
@@ -593,22 +705,79 @@ export default function StickerBrushEditor({
           }}
         >
           <Box
-            component="canvas"
-            ref={canvasRef}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerCancel}
-            onLostPointerCapture={handlePointerCancel}
-            onWheel={handleWheel}
+            component={previewResult ? 'div' : 'canvas'}
+            ref={previewResult ? undefined : canvasRef}
+            onPointerDown={previewResult ? undefined : handlePointerDown}
+            onPointerMove={previewResult ? undefined : handlePointerMove}
+            onPointerUp={previewResult ? undefined : handlePointerUp}
+            onPointerCancel={previewResult ? undefined : handlePointerCancel}
+            onLostPointerCapture={previewResult ? undefined : handlePointerCancel}
+            onWheel={previewResult ? undefined : handleWheel}
             sx={{
               width: '100%',
               height: '100%',
               display: 'block',
-              touchAction: 'none',
-              cursor: canvasCursor,
+              touchAction: previewResult ? 'auto' : 'none',
+              cursor: previewResult ? 'default' : canvasCursor,
+              position: 'relative',
             }}
-          />
+          >
+            {previewResult ? (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 2,
+                  backgroundImage: `
+                    linear-gradient(45deg, #dde1e6 25%, transparent 25%),
+                    linear-gradient(-45deg, #dde1e6 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, #dde1e6 75%),
+                    linear-gradient(-45deg, transparent 75%, #dde1e6 75%)
+                  `,
+                  backgroundSize: '18px 18px',
+                  backgroundPosition: '0 0, 0 9px, 9px -9px, -9px 0px',
+                  backgroundColor: '#f4f5f7',
+                }}
+              >
+                <Box
+                  component="img"
+                  src={previewResult.dataUrl}
+                  alt="Sticker preview"
+                  sx={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    userSelect: 'none',
+                    WebkitUserDrag: 'none',
+                    filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18))',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 12,
+                    left: 12,
+                    px: 1,
+                    py: 0.45,
+                    borderRadius: 999,
+                    fontSize: '0.68rem',
+                    letterSpacing: 0.3,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: alpha('#ffffff', 0.94),
+                    backgroundColor: alpha(theme.palette.common.black, 0.52),
+                  }}
+                >
+                  Preview
+                </Box>
+              </Box>
+            ) : null}
+          </Box>
         </Box>
 
         {(loading || !loadedSource) && (
@@ -631,149 +800,189 @@ export default function StickerBrushEditor({
       </Box>
 
       <Box
+        aria-hidden
         sx={{
           flexShrink: 0,
-          px: { xs: 1.25, md: 1.5 },
-          pt: 1,
-          pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
-          borderTop: `1px solid ${alpha(theme.palette.divider, 0.75)}`,
+          height: `${bottomBarHeight}px`,
+        }}
+      />
+
+      <Box
+        ref={bottomBarRef}
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1600,
           bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.96 : 0.98),
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.75)}`,
           boxShadow: `0 -8px 30px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.14)}`,
           backdropFilter: 'blur(18px)',
+          pb: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+          pt: 1,
+          px: { xs: 1.25, md: 2 },
         }}
       >
-        <Stack spacing={1}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-            <Button
-              variant="text"
-              onClick={onBack}
-              disabled={commitBusy || busy}
-              sx={{ textTransform: 'none', fontWeight: 700, minWidth: 0, px: 0.5 }}
-            >
-              Back
-            </Button>
+        <Box sx={{ width: '100%', maxWidth: 960, mx: 'auto' }}>
+          <Stack spacing={0.8}>
             <Typography
               variant="caption"
               sx={{
-                flex: 1,
-                minWidth: 0,
-                px: 0.5,
                 textAlign: 'center',
                 color: 'text.secondary',
                 fontWeight: 700,
                 letterSpacing: 0.1,
-                lineHeight: 1.2,
+                lineHeight: 1.15,
               }}
             >
-              {interactionHint}
+              {previewResult ? previewHint : interactionHint}
             </Typography>
-            <Button
-              variant="contained"
-              onClick={() => { void handleAdd(); }}
-              disabled={loading || commitBusy || busy || !loadedSource}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 800,
-                borderRadius: 999,
-                minWidth: 78,
-                px: 1.8,
-              }}
-            >
-              {commitBusy || busy ? <CircularProgress size={18} color="inherit" /> : 'Add'}
-            </Button>
-          </Stack>
 
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={brushMode}
-              onChange={(_, value) => {
-                if (value === 'erase' || value === 'restore') {
-                  setBrushMode(value);
-                }
-              }}
-              sx={{
-                '& .MuiToggleButton-root': {
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  px: isMobile ? 1.4 : 1.8,
-                },
-              }}
-            >
-              <ToggleButton value="erase">Erase</ToggleButton>
-              <ToggleButton value="restore">Restore</ToggleButton>
-            </ToggleButtonGroup>
+            {!previewResult && (
+              <>
+                <Stack direction="row" spacing={0.9} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                  <ToggleButtonGroup
+                    exclusive
+                    size="small"
+                    value={brushMode}
+                    onChange={(_, value) => {
+                      if (value === 'erase' || value === 'restore') {
+                        setBrushMode(value);
+                      }
+                    }}
+                    sx={{
+                      '& .MuiToggleButton-root': {
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        px: isMobile ? 1.25 : 1.8,
+                        py: 0.45,
+                      },
+                    }}
+                  >
+                    <ToggleButton value="erase">Erase</ToggleButton>
+                    <ToggleButton value="restore">Restore</ToggleButton>
+                  </ToggleButtonGroup>
 
-            <Stack direction="row" spacing={0.8}>
+                  <Stack direction="row" spacing={0.6}>
+                    <Button
+                      variant="text"
+                      onClick={resetViewToFit}
+                      disabled={loading}
+                      sx={{ textTransform: 'none', minWidth: 0, px: 0.35, fontWeight: 700 }}
+                    >
+                      Fit
+                    </Button>
+                    <Button
+                      variant="text"
+                      onClick={handleRecenter}
+                      disabled={loading || !loadedSource}
+                      sx={{ textTransform: 'none', minWidth: 0, px: 0.35, fontWeight: 700 }}
+                    >
+                      Center
+                    </Button>
+                    <Button
+                      variant="text"
+                      onClick={handleReset}
+                      disabled={loading || !hasApproximateEdits}
+                      sx={{ textTransform: 'none', minWidth: 0, px: 0.35, fontWeight: 700 }}
+                    >
+                      Reset
+                    </Button>
+                  </Stack>
+                </Stack>
+
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.1 }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                        Size
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                        {Math.round(brushSize)}
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      size="small"
+                      value={brushSize}
+                      min={12}
+                      max={160}
+                      step={1}
+                      onChange={(_, value) => setBrushSize(Array.isArray(value) ? value[0] : value)}
+                      aria-label="Brush size"
+                    />
+                  </Box>
+
+                  <Box sx={{ minWidth: 0 }}>
+                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.1 }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                        Opacity
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                        {Math.round(brushOpacity * 100)}%
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      size="small"
+                      value={Math.round(brushOpacity * 100)}
+                      min={5}
+                      max={100}
+                      step={1}
+                      onChange={(_, value) => {
+                        const nextValue = Array.isArray(value) ? value[0] : value;
+                        setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
+                      }}
+                      aria-label="Brush opacity"
+                    />
+                  </Box>
+                </Box>
+              </>
+            )}
+
+            <Stack direction="row" spacing={1} sx={{ width: '100%', alignItems: 'center' }}>
               <Button
-                variant="text"
-                onClick={resetViewToFit}
-                disabled={loading}
-                sx={{ textTransform: 'none', minWidth: 0, px: 0.5, fontWeight: 700 }}
+                variant="contained"
+                onClick={() => {
+                  if (previewResult) {
+                    setPreviewResult(null);
+                    return;
+                  }
+                  onBack();
+                }}
+                disabled={previewBusy || commitBusy || busy}
+                sx={neutralActionButtonSx}
               >
-                Fit
+                {previewResult ? 'Back to Edit' : 'Back'}
               </Button>
+
               <Button
-                variant="text"
-                onClick={handleReset}
-                disabled={loading || !hasApproximateEdits}
-                sx={{ textTransform: 'none', minWidth: 0, px: 0.5, fontWeight: 700 }}
+                variant="contained"
+                onClick={() => {
+                  if (previewResult) {
+                    void handleAdd();
+                    return;
+                  }
+                  void handlePreview();
+                }}
+                disabled={loading || previewBusy || commitBusy || busy || !loadedSource}
+                size="large"
+                sx={primaryActionButtonSx}
               >
-                Reset
+                {(previewBusy || commitBusy || busy) ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  previewResult ? 'Use Sticker' : 'Add Sticker'
+                )}
               </Button>
             </Stack>
           </Stack>
-
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={{ xs: 0.9, md: 1.5 }}
-            sx={{ alignItems: 'stretch' }}
-          >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.2 }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                  Size
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                  {Math.round(brushSize)}
-                </Typography>
-              </Stack>
-              <Slider
-                size="small"
-                value={brushSize}
-                min={12}
-                max={160}
-                step={1}
-                onChange={(_, value) => setBrushSize(Array.isArray(value) ? value[0] : value)}
-                aria-label="Brush size"
-              />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 0.2 }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                  Opacity
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                  {Math.round(brushOpacity * 100)}%
-                </Typography>
-              </Stack>
-              <Slider
-                size="small"
-                value={Math.round(brushOpacity * 100)}
-                min={5}
-                max={100}
-                step={1}
-                onChange={(_, value) => {
-                  const nextValue = Array.isArray(value) ? value[0] : value;
-                  setBrushOpacity(clamp(nextValue / 100, 0.05, 1));
-                }}
-                aria-label="Brush opacity"
-              />
-            </Box>
-          </Stack>
-        </Stack>
+        </Box>
       </Box>
     </Box>
   );

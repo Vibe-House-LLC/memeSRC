@@ -2,6 +2,8 @@
 import { describe, expect, test } from '@jest/globals';
 import {
   applyBrushStrokeToMaskData,
+  clampTransformToViewport,
+  createCenteredTransformForBounds,
   createOpaqueMaskData,
   getNonTransparentPixelBounds,
   isMaskDataPristine,
@@ -132,6 +134,36 @@ describe('stickerBrushMath', () => {
       y: 1,
       width: 7,
       height: 7,
+    });
+  });
+
+  test('free-pan transform preserves offsets while still enforcing min scale', () => {
+    expect(clampTransformToViewport({
+      scale: 0.2,
+      offsetX: 480,
+      offsetY: -320,
+    }, 400, 400, 200, 200, 0.5)).toEqual({
+      scale: 0.5,
+      offsetX: 480,
+      offsetY: -320,
+    });
+  });
+
+  test('center transform aligns visible bounds to viewport center', () => {
+    expect(createCenteredTransformForBounds({
+      bounds: {
+        x: 20,
+        y: 40,
+        width: 60,
+        height: 20,
+      },
+      viewportWidth: 200,
+      viewportHeight: 160,
+      scale: 2,
+    })).toEqual({
+      scale: 2,
+      offsetX: 0,
+      offsetY: -20,
     });
   });
 });

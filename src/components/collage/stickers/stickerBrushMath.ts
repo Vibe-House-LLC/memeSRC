@@ -383,6 +383,12 @@ export const cropCanvasToNonTransparentBounds = (canvas: HTMLCanvasElement): HTM
   return cropped;
 };
 
+export const getCanvasNonTransparentBounds = (canvas: HTMLCanvasElement): PixelBounds | null => {
+  const ctx = getCanvasContext(canvas);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return getNonTransparentPixelBounds(imageData.data, canvas.width, canvas.height);
+};
+
 export const loadStickerSource = async (
   src: string,
   maxDimension = STICKER_EDITOR_MAX_DIMENSION_PX
@@ -492,25 +498,33 @@ export const clampTransformToViewport = (
   minScale: number
 ): ViewTransform => {
   const scale = Math.max(minScale, transform.scale);
-  const scaledWidth = imageWidth * scale;
-  const scaledHeight = imageHeight * scale;
+  return {
+    scale,
+    offsetX: transform.offsetX,
+    offsetY: transform.offsetY,
+  };
+};
 
-  let offsetX = transform.offsetX;
-  let offsetY = transform.offsetY;
+export const createCenteredTransformForBounds = ({
+  bounds,
+  viewportWidth,
+  viewportHeight,
+  scale,
+}: {
+  bounds: PixelBounds;
+  viewportWidth: number;
+  viewportHeight: number;
+  scale: number;
+}): ViewTransform => {
+  const safeScale = Math.max(0.01, scale);
+  const contentCenterX = bounds.x + (bounds.width / 2);
+  const contentCenterY = bounds.y + (bounds.height / 2);
 
-  if (scaledWidth <= viewportWidth) {
-    offsetX = (viewportWidth - scaledWidth) / 2;
-  } else {
-    offsetX = clamp(offsetX, viewportWidth - scaledWidth, 0);
-  }
-
-  if (scaledHeight <= viewportHeight) {
-    offsetY = (viewportHeight - scaledHeight) / 2;
-  } else {
-    offsetY = clamp(offsetY, viewportHeight - scaledHeight, 0);
-  }
-
-  return { scale, offsetX, offsetY };
+  return {
+    scale: safeScale,
+    offsetX: (viewportWidth / 2) - (contentCenterX * safeScale),
+    offsetY: (viewportHeight / 2) - (contentCenterY * safeScale),
+  };
 };
 
 export const screenToImagePoint = (
