@@ -89,7 +89,6 @@ export default function StickerBrushEditor({
 }: StickerBrushEditorProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const bottomBarRef = React.useRef<HTMLDivElement | null>(null);
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const sourceCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -140,7 +139,6 @@ export default function StickerBrushEditor({
   const [screenMode, setScreenMode] = React.useState<'preview' | 'edit'>('preview');
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
-  const [bottomBarHeight, setBottomBarHeight] = React.useState(152);
   const [brushPreviewVisible, setBrushPreviewVisible] = React.useState(false);
   const [historyState, setHistoryState] = React.useState({ canUndo: false, canRedo: false });
   const [discardConfirmOpen, setDiscardConfirmOpen] = React.useState(false);
@@ -389,26 +387,6 @@ export default function StickerBrushEditor({
     }
     scheduleRender();
   }, [scheduleRender, screenMode, viewportSize.height, viewportSize.width]);
-
-  React.useEffect(() => {
-    const bar = bottomBarRef.current;
-    if (!bar) return undefined;
-
-    const update = () => {
-      const nextHeight = Math.max(1, Math.round(bar.getBoundingClientRect().height));
-      setBottomBarHeight((prev) => (prev === nextHeight ? prev : nextHeight));
-    };
-
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(bar);
-    window.addEventListener('resize', update);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, [isMobile, previewResult, screenMode]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return undefined;
@@ -776,7 +754,6 @@ export default function StickerBrushEditor({
   const navigationTip = isMobile
     ? 'Two-finger drag to pan'
     : 'Shift + drag to pan';
-  const editorBottomInset = bottomBarHeight + FLOATING_CANVAS_CONTROL_GAP_PX;
   const previewImageSrc = previewResult?.dataUrl || imageSrc;
   const handleUndo = React.useCallback(() => {
     if (historyIndexRef.current <= 0) return;
@@ -865,11 +842,13 @@ export default function StickerBrushEditor({
     <Box
       sx={{
         width: '100%',
-        minHeight: { xs: 'calc(100svh - 28px)', md: 'calc(100dvh - 72px)' },
+        height: '100%',
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         borderRadius: { xs: 0, md: 3 },
         overflow: 'hidden',
+        overscrollBehavior: 'none',
         bgcolor: theme.palette.mode === 'dark' ? '#0b0c0f' : '#fbfbfc',
         border: { xs: 'none', md: `1px solid ${alpha(theme.palette.divider, 0.9)}` },
       }}
@@ -887,6 +866,7 @@ export default function StickerBrushEditor({
           flex: '1 1 auto',
           minHeight: 0,
           overflow: 'hidden',
+          overscrollBehavior: 'none',
           bgcolor: theme.palette.mode === 'dark' ? '#111317' : '#eff1f4',
         }}
       >
@@ -912,7 +892,7 @@ export default function StickerBrushEditor({
               width: '100%',
               height: '100%',
               display: 'block',
-              touchAction: screenMode === 'preview' ? 'auto' : 'none',
+              touchAction: 'none',
               cursor: screenMode === 'preview' ? 'default' : canvasCursor,
               position: 'relative',
             }}
@@ -1099,21 +1079,10 @@ export default function StickerBrushEditor({
       </Box>
 
       <Box
-        aria-hidden
         sx={{
+          position: 'relative',
+          zIndex: 3,
           flexShrink: 0,
-          height: `${editorBottomInset}px`,
-        }}
-      />
-
-      <Box
-        ref={bottomBarRef}
-        sx={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 1600,
           bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.96 : 0.98),
           borderTop: `1px solid ${alpha(theme.palette.divider, 0.75)}`,
           boxShadow: `0 -8px 30px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.14)}`,

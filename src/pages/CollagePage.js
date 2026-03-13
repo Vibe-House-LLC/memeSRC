@@ -3178,7 +3178,9 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{
           flexGrow: 1,
-          pb: !showResultDialog && hasImages
+          pb: stickerFlowOpen
+            ? 0
+            : (!showResultDialog && hasImages
             ? (isMobile
               ? (
                 shouldShowBottomBar
@@ -3186,21 +3188,26 @@ export default function CollagePage() {
                   : 'calc(env(safe-area-inset-bottom, 0px) + 10px)'
               )
               : 8)
-            : (isMobile ? 2 : 4),
+            : (isMobile ? 2 : 4)),
           width: '100%',
           overflowX: 'hidden',
-          overflowY: 'visible', // Allow vertical overflow for caption editor
-          minHeight: '100vh',
+          overflowY: stickerFlowOpen ? 'hidden' : 'visible', // Allow vertical overflow for caption editor
+          minHeight: stickerFlowOpen ? mobileViewportHeightCss : '100vh',
+          height: stickerFlowOpen ? mobileViewportHeightCss : 'auto',
           bgcolor: 'background.default'
         }}>
           <Container 
             maxWidth="xl" 
             sx={{ 
-              mb: 15,
-              pt: isMobile ? 1 : 1.5,
+              mb: stickerFlowOpen ? 0 : 15,
+              pt: stickerFlowOpen ? 0 : (isMobile ? 1 : 1.5),
               px: isMobile ? 1 : 2,
               width: '100%',
-              overflow: 'visible' // Allow caption editor to overflow container bounds
+              overflow: stickerFlowOpen ? 'hidden' : 'visible', // Allow caption editor to overflow container bounds
+              minHeight: stickerFlowOpen ? '100%' : 'auto',
+              height: stickerFlowOpen ? '100%' : 'auto',
+              display: 'flex',
+              flexDirection: 'column',
             }}
             disableGutters={isMobile}
           >
@@ -3345,7 +3352,15 @@ export default function CollagePage() {
               </>
             )}
 
-            <Box sx={{ position: 'relative' }}>
+            <Box
+              sx={{
+                position: 'relative',
+                flex: stickerFlowOpen ? '1 1 auto' : '0 0 auto',
+                minHeight: stickerFlowOpen ? 0 : 'auto',
+                height: stickerFlowOpen ? '100%' : 'auto',
+                overflow: stickerFlowOpen ? 'hidden' : 'visible',
+              }}
+            >
               {stickerFlowOpen ? (
                 <StickerAddFlow
                   onClose={() => setStickerFlowOpen(false)}
