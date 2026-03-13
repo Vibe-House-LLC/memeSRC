@@ -14,6 +14,7 @@ export type ViewTransform = {
   scale: number;
   offsetX: number;
   offsetY: number;
+  rotation: number;
 };
 
 export type LoadedStickerSource = {
@@ -460,6 +461,7 @@ export const renderStickerViewport = ({
   renderCheckerboard(ctx, targetCanvas.width, targetCanvas.height);
   ctx.save();
   ctx.translate(transform.offsetX, transform.offsetY);
+  ctx.rotate(transform.rotation || 0);
   ctx.scale(transform.scale, transform.scale);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(compositeCanvas, 0, 0);
@@ -486,6 +488,7 @@ export const createFitTransform = (
     scale: nextScale,
     offsetX: (safeViewportWidth - (safeImageWidth * nextScale)) / 2,
     offsetY: (safeViewportHeight - (safeImageHeight * nextScale)) / 2,
+    rotation: 0,
   };
 };
 
@@ -497,11 +500,12 @@ export const clampTransformToViewport = (
   viewportHeight: number,
   minScale: number
 ): ViewTransform => {
-  const scale = Math.max(minScale, transform.scale);
+  const scale = Math.max(minScale, Number.isFinite(transform.scale) ? transform.scale : minScale);
   return {
     scale,
-    offsetX: transform.offsetX,
-    offsetY: transform.offsetY,
+    offsetX: Number.isFinite(transform.offsetX) ? transform.offsetX : 0,
+    offsetY: Number.isFinite(transform.offsetY) ? transform.offsetY : 0,
+    rotation: Number.isFinite(transform.rotation) ? transform.rotation : 0,
   };
 };
 
@@ -510,20 +514,27 @@ export const createCenteredTransformForBounds = ({
   viewportWidth,
   viewportHeight,
   scale,
+  rotation = 0,
 }: {
   bounds: PixelBounds;
   viewportWidth: number;
   viewportHeight: number;
   scale: number;
+  rotation?: number;
 }): ViewTransform => {
   const safeScale = Math.max(0.01, scale);
   const contentCenterX = bounds.x + (bounds.width / 2);
   const contentCenterY = bounds.y + (bounds.height / 2);
+  const cosine = Math.cos(rotation);
+  const sine = Math.sin(rotation);
+  const rotatedCenterX = ((contentCenterX * cosine) - (contentCenterY * sine)) * safeScale;
+  const rotatedCenterY = ((contentCenterX * sine) + (contentCenterY * cosine)) * safeScale;
 
   return {
     scale: safeScale,
-    offsetX: (viewportWidth / 2) - (contentCenterX * safeScale),
-    offsetY: (viewportHeight / 2) - (contentCenterY * safeScale),
+    offsetX: (viewportWidth / 2) - rotatedCenterX,
+    offsetY: (viewportHeight / 2) - rotatedCenterY,
+    rotation,
   };
 };
 
@@ -531,10 +542,36 @@ export const screenToImagePoint = (
   x: number,
   y: number,
   transform: ViewTransform
-): { x: number; y: number } => ({
-  x: (x - transform.offsetX) / transform.scale,
-  y: (y - transform.offsetY) / transform.scale,
-});
+): { x: number; y: number } => {
+  const scale = Math.max(0.0001, transform.scale);
+  const translatedX = x - transform.offsetX;
+  const translatedY = y - transform.offsetY;
+  const rotation = transform.rotation || 0;
+  const cosine = Math.cos(-rotation);
+  const sine = Math.sin(-rotation);
+
+  return {
+    x: ((translatedX * cosine) - (translatedY * sine)) / scale,
+    y: ((translatedX * sine) + (translatedY * cosine)) / scale,
+  };
+};
+
+export const imageToScreenPoint = (
+  x: number,
+  y: number,
+  transform: ViewTransform
+): { x: number; y: number } => {
+  const rotation = transform.rotation || 0;
+  const cosine = Math.cos(rotation);
+  const sine = Math.sin(rotation);
+  const rotatedX = ((x * cosine) - (y * sine)) * transform.scale;
+  const rotatedY = ((x * sine) + (y * cosine)) * transform.scale;
+
+  return {
+    x: rotatedX + transform.offsetX,
+    y: rotatedY + transform.offsetY,
+  };
+};
 
 export const exportMaskedSticker = async ({
   sourceCanvas,

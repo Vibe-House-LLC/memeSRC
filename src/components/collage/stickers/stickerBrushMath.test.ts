@@ -6,7 +6,9 @@ import {
   createCenteredTransformForBounds,
   createOpaqueMaskData,
   getNonTransparentPixelBounds,
+  imageToScreenPoint,
   isMaskDataPristine,
+  screenToImagePoint,
 } from './stickerBrushMath';
 
 describe('stickerBrushMath', () => {
@@ -142,10 +144,12 @@ describe('stickerBrushMath', () => {
       scale: 0.2,
       offsetX: 480,
       offsetY: -320,
+      rotation: Math.PI / 6,
     }, 400, 400, 200, 200, 0.5)).toEqual({
       scale: 0.5,
       offsetX: 480,
       offsetY: -320,
+      rotation: Math.PI / 6,
     });
   });
 
@@ -160,10 +164,47 @@ describe('stickerBrushMath', () => {
       viewportWidth: 200,
       viewportHeight: 160,
       scale: 2,
+      rotation: 0,
     })).toEqual({
       scale: 2,
       offsetX: 0,
       offsetY: -20,
+      rotation: 0,
+    });
+  });
+
+  test('rotation-aware transforms round-trip between image and screen space', () => {
+    const transform = {
+      scale: 2.5,
+      offsetX: 30,
+      offsetY: -15,
+      rotation: Math.PI / 4,
+    };
+
+    const screenPoint = imageToScreenPoint(20, 10, transform);
+    const imagePoint = screenToImagePoint(screenPoint.x, screenPoint.y, transform);
+
+    expect(imagePoint.x).toBeCloseTo(20, 5);
+    expect(imagePoint.y).toBeCloseTo(10, 5);
+  });
+
+  test('center transform respects current rotation', () => {
+    expect(createCenteredTransformForBounds({
+      bounds: {
+        x: 30,
+        y: 20,
+        width: 20,
+        height: 40,
+      },
+      viewportWidth: 200,
+      viewportHeight: 200,
+      scale: 2,
+      rotation: Math.PI / 2,
+    })).toEqual({
+      scale: 2,
+      offsetX: 180,
+      offsetY: 20,
+      rotation: Math.PI / 2,
     });
   });
 });

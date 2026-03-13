@@ -36,6 +36,7 @@ import {
   createTransparentCanvas,
   exportMaskedSticker,
   getCanvasNonTransparentBounds,
+  imageToScreenPoint,
   isMaskCanvasPristine,
   loadStickerSource,
   renderStickerViewport,
@@ -69,6 +70,8 @@ const clamp = (value: number, min: number, max: number): number => Math.max(min,
 const DRAW_START_THRESHOLD_PX = 6;
 const FLOATING_CANVAS_CONTROL_GAP_PX = 16;
 const HISTORY_LIMIT = 40;
+const MIN_VIEW_SCALE = 0.005;
+const MAX_VIEW_SCALE = 512;
 
 const getDistance = (first: PointerPoint, second: PointerPoint): number => {
   const dx = second.x - first.x;
@@ -80,6 +83,16 @@ const getMidpoint = (first: PointerPoint, second: PointerPoint): PointerPoint =>
   x: (first.x + second.x) / 2,
   y: (first.y + second.y) / 2,
 });
+
+const getAngle = (first: PointerPoint, second: PointerPoint): number => (
+  Math.atan2(second.y - first.y, second.x - first.x)
+);
+
+const getOrderedActivePoints = (pointers: Map<number, PointerPoint>): PointerPoint[] => (
+  Array.from(pointers.entries())
+    .sort(([firstId], [secondId]) => firstId - secondId)
+    .map(([, point]) => point)
+);
 
 export default function StickerBrushEditor({
   imageSrc,
@@ -107,7 +120,6 @@ export default function StickerBrushEditor({
     hasApproximateEdits: boolean;
     previewResult: ExportedStickerEdit | null;
   } | null>(null);
-  const minScaleRef = React.useRef(0.1);
   const renderFrameRef = React.useRef<number | null>(null);
   const brushPreviewTimeoutRef = React.useRef<number | null>(null);
   const activePointersRef = React.useRef<Map<number, PointerPoint>>(new Map());
@@ -121,8 +133,8 @@ export default function StickerBrushEditor({
   const pinchStateRef = React.useRef<{
     startDistance: number;
     startScale: number;
-    startOffsetX: number;
-    startOffsetY: number;
+    startRotation: number;
+    startAngle: number;
     startMidImage: PointerPoint;
   } | null>(null);
   const [brushMode, setBrushMode] = React.useState<'erase' | 'restore'>('erase');
@@ -167,7 +179,7 @@ export default function StickerBrushEditor({
       loadedSource.height,
       viewportSize.width,
       viewportSize.height,
-      minScaleRef.current
+      MIN_VIEW_SCALE
     );
   }, [loadedSource, viewportSize.height, viewportSize.width]);
 
@@ -226,7 +238,6 @@ export default function StickerBrushEditor({
       viewportSize.height,
       isMobile ? 14 : 24
     );
-    minScaleRef.current = fit.scale;
     hasUserAdjustedViewRef.current = false;
     setTransform(fit);
   }, [isMobile, loadedSource, setTransform, viewportSize.height, viewportSize.width]);
@@ -504,14 +515,14 @@ export default function StickerBrushEditor({
   }, []);
 
   const beginPinch = React.useCallback(() => {
-    const pointers = Array.from(activePointersRef.current.values());
+    const pointers = getOrderedActivePoints(activePointersRef.current);
     if (pointers.length < 2 || !transformRef.current) return;
     const midpoint = getMidpoint(pointers[0], pointers[1]);
     pinchStateRef.current = {
       startDistance: Math.max(1, getDistance(pointers[0], pointers[1])),
       startScale: transformRef.current.scale,
-      startOffsetX: transformRef.current.offsetX,
-      startOffsetY: transformRef.current.offsetY,
+      startRotation: transformRef.current.rotation || 0,
+      startAngle: getAngle(pointers[0], pointers[1]),
       startMidImage: screenToImagePoint(midpoint.x, midpoint.y, transformRef.current),
     };
     clearPendingDraw();
@@ -560,18 +571,29 @@ export default function StickerBrushEditor({
     }
 
     if (interactionModeRef.current === 'pinch') {
-      const pointers = Array.from(activePointersRef.current.values());
+      const pointers = getOrderedActivePoints(activePointersRef.current);
       const pinchState = pinchStateRef.current;
       if (pointers.length < 2 || !pinchState || !loadedSource) return;
       const midpoint = getMidpoint(pointers[0], pointers[1]);
       const distance = Math.max(1, getDistance(pointers[0], pointers[1]));
-      const scale = clamp(pinchState.startScale * (distance / pinchState.startDistance), minScaleRef.current, minScaleRef.current * 8);
-      const nextOffsetX = midpoint.x - (pinchState.startMidImage.x * scale);
-      const nextOffsetY = midpoint.y - (pinchState.startMidImage.y * scale);
+      const angle = getAngle(pointers[0], pointers[1]);
+      const scale = clamp(pinchState.startScale * (distance / pinchState.startDistance), MIN_VIEW_SCALE, MAX_VIEW_SCALE);
+      const rotation = pinchState.startRotation + (angle - pinchState.startAngle);
+      const transformedMidpoint = imageToScreenPoint(
+        pinchState.startMidImage.x,
+        pinchState.startMidImage.y,
+        {
+          scale,
+          offsetX: 0,
+          offsetY: 0,
+          rotation,
+        }
+      );
       setUserTransform({
         scale,
-        offsetX: nextOffsetX,
-        offsetY: nextOffsetY,
+        offsetX: midpoint.x - transformedMidpoint.x,
+        offsetY: midpoint.y - transformedMidpoint.y,
+        rotation,
       });
       event.preventDefault();
       return;
@@ -587,6 +609,7 @@ export default function StickerBrushEditor({
         scale: current.scale,
         offsetX: current.offsetX + deltaX,
         offsetY: current.offsetY + deltaY,
+        rotation: current.rotation,
       });
       event.preventDefault();
       return;
@@ -617,7 +640,7 @@ export default function StickerBrushEditor({
       };
       event.preventDefault();
     }
-  }, [applyStroke, getCanvasLocalPoint, loadedSource, setTransform]);
+  }, [applyStroke, getCanvasLocalPoint, loadedSource, setUserTransform]);
 
   const finishPointer = React.useCallback((pointerId: number) => {
     activePointersRef.current.delete(pointerId);
@@ -662,12 +685,19 @@ export default function StickerBrushEditor({
     const point = getCanvasLocalPoint(event as unknown as React.PointerEvent<HTMLCanvasElement>);
     if (!point) return;
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.92;
-    const nextScale = clamp(current.scale * zoomFactor, minScaleRef.current, minScaleRef.current * 8);
+    const nextScale = clamp(current.scale * zoomFactor, MIN_VIEW_SCALE, MAX_VIEW_SCALE);
     const imagePoint = screenToImagePoint(point.x, point.y, current);
+    const transformedPoint = imageToScreenPoint(imagePoint.x, imagePoint.y, {
+      scale: nextScale,
+      offsetX: 0,
+      offsetY: 0,
+      rotation: current.rotation,
+    });
     setUserTransform({
       scale: nextScale,
-      offsetX: point.x - (imagePoint.x * nextScale),
-      offsetY: point.y - (imagePoint.y * nextScale),
+      offsetX: point.x - transformedPoint.x,
+      offsetY: point.y - transformedPoint.y,
+      rotation: current.rotation,
     });
   }, [getCanvasLocalPoint, loadedSource, setUserTransform]);
 
@@ -707,6 +737,7 @@ export default function StickerBrushEditor({
       viewportWidth: viewportSize.width,
       viewportHeight: viewportSize.height,
       scale: current.scale,
+      rotation: current.rotation,
     }));
   }, [setUserTransform, viewportSize.height, viewportSize.width]);
 
@@ -752,8 +783,8 @@ export default function StickerBrushEditor({
     )
     : 'crosshair';
   const navigationTip = isMobile
-    ? 'Two-finger drag to pan'
-    : 'Shift + drag to pan';
+    ? 'Pinch to zoom, rotate, or pan'
+    : 'Wheel to zoom, Shift + drag to pan';
   const previewImageSrc = previewResult?.dataUrl || imageSrc;
   const handleUndo = React.useCallback(() => {
     if (historyIndexRef.current <= 0) return;
