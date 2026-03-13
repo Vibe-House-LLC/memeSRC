@@ -17,7 +17,9 @@ import {
   CenterFocusStrongRounded,
   FitScreenRounded,
   OpenWithRounded,
+  RedoRounded,
   ReplayRounded,
+  UndoRounded,
   WaterDropRounded,
   ZoomInRounded,
 } from '@mui/icons-material';
@@ -34,6 +36,7 @@ import {
   createTransparentCanvas,
   exportMaskedSticker,
   getCanvasNonTransparentBounds,
+  isMaskCanvasPristine,
   loadStickerSource,
   renderStickerViewport,
   resetMaskCanvas,
@@ -65,6 +68,7 @@ type DrawSession = {
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 const DRAW_START_THRESHOLD_PX = 6;
 const FLOATING_CANVAS_CONTROL_GAP_PX = 16;
+const HISTORY_LIMIT = 40;
 
 const getDistance = (first: PointerPoint, second: PointerPoint): number => {
   const dx = second.x - first.x;
@@ -94,6 +98,9 @@ export default function StickerBrushEditor({
   const strokeBaseMaskCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const strokeOverlayCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const transformRef = React.useRef<ViewTransform | null>(null);
+  const hasUserAdjustedViewRef = React.useRef(false);
+  const historySnapshotsRef = React.useRef<HTMLCanvasElement[]>([]);
+  const historyIndexRef = React.useRef(0);
   const minScaleRef = React.useRef(0.1);
   const renderFrameRef = React.useRef<number | null>(null);
   const brushPreviewTimeoutRef = React.useRef<number | null>(null);
@@ -127,6 +134,7 @@ export default function StickerBrushEditor({
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
   const [bottomBarHeight, setBottomBarHeight] = React.useState(152);
   const [brushPreviewVisible, setBrushPreviewVisible] = React.useState(false);
+  const [historyState, setHistoryState] = React.useState({ canUndo: false, canRedo: false });
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -162,6 +170,11 @@ export default function StickerBrushEditor({
     scheduleRender();
   }, [clampTransform, scheduleRender]);
 
+  const setUserTransform = React.useCallback((nextTransform: ViewTransform) => {
+    hasUserAdjustedViewRef.current = true;
+    setTransform(nextTransform);
+  }, [setTransform]);
+
   const revealBrushPreview = React.useCallback(() => {
     setBrushPreviewVisible(true);
     if (brushPreviewTimeoutRef.current != null) {
@@ -173,6 +186,30 @@ export default function StickerBrushEditor({
     }, 900);
   }, []);
 
+  const syncHistoryState = React.useCallback(() => {
+    setHistoryState({
+      canUndo: historyIndexRef.current > 0,
+      canRedo: historyIndexRef.current < (historySnapshotsRef.current.length - 1),
+    });
+  }, []);
+
+  const initializeHistory = React.useCallback((maskCanvas: HTMLCanvasElement) => {
+    historySnapshotsRef.current = [cloneCanvas(maskCanvas)];
+    historyIndexRef.current = 0;
+    syncHistoryState();
+  }, [syncHistoryState]);
+
+  const commitHistorySnapshot = React.useCallback((maskCanvas: HTMLCanvasElement) => {
+    const nextSnapshots = historySnapshotsRef.current.slice(0, historyIndexRef.current + 1);
+    nextSnapshots.push(cloneCanvas(maskCanvas));
+    if (nextSnapshots.length > HISTORY_LIMIT) {
+      nextSnapshots.shift();
+    }
+    historySnapshotsRef.current = nextSnapshots;
+    historyIndexRef.current = nextSnapshots.length - 1;
+    syncHistoryState();
+  }, [syncHistoryState]);
+
   const resetViewToFit = React.useCallback(() => {
     if (!loadedSource || viewportSize.width <= 0 || viewportSize.height <= 0) return;
     const fit = createFitTransform(
@@ -183,6 +220,7 @@ export default function StickerBrushEditor({
       isMobile ? 14 : 24
     );
     minScaleRef.current = fit.scale;
+    hasUserAdjustedViewRef.current = false;
     setTransform(fit);
   }, [isMobile, loadedSource, setTransform, viewportSize.height, viewportSize.width]);
 
@@ -194,6 +232,23 @@ export default function StickerBrushEditor({
     updateCompositeCanvas(compositeCanvas, sourceCanvas, maskCanvas);
     scheduleRender();
   }, [scheduleRender]);
+
+  const restoreMaskFromHistory = React.useCallback((nextIndex: number) => {
+    const maskCanvas = maskCanvasRef.current;
+    const snapshot = historySnapshotsRef.current[nextIndex];
+    if (!maskCanvas || !snapshot) return;
+    const ctx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    ctx.drawImage(snapshot, 0, 0);
+    historyIndexRef.current = nextIndex;
+    hasApproximateEditsRef.current = !isMaskCanvasPristine(maskCanvas);
+    setHasApproximateEdits(hasApproximateEditsRef.current);
+    setPreviewResult(null);
+    syncHistoryState();
+    refreshComposite();
+  }, [refreshComposite, syncHistoryState]);
 
   React.useEffect(() => {
     const viewport = viewportRef.current;
@@ -235,12 +290,15 @@ export default function StickerBrushEditor({
         const source = await loadStickerSource(imageSrc, STICKER_EDITOR_MAX_DIMENSION_PX);
         if (cancelled) return;
         sourceCanvasRef.current = source.canvas;
-        maskCanvasRef.current = createOpaqueMaskCanvas(source.width, source.height);
+        const maskCanvas = createOpaqueMaskCanvas(source.width, source.height);
+        maskCanvasRef.current = maskCanvas;
         compositeCanvasRef.current = document.createElement('canvas');
         setLoadedSource(source);
+        hasUserAdjustedViewRef.current = false;
         hasApproximateEditsRef.current = false;
         setHasApproximateEdits(false);
         setPreviewResult(null);
+        initializeHistory(maskCanvas);
         refreshComposite();
       } catch (error) {
         if (cancelled) return;
@@ -253,12 +311,12 @@ export default function StickerBrushEditor({
     return () => {
       cancelled = true;
     };
-  }, [imageSrc, refreshComposite]);
+  }, [imageSrc, initializeHistory, refreshComposite]);
 
   React.useEffect(() => {
     if (!loadedSource || viewportSize.width <= 0 || viewportSize.height <= 0) return;
-    const hasTransform = Boolean(transformRef.current);
-    if (!hasTransform) {
+    const shouldAutoFit = !transformRef.current || !hasUserAdjustedViewRef.current;
+    if (shouldAutoFit) {
       resetViewToFit();
       return;
     }
@@ -478,7 +536,7 @@ export default function StickerBrushEditor({
       const scale = clamp(pinchState.startScale * (distance / pinchState.startDistance), minScaleRef.current, minScaleRef.current * 8);
       const nextOffsetX = midpoint.x - (pinchState.startMidImage.x * scale);
       const nextOffsetY = midpoint.y - (pinchState.startMidImage.y * scale);
-      setTransform({
+      setUserTransform({
         scale,
         offsetX: nextOffsetX,
         offsetY: nextOffsetY,
@@ -493,7 +551,7 @@ export default function StickerBrushEditor({
       lastPanPointRef.current = point;
       const current = transformRef.current;
       if (!current) return;
-      setTransform({
+      setUserTransform({
         scale: current.scale,
         offsetX: current.offsetX + deltaX,
         offsetY: current.offsetY + deltaY,
@@ -538,6 +596,9 @@ export default function StickerBrushEditor({
         applyStroke(currentSession.startPoint, currentSession.startPoint);
       }
       clearPendingDraw();
+      if (maskCanvasRef.current) {
+        commitHistorySnapshot(maskCanvasRef.current);
+      }
     }
     if (panPointerIdRef.current === pointerId) {
       panPointerIdRef.current = null;
@@ -551,7 +612,7 @@ export default function StickerBrushEditor({
 
     setInteraction('none');
     pinchStateRef.current = null;
-  }, [applyStroke, beginPinch, clearPendingDraw, setInteraction]);
+  }, [applyStroke, beginPinch, clearPendingDraw, commitHistorySnapshot, setInteraction]);
 
   const handlePointerUp = React.useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     finishPointer(event.pointerId);
@@ -571,12 +632,12 @@ export default function StickerBrushEditor({
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.92;
     const nextScale = clamp(current.scale * zoomFactor, minScaleRef.current, minScaleRef.current * 8);
     const imagePoint = screenToImagePoint(point.x, point.y, current);
-    setTransform({
+    setUserTransform({
       scale: nextScale,
       offsetX: point.x - (imagePoint.x * nextScale),
       offsetY: point.y - (imagePoint.y * nextScale),
     });
-  }, [getCanvasLocalPoint, loadedSource, setTransform]);
+  }, [getCanvasLocalPoint, loadedSource, setUserTransform]);
 
   const handleReset = React.useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
@@ -592,8 +653,9 @@ export default function StickerBrushEditor({
     setInteraction('none');
     setPreviewResult(null);
     setBrushPreviewVisible(false);
+    commitHistorySnapshot(maskCanvas);
     refreshComposite();
-  }, [clearPendingDraw, refreshComposite, setInteraction]);
+  }, [clearPendingDraw, commitHistorySnapshot, refreshComposite, setInteraction]);
 
   const handleRecenter = React.useCallback(() => {
     const compositeCanvas = compositeCanvasRef.current;
@@ -607,13 +669,13 @@ export default function StickerBrushEditor({
       height: compositeCanvas.height,
     };
 
-    setTransform(createCenteredTransformForBounds({
+    setUserTransform(createCenteredTransformForBounds({
       bounds: visibleBounds,
       viewportWidth: viewportSize.width,
       viewportHeight: viewportSize.height,
       scale: current.scale,
     }));
-  }, [setTransform, viewportSize.height, viewportSize.width]);
+  }, [setUserTransform, viewportSize.height, viewportSize.width]);
 
   const handlePreview = React.useCallback(async () => {
     const sourceCanvas = sourceCanvasRef.current;
@@ -655,6 +717,15 @@ export default function StickerBrushEditor({
     ? 'Two-finger drag to pan'
     : 'Shift + drag to pan';
   const editorBottomInset = bottomBarHeight + FLOATING_CANVAS_CONTROL_GAP_PX;
+  const handleUndo = React.useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    restoreMaskFromHistory(historyIndexRef.current - 1);
+  }, [restoreMaskFromHistory]);
+
+  const handleRedo = React.useCallback(() => {
+    if (historyIndexRef.current >= historySnapshotsRef.current.length - 1) return;
+    restoreMaskFromHistory(historyIndexRef.current + 1);
+  }, [restoreMaskFromHistory]);
   const brushPreviewDiameter = clamp(brushSize, 14, Math.min(150, Math.max(80, viewportSize.width * 0.28 || 150)));
   const brushPreviewTint = brushMode === 'erase'
     ? alpha(theme.palette.error.main, Math.max(0.16, brushOpacity * 0.24))
@@ -910,6 +981,34 @@ export default function StickerBrushEditor({
                 sx={overlayIconButtonSx}
               >
                 <CenterFocusStrongRounded sx={{ fontSize: 19 }} />
+              </IconButton>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={0.8}
+              sx={{
+                position: 'absolute',
+                right: 12,
+                bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
+                zIndex: 2,
+              }}
+            >
+              <IconButton
+                onClick={handleUndo}
+                disabled={!historyState.canUndo}
+                aria-label="Undo sticker edit"
+                sx={overlayIconButtonSx}
+              >
+                <UndoRounded sx={{ fontSize: 19 }} />
+              </IconButton>
+              <IconButton
+                onClick={handleRedo}
+                disabled={!historyState.canRedo}
+                aria-label="Redo sticker edit"
+                sx={overlayIconButtonSx}
+              >
+                <RedoRounded sx={{ fontSize: 19 }} />
               </IconButton>
             </Stack>
           </>
