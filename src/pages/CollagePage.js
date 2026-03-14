@@ -25,9 +25,10 @@ import {
   TOP_CAPTION_DEFAULT_SPACING_Y,
 } from "../components/collage/constants/topCaptionDefaults";
 import { get as getFromLibrary } from "../utils/library/storage";
-import { LibraryPickerDialog } from "../components/library";
+import { saveImageToLibrary } from "../utils/library/saveImageToLibrary";
 import EarlyAccessFeedback from "../components/collage/components/EarlyAccessFeedback";
 import CollageResultDialog from "../components/collage/components/CollageResultDialog";
+import StickerAddFlow from "../components/collage/stickers/StickerAddFlow";
 import { trackUsageEvent } from "../utils/trackUsageEvent";
 
 // Pure helpers (module scope) to avoid TDZ and keep stable references
@@ -51,6 +52,64 @@ function blobToDataUrl(blob) {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function rotatePoint(x, y, radians) {
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: (x * cos) - (y * sin),
+    y: (x * sin) + (y * cos),
+  };
+}
+
+function computePlacedStickerUpdateFromCrop(existingEditContext, edit) {
+  const rect = existingEditContext?.displayRectPx;
+  const previewCanvasSize = existingEditContext?.previewCanvasSize;
+  const cropBounds = edit?.cropBounds;
+  const sourceWidth = Math.max(1, Number(edit?.sourceWidth || existingEditContext?.sourceWorkingDimensions?.width || 1));
+  const sourceHeight = Math.max(1, Number(edit?.sourceHeight || existingEditContext?.sourceWorkingDimensions?.height || 1));
+  const previewWidth = Math.max(1, Number(previewCanvasSize?.width || 1));
+  const previewHeight = Math.max(1, Number(previewCanvasSize?.height || 1));
+  if (!rect || !cropBounds) {
+    return {
+      xPercent: existingEditContext?.placement?.xPercent,
+      yPercent: existingEditContext?.placement?.yPercent,
+      widthPercent: existingEditContext?.placement?.widthPercent,
+      aspectRatio: (edit?.width > 0 && edit?.height > 0) ? (edit.width / edit.height) : existingEditContext?.placement?.aspectRatio,
+      angleDeg: existingEditContext?.placement?.angleDeg,
+    };
+  }
+
+  const visibleCenterLocalX = rect.width * ((cropBounds.x + (cropBounds.width / 2)) / sourceWidth);
+  const visibleCenterLocalY = rect.height * ((cropBounds.y + (cropBounds.height / 2)) / sourceHeight);
+  const newWidthPx = rect.width * (cropBounds.width / sourceWidth);
+  const newHeightPx = rect.height * (cropBounds.height / sourceHeight);
+  const oldCenterX = rect.x + (rect.width / 2);
+  const oldCenterY = rect.y + (rect.height / 2);
+  const deltaFromOldCenter = {
+    x: visibleCenterLocalX - (rect.width / 2),
+    y: visibleCenterLocalY - (rect.height / 2),
+  };
+  const rotatedDelta = rotatePoint(
+    deltaFromOldCenter.x,
+    deltaFromOldCenter.y,
+    ((rect.angleDeg || 0) * Math.PI) / 180
+  );
+  const newCenterX = oldCenterX + rotatedDelta.x;
+  const newCenterY = oldCenterY + rotatedDelta.y;
+  const newX = newCenterX - (newWidthPx / 2);
+  const newY = newCenterY - (newHeightPx / 2);
+
+  return {
+    xPercent: (newX / previewWidth) * 100,
+    yPercent: (newY / previewHeight) * 100,
+    widthPercent: (newWidthPx / previewWidth) * 100,
+    aspectRatio: (edit?.width > 0 && edit?.height > 0)
+      ? (edit.width / edit.height)
+      : (newWidthPx > 0 && newHeightPx > 0 ? (newWidthPx / newHeightPx) : existingEditContext?.placement?.aspectRatio),
+    angleDeg: existingEditContext?.placement?.angleDeg,
+  };
 }
 
 // Guard against adopting a stale custom layout from snapshots saved
@@ -303,9 +362,7 @@ export default function CollagePage() {
   const mobileSettingsPreviewRequestRef = useRef(0);
   const mobileSettingsOpenSigRef = useRef(null);
   const [headerAddMenuAnchorEl, setHeaderAddMenuAnchorEl] = useState(null);
-  const [headerStickerPickerOpen, setHeaderStickerPickerOpen] = useState(false);
-  const [headerStickerPickerBusy, setHeaderStickerPickerBusy] = useState(false);
-  const [headerStickerPickerError, setHeaderStickerPickerError] = useState('');
+  const [stickerFlowState, setStickerFlowState] = useState(null);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -314,6 +371,7 @@ export default function CollagePage() {
   const [panelTransformAutoOpenRequest, setPanelTransformAutoOpenRequest] = useState(null);
   const [panelReorderAutoOpenRequest, setPanelReorderAutoOpenRequest] = useState(null);
   const [removePanelDialog, setRemovePanelDialog] = useState({ open: false, panelId: null, hasImage: false });
+  const stickerFlowOpen = Boolean(stickerFlowState);
   
   // Adopt a pre-created project id passed via navigation state (e.g., from editor)
   useEffect(() => {
@@ -2759,24 +2817,96 @@ export default function CollagePage() {
     })
   ), []);
 
-  const handleAddStickerFromLibrary = useCallback(async (selectedItem) => {
+  const prepareStickerSourceForEditing = useCallback(async (selectedItem) => {
     if (!canManageStickers) {
-      setSnackbar({ open: true, message: 'Log in with library access to use stickers.', severity: 'warning' });
-      return null;
+      throw new Error('Log in with library access to use stickers.');
     }
     if (!selectedItem) return null;
 
     const { dataUrl, metadata } = await resolveStickerSource(selectedItem);
     const aspectRatio = await getStickerAspectRatio(dataUrl);
-    const stickerId = addSticker({
-      originalUrl: dataUrl,
-      thumbnailUrl: dataUrl,
+    return {
+      dataUrl,
       metadata,
+      aspectRatio,
+      originalItem: selectedItem,
+    };
+  }, [canManageStickers, getStickerAspectRatio, resolveStickerSource]);
+
+  const closeStickerFlow = useCallback(() => {
+    setStickerFlowState(null);
+  }, []);
+
+  const commitStickerFromFlow = useCallback(async ({ mode, preparedSource, edit, existingEditContext }) => {
+    if (!preparedSource || !edit) return null;
+
+    let stickerMetadata = preparedSource.metadata && typeof preparedSource.metadata === 'object'
+      ? { ...preparedSource.metadata }
+      : {};
+    let stickerUrl = preparedSource.dataUrl;
+    let aspectRatio = preparedSource.aspectRatio;
+
+    if (edit.changed) {
+      const derivedFromLibraryKey = typeof stickerMetadata.libraryKey === 'string'
+        ? stickerMetadata.libraryKey
+        : undefined;
+      const nextMetadata = {
+        ...stickerMetadata,
+        ...(derivedFromLibraryKey ? { derivedFromLibraryKey } : {}),
+        editedWithTransparency: true,
+        source: mode === 'edit-existing-sticker'
+          ? 'collage-placed-sticker-editor'
+          : 'collage-sticker-editor',
+      };
+      const libraryKey = await saveImageToLibrary(edit.blob, 'sticker-transparent.png', {
+        level: 'private',
+        metadata: nextMetadata,
+      });
+      stickerMetadata = {
+        ...nextMetadata,
+        libraryKey,
+      };
+      stickerUrl = edit.dataUrl;
+      if (edit.width > 0 && edit.height > 0) {
+        aspectRatio = edit.width / edit.height;
+      }
+    }
+
+    if (mode === 'edit-existing-sticker' && existingEditContext?.stickerId) {
+      if (!edit.changed) {
+        closeStickerFlow();
+        setCurrentView('editor');
+        return existingEditContext.stickerId;
+      }
+
+      const placementUpdate = computePlacedStickerUpdateFromCrop(existingEditContext, edit);
+      updateSticker(existingEditContext.stickerId, {
+        originalUrl: stickerUrl,
+        thumbnailUrl: stickerUrl,
+        metadata: stickerMetadata,
+        aspectRatio,
+        widthPercent: placementUpdate.widthPercent,
+        xPercent: placementUpdate.xPercent,
+        yPercent: placementUpdate.yPercent,
+        angleDeg: placementUpdate.angleDeg,
+      });
+      closeStickerFlow();
+      setCurrentView('editor');
+      return existingEditContext.stickerId;
+    }
+
+    const stickerId = addSticker({
+      originalUrl: stickerUrl,
+      thumbnailUrl: stickerUrl,
+      metadata: stickerMetadata,
       aspectRatio,
       widthPercent: 28,
     });
+
+    closeStickerFlow();
+    setCurrentView('editor');
     return stickerId;
-  }, [addSticker, canManageStickers, getStickerAspectRatio, resolveStickerSource]);
+  }, [addSticker, closeStickerFlow, updateSticker]);
 
   const openHeaderAddMenu = useCallback((event) => {
     setHeaderAddMenuAnchorEl(event.currentTarget);
@@ -2785,6 +2915,40 @@ export default function CollagePage() {
   const closeHeaderAddMenu = useCallback(() => {
     setHeaderAddMenuAnchorEl(null);
   }, []);
+
+  const openStickerAddFlow = useCallback(() => {
+    if (!canManageStickers) {
+      setSnackbar({ open: true, message: 'Log in with library access to use stickers.', severity: 'warning' });
+      return;
+    }
+    closeHeaderAddMenu();
+    setStickerFlowState({ mode: 'add-from-library' });
+  }, [canManageStickers, closeHeaderAddMenu]);
+
+  const handleEditStickerRequest = useCallback(async (editRequest) => {
+    if (!canManageStickers) {
+      setSnackbar({ open: true, message: 'Log in with library access to edit stickers.', severity: 'warning' });
+      return;
+    }
+    if (!editRequest?.sticker) return;
+
+    try {
+      const preparedSource = await prepareStickerSourceForEditing(editRequest.sticker);
+      if (!preparedSource) return;
+      setCurrentView('editor');
+      setStickerFlowState({
+        mode: 'edit-existing-sticker',
+        preparedSource,
+        existingEditContext: editRequest,
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Unable to edit that sticker right now.',
+        severity: 'error',
+      });
+    }
+  }, [canManageStickers, prepareStickerSourceForEditing]);
 
   const handleHeaderAddTopCaption = useCallback(() => {
     closeHeaderAddMenu();
@@ -2797,38 +2961,13 @@ export default function CollagePage() {
   }, [closeHeaderAddMenu, handleAddTextRequested]);
 
   const handleHeaderAddSticker = useCallback(() => {
-    closeHeaderAddMenu();
-    if (!canManageStickers) return;
-    setHeaderStickerPickerError('');
-    setHeaderStickerPickerOpen(true);
-  }, [canManageStickers, closeHeaderAddMenu]);
+    openStickerAddFlow();
+  }, [openStickerAddFlow]);
 
   const handleHeaderAddPanel = useCallback(() => {
     closeHeaderAddMenu();
     handleAddPanelRequested('start');
   }, [closeHeaderAddMenu, handleAddPanelRequested]);
-
-  const closeHeaderStickerPicker = useCallback(() => {
-    if (headerStickerPickerBusy) return;
-    setHeaderStickerPickerOpen(false);
-    setHeaderStickerPickerError('');
-  }, [headerStickerPickerBusy]);
-
-  const handleHeaderStickerSelect = useCallback(async (items) => {
-    if (!canManageStickers) return;
-    if (!Array.isArray(items) || items.length === 0) return;
-    setHeaderStickerPickerBusy(true);
-    setHeaderStickerPickerError('');
-    try {
-      await handleAddStickerFromLibrary(items[0]);
-      setHeaderStickerPickerOpen(false);
-    } catch (error) {
-      console.error('Failed to add sticker from header add menu', error);
-      setHeaderStickerPickerError('Unable to add that sticker right now.');
-    } finally {
-      setHeaderStickerPickerBusy(false);
-    }
-  }, [canManageStickers, handleAddStickerFromLibrary]);
 
   const handleAspectRatioSelection = useCallback((nextAspectRatioId) => {
     singleImageAutoCustomRef.current = false;
@@ -2877,7 +3016,7 @@ export default function CollagePage() {
     borderThicknessOptions,
     stickers,
     canManageStickers,
-    onAddStickerFromLibrary: handleAddStickerFromLibrary,
+    onAddStickerRequest: openStickerAddFlow,
     onMoveSticker: moveSticker,
     onRemoveSticker: removeSticker,
     onMovePanel: handleMovePanel,
@@ -2888,6 +3027,7 @@ export default function CollagePage() {
     onOpenPanelTransform: handlePanelTransformRequestedFromSettings,
     onOpenPanelReorder: handlePanelReorderRequestedFromSettings,
     onRemovePanelRequest: handlePanelRemoveRequestedFromSettings,
+    onEditStickerRequest: handleEditStickerRequest,
   };
 
   // Handler for when collage is generated - show inline result
@@ -2967,7 +3107,8 @@ export default function CollagePage() {
     onPanelReorderAutoOpenHandled: handlePanelReorderAutoOpenHandled,
     onRemovePanelRequest: handleRemovePanelRequest,
     onAddTextRequest: handleAddTextRequested,
-    onAddStickerFromLibrary: handleAddStickerFromLibrary,
+    onAddStickerRequest: openStickerAddFlow,
+    onEditStickerRequest: handleEditStickerRequest,
     canManageStickers,
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
@@ -3102,8 +3243,8 @@ export default function CollagePage() {
       <Settings />
     </Badge>
   );
-  const showHeaderAddButton = hasImages && currentView === 'editor';
-  const isMobileEditorWithImages = Boolean(isMobile && hasImages && currentView === 'editor');
+  const showHeaderAddButton = hasImages && currentView === 'editor' && !stickerFlowOpen;
+  const isMobileEditorWithImages = Boolean(isMobile && hasImages && currentView === 'editor' && !stickerFlowOpen);
   const isHeaderAddMenuOpen = Boolean(headerAddMenuAnchorEl);
   const canHeaderAddPanel = panelCount < MAX_IMAGES && !isCreatingCollage && !isHydratingProject;
   const resolvedMobileViewportHeight = mobileViewportHeight > 0 ? Math.round(mobileViewportHeight) : 0;
@@ -3120,6 +3261,7 @@ export default function CollagePage() {
     && !isCaptionEditorOpen
     && !isLibraryPickerOpen
     && !isPanelSourceDialogOpen
+    && !stickerFlowOpen
   );
   const headerAddButtonSx = {
     textTransform: 'none',
@@ -3151,7 +3293,9 @@ export default function CollagePage() {
       ) : (
         <Box component="main" sx={{
           flexGrow: 1,
-          pb: !showResultDialog && hasImages
+          pb: stickerFlowOpen
+            ? 0
+            : (!showResultDialog && hasImages
             ? (isMobile
               ? (
                 shouldShowBottomBar
@@ -3159,183 +3303,209 @@ export default function CollagePage() {
                   : 'calc(env(safe-area-inset-bottom, 0px) + 10px)'
               )
               : 8)
-            : (isMobile ? 2 : 4),
+            : (isMobile ? 2 : 4)),
           width: '100%',
           overflowX: 'hidden',
-          overflowY: 'visible', // Allow vertical overflow for caption editor
-          minHeight: '100vh',
+          overflowY: stickerFlowOpen ? 'hidden' : 'visible', // Allow vertical overflow for caption editor
+          minHeight: stickerFlowOpen ? mobileViewportHeightCss : '100vh',
+          height: stickerFlowOpen ? mobileViewportHeightCss : 'auto',
           bgcolor: 'background.default'
         }}>
           <Container 
             maxWidth="xl" 
             sx={{ 
-              mb: 15,
-              pt: isMobile ? 1 : 1.5,
+              mb: stickerFlowOpen ? 0 : 15,
+              pt: stickerFlowOpen ? 0 : (isMobile ? 1 : 1.5),
               px: isMobile ? 1 : 2,
               width: '100%',
-              overflow: 'visible' // Allow caption editor to overflow container bounds
+              overflow: stickerFlowOpen ? 'hidden' : 'visible', // Allow caption editor to overflow container bounds
+              minHeight: stickerFlowOpen ? '100%' : 'auto',
+              height: stickerFlowOpen ? '100%' : 'auto',
+              display: 'flex',
+              flexDirection: 'column',
             }}
             disableGutters={isMobile}
           >
             {/* Editor UI */}
             <>
-            {/* Page Header */}
-            <Box sx={{ mb: isMobile ? 0.8 : 1, px: isMobile ? 0.5 : 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 }}>
-                {hasProjectsAccess && currentView === 'editor' ? (
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={handleBackToProjects}
-                    disabled={isCreatingCollage}
-                    startIcon={<ArrowBack sx={{ fontSize: 16 }} />}
-                    sx={{
-                      minWidth: 0,
-                      px: 0.25,
-                      py: 0.2,
-                      color: 'text.secondary',
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      fontSize: isMobile ? '0.85rem' : '0.88rem',
-                      lineHeight: 1.1,
-                      '& .MuiButton-startIcon': { mr: 0.55, ml: 0 },
-                      '&:hover': { backgroundColor: 'transparent', color: 'text.primary' },
-                    }}
-                  >
-                    Back to My Memes
-                  </Button>
-                ) : (
-                  <Box sx={{ width: 1, minHeight: 1 }} />
-                )}
+            {!stickerFlowOpen && (
+              <>
+                {/* Page Header */}
+                <Box sx={{ mb: isMobile ? 0.8 : 1, px: isMobile ? 0.5 : 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 24 }}>
+                    {hasProjectsAccess && currentView === 'editor' ? (
+                      <Button
+                        variant="text"
+                        size="small"
+                        onClick={handleBackToProjects}
+                        disabled={isCreatingCollage}
+                        startIcon={<ArrowBack sx={{ fontSize: 16 }} />}
+                        sx={{
+                          minWidth: 0,
+                          px: 0.25,
+                          py: 0.2,
+                          color: 'text.secondary',
+                          textTransform: 'none',
+                          fontWeight: 700,
+                          fontSize: isMobile ? '0.85rem' : '0.88rem',
+                          lineHeight: 1.1,
+                          '& .MuiButton-startIcon': { mr: 0.55, ml: 0 },
+                          '&:hover': { backgroundColor: 'transparent', color: 'text.primary' },
+                        }}
+                      >
+                        Back to My Memes
+                      </Button>
+                    ) : (
+                      <Box sx={{ width: 1, minHeight: 1 }} />
+                    )}
 
-                <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
-                  {showHeaderAddButton && (
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      startIcon={<AddCircleOutlineRounded fontSize="small" />}
-                      endIcon={<ExpandMoreRounded fontSize="small" />}
-                      onClick={openHeaderAddMenu}
-                      disabled={isCreatingCollage || isHydratingProject}
-                      sx={headerAddButtonSx}
-                    >
-                      Add
-                    </Button>
-                  )}
-                  <Box
-                    sx={{
-                      width: 24,
-                      minWidth: 24,
-                      display: 'flex',
-                      justifyContent: 'flex-end',
-                      alignItems: 'center',
-                    }}
-                  >
-                    {saveIndicator}
+                    <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
+                      {showHeaderAddButton && (
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          startIcon={<AddCircleOutlineRounded fontSize="small" />}
+                          endIcon={<ExpandMoreRounded fontSize="small" />}
+                          onClick={openHeaderAddMenu}
+                          disabled={isCreatingCollage || isHydratingProject}
+                          sx={headerAddButtonSx}
+                        >
+                          Add
+                        </Button>
+                      )}
+                      <Box
+                        sx={{
+                          width: 24,
+                          minWidth: 24,
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          alignItems: 'center',
+                        }}
+                      >
+                        {saveIndicator}
+                      </Box>
+                    </Stack>
                   </Box>
-                </Stack>
-              </Box>
-            </Box>
+                </Box>
 
-            <Menu
-              anchorEl={headerAddMenuAnchorEl}
-              open={isHeaderAddMenuOpen}
-              onClose={closeHeaderAddMenu}
-              PaperProps={{
-                sx: {
-                  minWidth: 220,
-                  borderRadius: 2,
-                  border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                },
+                <Menu
+                  anchorEl={headerAddMenuAnchorEl}
+                  open={isHeaderAddMenuOpen}
+                  onClose={closeHeaderAddMenu}
+                  PaperProps={{
+                    sx: {
+                      minWidth: 220,
+                      borderRadius: 2,
+                      border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                    },
+                  }}
+                >
+                  <MenuItem onClick={handleHeaderAddTopCaption}>
+                    <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Add Top Caption" />
+                  </MenuItem>
+                  <MenuItem onClick={handleHeaderAddTextLayer}>
+                    <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Text Layer" />
+                  </MenuItem>
+                  <MenuItem onClick={handleHeaderAddSticker} disabled={!canManageStickers}>
+                    <ListItemIcon><StyleRounded fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Add Sticker" />
+                  </MenuItem>
+                  <MenuItem onClick={handleHeaderAddPanel} disabled={!canHeaderAddPanel}>
+                    <ListItemIcon><ViewModuleRounded fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Add Panel" />
+                  </MenuItem>
+                </Menu>
+
+                <Collapse in={!!remoteUpdateWarning} unmountOnExit>
+                  <Alert
+                    severity="warning"
+                    sx={{
+                      mb: 2,
+                      border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+                      background: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.14 : 0.1),
+                    }}
+                    action={(
+                      <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ minWidth: isMobile ? 'auto' : 240 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="inherit"
+                          onClick={handleRemoteDismiss}
+                        >
+                          Keep Working & Overwrite
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="warning"
+                          onClick={handleRemoteReload}
+                          disabled={isHydratingProject}
+                        >
+                          Reload & Lose Local Changes
+                        </Button>
+                      </Stack>
+                    )}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Project updated elsewhere at {remoteUpdateTimestampLabel}.
+                    </Typography>
+                    <Typography variant="body2">
+                      Reload to pull in those edits, or keep working to overwrite them (last save wins).
+                    </Typography>
+                  </Alert>
+                </Collapse>
+
+                <Collapse in={showEarlyAccess} unmountOnExit>
+                  <EarlyAccessFeedback 
+                    defaultExpanded
+                    onCollapsed={() => setShowEarlyAccess(false)}
+                  />
+                </Collapse>
+              </>
+            )}
+
+            <Box
+              sx={{
+                position: 'relative',
+                flex: stickerFlowOpen ? '1 1 auto' : '0 0 auto',
+                minHeight: stickerFlowOpen ? 0 : 'auto',
+                height: stickerFlowOpen ? '100%' : 'auto',
+                overflow: stickerFlowOpen ? 'hidden' : 'visible',
               }}
             >
-              <MenuItem onClick={handleHeaderAddTopCaption}>
-                <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Add Top Caption" />
-              </MenuItem>
-              <MenuItem onClick={handleHeaderAddTextLayer}>
-                <ListItemIcon><TextFieldsRounded fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Text Layer" />
-              </MenuItem>
-              <MenuItem onClick={handleHeaderAddSticker} disabled={!canManageStickers}>
-                <ListItemIcon><StyleRounded fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Add Sticker" />
-              </MenuItem>
-              <MenuItem onClick={handleHeaderAddPanel} disabled={!canHeaderAddPanel}>
-                <ListItemIcon><ViewModuleRounded fontSize="small" /></ListItemIcon>
-                <ListItemText primary="Add Panel" />
-              </MenuItem>
-            </Menu>
-
-            <Collapse in={!!remoteUpdateWarning} unmountOnExit>
-              <Alert
-                severity="warning"
-                sx={{
-                  mb: 2,
-                  border: `1px solid ${alpha(theme.palette.warning.main, 0.45)}`,
-                  background: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.14 : 0.1),
-                }}
-                action={(
-                  <Stack direction={isMobile ? 'column' : 'row'} spacing={1} sx={{ minWidth: isMobile ? 'auto' : 240 }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="inherit"
-                      onClick={handleRemoteDismiss}
-                    >
-                      Keep Working & Overwrite
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="warning"
-                      onClick={handleRemoteReload}
-                      disabled={isHydratingProject}
-                    >
-                      Reload & Lose Local Changes
-                    </Button>
-                  </Stack>
-                )}
-              >
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  Project updated elsewhere at {remoteUpdateTimestampLabel}.
-                </Typography>
-                <Typography variant="body2">
-                  Reload to pull in those edits, or keep working to overwrite them (last save wins).
-                </Typography>
-              </Alert>
-            </Collapse>
-
-            <Collapse in={showEarlyAccess} unmountOnExit>
-              <EarlyAccessFeedback 
-                defaultExpanded
-                onCollapsed={() => setShowEarlyAccess(false)}
-              />
-            </Collapse>
-
-            <Box sx={{ position: 'relative' }}>
-              <CollageLayout
-                settingsStepProps={settingsStepProps}
-                imagesStepProps={imagesStepProps}
-                finalImage={finalImage}
-                setFinalImage={setFinalImage}
-                isMobile={isMobile}
-                onBackToEdit={handleBackToEdit}
-                settingsOpen={settingsOpen}
-                setSettingsOpen={setSettingsOpen}
-                settingsRef={settingsRef}
-                onViewChange={(v) => setCurrentView(v)}
-                onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 1 })}
-                onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
-                // Mobile controls bar actions
-                onBack={hasProjectsAccess ? handleBackToProjects : undefined}
-                onReset={!hasProjectsAccess ? openResetDialog : undefined}
-                onGenerate={handleFloatingButtonClick}
-                canGenerate={allPanelsHaveImages}
-                isGenerating={isCreatingCollage}
-              />
-              {isHydratingProject && (
+              {stickerFlowOpen ? (
+                <StickerAddFlow
+                  flow={stickerFlowState || { mode: 'add-from-library' }}
+                  onClose={closeStickerFlow}
+                  onResolveSelection={prepareStickerSourceForEditing}
+                  onCommit={commitStickerFromFlow}
+                />
+              ) : (
+                <CollageLayout
+                  settingsStepProps={settingsStepProps}
+                  imagesStepProps={imagesStepProps}
+                  finalImage={finalImage}
+                  setFinalImage={setFinalImage}
+                  isMobile={isMobile}
+                  onBackToEdit={handleBackToEdit}
+                  settingsOpen={settingsOpen}
+                  setSettingsOpen={setSettingsOpen}
+                  settingsRef={settingsRef}
+                  onViewChange={(v) => setCurrentView(v)}
+                  onLibrarySelectionChange={(info) => setLibrarySelection(info || { count: 0, minSelected: 1 })}
+                  onLibraryActionsReady={(actions) => { libraryActionsRef.current = actions || {}; }}
+                  // Mobile controls bar actions
+                  onBack={hasProjectsAccess ? handleBackToProjects : undefined}
+                  onReset={!hasProjectsAccess ? openResetDialog : undefined}
+                  onGenerate={handleFloatingButtonClick}
+                  canGenerate={allPanelsHaveImages}
+                  isGenerating={isCreatingCollage}
+                />
+              )}
+              {!stickerFlowOpen && isHydratingProject && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -3370,25 +3540,6 @@ export default function CollagePage() {
                 {snackbar.message}
               </Alert>
             </Snackbar>
-
-            <LibraryPickerDialog
-              open={headerStickerPickerOpen}
-              onClose={closeHeaderStickerPicker}
-              title="Choose a sticker from your library"
-              onSelect={(items) => { void handleHeaderStickerSelect(items); }}
-              busy={headerStickerPickerBusy}
-              errorText={headerStickerPickerError}
-              browserProps={{
-                multiple: false,
-                uploadEnabled: true,
-                deleteEnabled: false,
-                showActionBar: false,
-                selectionEnabled: true,
-                previewOnClick: true,
-                showSelectToggle: true,
-                initialSelectMode: true,
-              }}
-            />
 
             {/* Bottom Action Bar (admins always see; no animation) */}
             {shouldShowBottomBar && (
