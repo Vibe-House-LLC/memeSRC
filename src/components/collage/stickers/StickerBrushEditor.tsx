@@ -405,6 +405,7 @@ export default function StickerBrushEditor({
   }, [refreshComposite, syncHistoryState]);
 
   const enterEditMode = React.useCallback(() => {
+    if (editingPlacedSticker) return;
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
     editSessionBaselineRef.current = {
@@ -416,9 +417,14 @@ export default function StickerBrushEditor({
     };
     setDiscardConfirmOpen(false);
     setScreenMode('edit');
-  }, [previewResult]);
+  }, [editingPlacedSticker, previewResult]);
 
   const discardEditSession = React.useCallback(() => {
+    if (editingPlacedSticker) {
+      setDiscardConfirmOpen(false);
+      onBack();
+      return;
+    }
     const baseline = editSessionBaselineRef.current;
     const maskCanvas = maskCanvasRef.current;
     if (!baseline || !maskCanvas) {
@@ -441,7 +447,7 @@ export default function StickerBrushEditor({
     setScreenMode('preview');
     syncHistoryState();
     refreshComposite();
-  }, [refreshComposite, syncHistoryState]);
+  }, [editingPlacedSticker, onBack, refreshComposite, syncHistoryState]);
 
   React.useEffect(() => {
     const viewport = viewportRef.current;
@@ -717,6 +723,30 @@ export default function StickerBrushEditor({
     strokeOverlayCanvasRef.current = null;
   }, []);
 
+  const cancelActiveStroke = React.useCallback(() => {
+    const maskCanvas = maskCanvasRef.current;
+    const baseMaskCanvas = strokeBaseMaskCanvasRef.current;
+    if (!maskCanvas || !baseMaskCanvas) {
+      clearPendingDraw();
+      return;
+    }
+
+    const ctx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) {
+      clearPendingDraw();
+      return;
+    }
+
+    ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+    ctx.drawImage(baseMaskCanvas, 0, 0);
+    hasApproximateEditsRef.current = !isMaskCanvasPristine(maskCanvas);
+    setHasApproximateEdits(hasApproximateEditsRef.current);
+    setPreviewResult(null);
+    setScreenMode('edit');
+    refreshComposite();
+    clearPendingDraw();
+  }, [clearPendingDraw, refreshComposite]);
+
   const beginStroke = React.useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
@@ -727,6 +757,11 @@ export default function StickerBrushEditor({
   const beginPinch = React.useCallback(() => {
     const pointers = getOrderedActivePoints(activePointersRef.current);
     if (pointers.length < 2 || !transformRef.current) return;
+    if (interactionModeRef.current === 'draw') {
+      cancelActiveStroke();
+    } else {
+      clearPendingDraw();
+    }
     const midpoint = getMidpoint(pointers[0], pointers[1]);
     pinchStateRef.current = {
       startDistance: Math.max(1, getDistance(pointers[0], pointers[1])),
@@ -735,11 +770,10 @@ export default function StickerBrushEditor({
       startAngle: getAngle(pointers[0], pointers[1]),
       startMidImage: screenToImagePoint(midpoint.x, midpoint.y, transformRef.current),
     };
-    clearPendingDraw();
     panPointerIdRef.current = null;
     lastPanPointRef.current = null;
     setInteraction('pinch');
-  }, [clearPendingDraw, setInteraction]);
+  }, [cancelActiveStroke, clearPendingDraw, setInteraction]);
 
   const handlePointerDown = React.useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const point = getCanvasLocalPoint(event);
@@ -919,7 +953,7 @@ export default function StickerBrushEditor({
     if (editingPlacedSticker) {
       setDiscardConfirmOpen(false);
       setPreviewResult(null);
-      setScreenMode('preview');
+      setScreenMode('edit');
       scheduleRender();
       return;
     }
