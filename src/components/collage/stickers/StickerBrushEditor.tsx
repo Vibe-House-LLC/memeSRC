@@ -1973,12 +1973,18 @@ export default function StickerBrushEditor({
 
                   <Button
                     variant="contained"
-                    onClick={() => { void handlePreview(); }}
-                    disabled={loading || previewBusy || commitBusy || busy || !loadedSource}
+                    onClick={() => {
+                      if (editingPlacedSticker) {
+                        void handleAdd();
+                        return;
+                      }
+                      void handlePreview();
+                    }}
+                    disabled={loading || previewBusy || commitBusy || autoRemoveBusy || busy || !loadedSource}
                     size="large"
                     sx={primaryActionButtonSx}
                   >
-                    {(previewBusy || busy) ? (
+                    {(previewBusy || commitBusy || autoRemoveBusy || busy) ? (
                       <CircularProgress size={20} color="inherit" />
                     ) : (
                       'Done'
