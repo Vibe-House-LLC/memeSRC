@@ -9,11 +9,10 @@ import {
   MenuItem,
   Slider,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import {
+  AutoFixHighRounded,
   ArrowBackRounded,
   BlurOnRounded,
   BrushRounded,
@@ -22,6 +21,7 @@ import {
   ExpandMoreRounded,
   FitScreenRounded,
   LightModeRounded,
+  MoreHorizRounded,
   OpenWithRounded,
   PhotoRounded,
   RedoRounded,
@@ -97,6 +97,10 @@ const DEFAULT_BRUSH_SIZE = Math.round((BRUSH_SIZE_MIN + BRUSH_SIZE_MAX) / 2);
 const DEFAULT_BRUSH_OPACITY = 1;
 const DEFAULT_BRUSH_FEATHER = 0.15;
 const STICKER_BRUSH_PREFERENCES_STORAGE_KEY = 'meme-src-sticker-brush-preferences';
+const STICKER_AUTO_REMOVE_API_BASE = 'https://separated-latter-urge-sur.trycloudflare.com';
+const STICKER_AUTO_REMOVE_POLL_INTERVAL_MS = 1200;
+const STICKER_AUTO_REMOVE_TIMEOUT_MS = 60000;
+const STICKER_AUTO_REMOVE_EDGE_TRIM_PX = 2;
 
 type StoredBrushPreferences = {
   size: number;
@@ -149,6 +153,61 @@ const getStoredBrushPreferences = (): StoredBrushPreferences => {
   } catch (_) {
     return defaults;
   }
+};
+
+const wait = async (ms: number): Promise<void> => {
+  await new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+};
+
+const queueAutoBackgroundRemoval = async (imageBlob: Blob): Promise<Blob> => {
+  const formData = new FormData();
+  formData.append('image', imageBlob, 'sticker.png');
+
+  const queueResponse = await fetch(`${STICKER_AUTO_REMOVE_API_BASE}/api/run/removebg`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!queueResponse.ok) {
+    throw new Error(`Background removal failed to start (${queueResponse.status})`);
+  }
+
+  const queuePayload = await queueResponse.json();
+  const promptId = queuePayload?.promptId || queuePayload?.job?.promptId;
+  if (typeof promptId !== 'string' || !promptId) {
+    throw new Error('Background removal did not return a job ID.');
+  }
+
+  const deadline = Date.now() + STICKER_AUTO_REMOVE_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const statusResponse = await fetch(`${STICKER_AUTO_REMOVE_API_BASE}/api/jobs/${encodeURIComponent(promptId)}`);
+    if (!statusResponse.ok) {
+      throw new Error(`Background removal status failed (${statusResponse.status})`);
+    }
+
+    const statusPayload = await statusResponse.json();
+    if (statusPayload?.phase === 'completed') {
+      const resultUrl = statusPayload?.results?.[0]?.url;
+      if (typeof resultUrl !== 'string' || !resultUrl) {
+        throw new Error('Background removal completed without an image result.');
+      }
+      const resolvedUrl = new URL(resultUrl, STICKER_AUTO_REMOVE_API_BASE).toString();
+      const resultResponse = await fetch(resolvedUrl);
+      if (!resultResponse.ok) {
+        throw new Error(`Background removal result fetch failed (${resultResponse.status})`);
+      }
+      return await resultResponse.blob();
+    }
+
+    if (statusPayload?.phase === 'failed') {
+      throw new Error(statusPayload?.error || 'Background removal failed.');
+    }
+
+    await wait(STICKER_AUTO_REMOVE_POLL_INTERVAL_MS);
+  }
+
+  throw new Error('Background removal timed out.');
 };
 
 export default function StickerBrushEditor({
@@ -216,6 +275,7 @@ export default function StickerBrushEditor({
   const [previewResult, setPreviewResult] = React.useState<ExportedStickerEdit | null>(null);
   const [previewBusy, setPreviewBusy] = React.useState(false);
   const [commitBusy, setCommitBusy] = React.useState(false);
+  const [autoRemoveBusy, setAutoRemoveBusy] = React.useState(false);
   const [screenMode, setScreenMode] = React.useState<'preview' | 'edit'>(initialScreenMode);
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
@@ -968,6 +1028,110 @@ export default function StickerBrushEditor({
     if (historyIndexRef.current >= historySnapshotsRef.current.length - 1) return;
     restoreMaskFromHistory(historyIndexRef.current + 1);
   }, [restoreMaskFromHistory]);
+  const handleAutoRemove = React.useCallback(async () => {
+    const sourceCanvas = sourceCanvasRef.current;
+    const maskCanvas = maskCanvasRef.current;
+    if (!sourceCanvas || !maskCanvas || autoRemoveBusy || previewBusy || commitBusy || busy) return;
+
+    setAutoRemoveBusy(true);
+    setEditorError('');
+    try {
+      const compositedCanvas = createTransparentCanvas(sourceCanvas.width, sourceCanvas.height);
+      updateCompositeCanvas(compositedCanvas, sourceCanvas, maskCanvas);
+      const requestBlob = await new Promise<Blob>((resolve, reject) => {
+        compositedCanvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+            return;
+          }
+          reject(new Error('Unable to prepare the sticker for background removal.'));
+        }, 'image/png');
+      });
+      const removedBlob = await queueAutoBackgroundRemoval(requestBlob);
+      const removedObjectUrl = URL.createObjectURL(removedBlob);
+
+      try {
+        const removedSource = await loadStickerSource(
+          removedObjectUrl,
+          Math.max(sourceCanvas.width, sourceCanvas.height)
+        );
+        const normalizedResultCanvas = createTransparentCanvas(sourceCanvas.width, sourceCanvas.height);
+        const normalizedResultCtx = normalizedResultCanvas.getContext('2d', { willReadFrequently: true });
+        const maskCtx = maskCanvas.getContext('2d', { willReadFrequently: true });
+        if (!normalizedResultCtx || !maskCtx) {
+          throw new Error('Unable to apply the background removal result.');
+        }
+
+        normalizedResultCtx.clearRect(0, 0, normalizedResultCanvas.width, normalizedResultCanvas.height);
+        const resultTrimX = Math.min(
+          STICKER_AUTO_REMOVE_EDGE_TRIM_PX,
+          Math.max(0, Math.floor((removedSource.canvas.width - 1) / 2))
+        );
+        const resultTrimY = Math.min(
+          STICKER_AUTO_REMOVE_EDGE_TRIM_PX,
+          Math.max(0, Math.floor((removedSource.canvas.height - 1) / 2))
+        );
+        const trimmedSourceWidth = Math.max(1, removedSource.canvas.width - (resultTrimX * 2));
+        const trimmedSourceHeight = Math.max(1, removedSource.canvas.height - (resultTrimY * 2));
+        normalizedResultCtx.drawImage(
+          removedSource.canvas,
+          resultTrimX,
+          resultTrimY,
+          trimmedSourceWidth,
+          trimmedSourceHeight,
+          0,
+          0,
+          normalizedResultCanvas.width,
+          normalizedResultCanvas.height
+        );
+
+        const nextAlpha = normalizedResultCtx.getImageData(
+          0,
+          0,
+          normalizedResultCanvas.width,
+          normalizedResultCanvas.height
+        ).data;
+        const maskImageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+        let changed = false;
+
+        for (let index = 3; index < maskImageData.data.length; index += 4) {
+          const previousAlpha = maskImageData.data[index];
+          const removedAlpha = nextAlpha[index];
+          const combinedAlpha = Math.round(previousAlpha * (removedAlpha / 255));
+          if (combinedAlpha !== previousAlpha) {
+            changed = true;
+          }
+          maskImageData.data[index - 3] = 255;
+          maskImageData.data[index - 2] = 255;
+          maskImageData.data[index - 1] = 255;
+          maskImageData.data[index] = combinedAlpha;
+        }
+
+        if (!changed) {
+          return;
+        }
+
+        maskCtx.putImageData(maskImageData, 0, 0);
+        hasApproximateEditsRef.current = true;
+        setHasApproximateEdits(true);
+        setDiscardConfirmOpen(false);
+        setPreviewResult(null);
+        commitHistorySnapshot(maskCanvas);
+        refreshComposite();
+
+        if (screenMode === 'preview' && !editingPlacedSticker) {
+          const nextPreview = await exportMaskedSticker({ sourceCanvas, maskCanvas });
+          setPreviewResult(nextPreview);
+        }
+      } finally {
+        URL.revokeObjectURL(removedObjectUrl);
+      }
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : 'Unable to remove the background right now.');
+    } finally {
+      setAutoRemoveBusy(false);
+    }
+  }, [autoRemoveBusy, busy, commitBusy, commitHistorySnapshot, editingPlacedSticker, previewBusy, refreshComposite, screenMode]);
   const brushPreviewOuterMultiplier = getBrushFeatherOuterRadiusMultiplier(brushFeather);
   const brushPreviewDiameter = clamp(
     brushSize * brushPreviewOuterMultiplier,
@@ -1306,49 +1470,89 @@ export default function StickerBrushEditor({
               spacing={0.8}
               sx={{
                 position: 'absolute',
+                right: 12,
+                top: 12,
+                zIndex: 2,
+              }}
+            >
+              <IconButton
+                onClick={resetViewToFit}
+                disabled={loading || !loadedSource}
+                aria-label="Refit image"
+                sx={overlayIconButtonSx}
+              >
+                <FitScreenRounded sx={{ fontSize: 19 }} />
+              </IconButton>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={0.8}
+              sx={{
+                position: 'absolute',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
                 zIndex: 2,
               }}
             >
-              <ToggleButtonGroup
-                exclusive
-                size="small"
-                value={brushMode}
-                onChange={(_, value) => {
-                  if (value === 'erase' || value === 'restore') {
-                    setBrushMode(value);
-                  }
-                }}
+              <Box
                 sx={{
+                  display: 'inline-flex',
+                  alignItems: 'stretch',
                   p: 0.35,
                   borderRadius: 999,
                   bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.9),
                   boxShadow: `0 8px 22px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.22 : 0.14)}`,
                   backdropFilter: 'blur(14px)',
-                  '& .MuiToggleButton-root': {
-                    minWidth: isMobile ? 78 : 88,
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    px: isMobile ? 1.15 : 1.8,
-                    py: 0.55,
-                    border: 'none',
-                    borderRadius: 999,
-                    color: 'text.secondary',
-                    '&.Mui-selected': {
-                      color: 'text.primary',
-                      bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08),
-                    },
-                    '&.Mui-selected:hover': {
-                      bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.2 : 0.1),
-                    },
-                  },
                 }}
-              >
-                <ToggleButton value="erase">Erase</ToggleButton>
-                <ToggleButton value="restore">Restore</ToggleButton>
-              </ToggleButtonGroup>
+            >
+                {(['erase', 'restore'] as const).map((mode) => {
+                  const selected = brushMode === mode;
+                  const label = mode === 'erase' ? 'Erase' : 'Restore';
+                  return (
+                    <Button
+                      key={mode}
+                      onClick={() => setBrushMode((currentMode) => (currentMode === 'erase' ? 'restore' : 'erase'))}
+                      aria-label={selected ? `Current mode: ${label}. Tap to switch.` : `Switch to ${label.toLowerCase()} mode`}
+                      sx={{
+                        minHeight: 38,
+                        minWidth: selected ? (isMobile ? 84 : 96) : 42,
+                        px: selected ? (isMobile ? 1.15 : 1.4) : 0.8,
+                        py: 0.45,
+                        borderRadius: 999,
+                        color: selected ? 'text.primary' : 'text.secondary',
+                        bgcolor: selected
+                          ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                          : 'transparent',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        gap: selected ? 0.65 : 0,
+                        '&:hover': {
+                          bgcolor: selected
+                            ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.2 : 0.1)
+                            : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                        },
+                      }}
+                    >
+                      {selected ? (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 800,
+                            letterSpacing: 0.1,
+                            textAlign: 'center',
+                          }}
+                        >
+                          {label}
+                        </Typography>
+                      ) : (
+                        <MoreHorizRounded sx={{ fontSize: 18 }} />
+                      )}
+                    </Button>
+                  );
+                })}
+              </Box>
             </Stack>
 
             <Stack
@@ -1398,16 +1602,18 @@ export default function StickerBrushEditor({
           >
             {backgroundButtonMeta.icon}
           </IconButton>
-          {screenMode === 'edit' && (
-            <IconButton
-              onClick={resetViewToFit}
-              disabled={loading || !loadedSource}
-              aria-label="Refit image"
-              sx={overlayIconButtonSx}
-            >
-              <FitScreenRounded sx={{ fontSize: 19 }} />
-            </IconButton>
-          )}
+          <IconButton
+            onClick={() => { void handleAutoRemove(); }}
+            disabled={loading || !loadedSource || autoRemoveBusy || previewBusy || commitBusy || busy}
+            aria-label="Automatically remove background"
+            sx={overlayIconButtonSx}
+          >
+            {autoRemoveBusy ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : (
+              <AutoFixHighRounded sx={{ fontSize: 19 }} />
+            )}
+          </IconButton>
         </Stack>
 
         {(loading || !loadedSource) && (
