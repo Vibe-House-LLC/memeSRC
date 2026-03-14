@@ -991,6 +991,8 @@ const CanvasCollagePreview = ({
   // Editing session tracking (crop & zoom / reorder)
   onEditingSessionChange,
   onEditStickerRequest,
+  activeStickerSelectionRequest,
+  onActiveStickerSelectionHandled,
   // When provided, use as initial custom grid config (restored from snapshot)
   initialCustomLayout,
   customLayoutKey,
@@ -2106,6 +2108,22 @@ const CanvasCollagePreview = ({
       });
     }
   }, [activeStickerId, stickers]);
+
+  useEffect(() => {
+    const requestId = activeStickerSelectionRequest?.requestId;
+    const stickerId = activeStickerSelectionRequest?.stickerId;
+    if (!requestId || !stickerId) return;
+
+    const stickerExists = Array.isArray(stickers) && stickers.some((sticker) => sticker?.id === stickerId);
+    if (!stickerExists) return;
+
+    setStickerInteraction(null);
+    setActiveStickerId(stickerId);
+
+    if (typeof onActiveStickerSelectionHandled === 'function') {
+      onActiveStickerSelectionHandled(requestId);
+    }
+  }, [activeStickerSelectionRequest, onActiveStickerSelectionHandled, stickers]);
 
   // Auto-select newly added stickers so controls are immediately available after insert.
   useEffect(() => {
@@ -7058,6 +7076,11 @@ CanvasCollagePreview.propTypes = {
   onEditingSessionChange: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,
   onEditStickerRequest: PropTypes.func,
+  activeStickerSelectionRequest: PropTypes.shape({
+    stickerId: PropTypes.string,
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }),
+  onActiveStickerSelectionHandled: PropTypes.func,
   allowHydrationTransformCarry: PropTypes.bool,
 };
 

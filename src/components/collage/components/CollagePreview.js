@@ -97,6 +97,8 @@ const CollagePreview = ({
   // Editing session tracking
   onEditingSessionChange,
   onEditStickerRequest,
+  activeStickerSelectionRequest,
+  onActiveStickerSelectionHandled,
   // Optional persisted custom layout to initialize preview grid
   customLayout,
   customLayoutKey,
@@ -997,6 +999,8 @@ const CollagePreview = ({
         // Editing session tracking
         onEditingSessionChange={onEditingSessionChange}
         onEditStickerRequest={onEditStickerRequest}
+        activeStickerSelectionRequest={activeStickerSelectionRequest}
+        onActiveStickerSelectionHandled={onActiveStickerSelectionHandled}
         // Initialize with a custom grid when reloading a project
         initialCustomLayout={customLayout}
         customLayoutKey={customLayoutKey}
@@ -1237,6 +1241,11 @@ CollagePreview.propTypes = {
   onPreviewMetaChange: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
   onEditStickerRequest: PropTypes.func,
+  activeStickerSelectionRequest: PropTypes.shape({
+    stickerId: PropTypes.string,
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }),
+  onActiveStickerSelectionHandled: PropTypes.func,
   allowHydrationTransformCarry: PropTypes.bool,
   canvasResetKey: PropTypes.number,
 };
