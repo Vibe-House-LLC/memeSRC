@@ -18,25 +18,88 @@ type PreparedStickerSource = {
   originalItem?: any;
 };
 
+type ExistingStickerEditContext = {
+  stickerId: string;
+  sticker: any;
+  displayRectPx: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    angleDeg: number;
+  };
+  placement: {
+    xPercent: number;
+    yPercent: number;
+    widthPercent: number;
+    angleDeg: number;
+    aspectRatio: number;
+  };
+  previewCanvasSize: {
+    width: number;
+    height: number;
+  };
+  sourceWorkingDimensions: {
+    width: number;
+    height: number;
+  };
+  contextBackdropSrc?: string;
+  layerIndex: number;
+};
+
+type StickerFlowDescriptor =
+  | {
+    mode: 'add-from-library';
+  }
+  | {
+    mode: 'edit-existing-sticker';
+    preparedSource: PreparedStickerSource;
+    existingEditContext: ExistingStickerEditContext;
+  };
+
+type StickerFlowCommitPayload = {
+  mode: StickerFlowDescriptor['mode'];
+  preparedSource: PreparedStickerSource;
+  edit: ExportedStickerEdit;
+  existingEditContext?: ExistingStickerEditContext;
+};
+
 type StickerAddFlowProps = {
+  flow: StickerFlowDescriptor;
   onClose: () => void;
   onResolveSelection: (selectedItem: any) => Promise<PreparedStickerSource>;
-  onCommit: (payload: { preparedSource: PreparedStickerSource; edit: ExportedStickerEdit }) => void | Promise<void>;
+  onCommit: (payload: StickerFlowCommitPayload) => void | Promise<void>;
 };
 
 const AnyLibraryBrowser = LibraryBrowser as unknown as React.ComponentType<any>;
 
 export default function StickerAddFlow({
+  flow,
   onClose,
   onResolveSelection,
   onCommit,
 }: StickerAddFlowProps) {
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const [step, setStep] = React.useState<'library' | 'editor'>('library');
+  const [step, setStep] = React.useState<'library' | 'editor'>(
+    flow.mode === 'edit-existing-sticker' ? 'editor' : 'library'
+  );
   const [busy, setBusy] = React.useState(false);
   const [errorText, setErrorText] = React.useState('');
-  const [preparedSource, setPreparedSource] = React.useState<PreparedStickerSource | null>(null);
+  const [preparedSource, setPreparedSource] = React.useState<PreparedStickerSource | null>(
+    flow.mode === 'edit-existing-sticker' ? flow.preparedSource : null
+  );
   const [availableViewportHeight, setAvailableViewportHeight] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setErrorText('');
+    if (flow.mode === 'edit-existing-sticker') {
+      setPreparedSource(flow.preparedSource);
+      setStep('editor');
+      return;
+    }
+    setPreparedSource(null);
+    setStep('library');
+  }, [flow]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -102,26 +165,35 @@ export default function StickerAddFlow({
   const handleBack = React.useCallback(() => {
     if (busy) return;
     if (step === 'editor') {
+      if (flow.mode === 'edit-existing-sticker') {
+        onClose();
+        return;
+      }
       setStep('library');
       setErrorText('');
       return;
     }
     onClose();
-  }, [busy, onClose, step]);
+  }, [busy, flow.mode, onClose, step]);
 
   const handleCommit = React.useCallback(async (edit: ExportedStickerEdit) => {
     if (!preparedSource) return;
     setBusy(true);
     setErrorText('');
     try {
-      await onCommit({ preparedSource, edit });
+      await onCommit({
+        mode: flow.mode,
+        preparedSource,
+        edit,
+        existingEditContext: flow.mode === 'edit-existing-sticker' ? flow.existingEditContext : undefined,
+      });
       onClose();
     } catch (error) {
       setErrorText(error instanceof Error ? error.message : 'Unable to add that sticker right now.');
     } finally {
       setBusy(false);
     }
-  }, [onClose, onCommit, preparedSource]);
+  }, [flow, onClose, onCommit, preparedSource]);
 
   return (
     <Box
@@ -153,6 +225,12 @@ export default function StickerAddFlow({
             onBack={handleBack}
             onAdd={handleCommit}
             busy={busy}
+            editingPlacedSticker={flow.mode === 'edit-existing-sticker'}
+            contextBackdropSrc={flow.mode === 'edit-existing-sticker' ? flow.existingEditContext.contextBackdropSrc : undefined}
+            backgroundModeAvailability={flow.mode === 'edit-existing-sticker' ? ['context', 'dark', 'light'] : ['dark', 'light']}
+            initialBackgroundMode={flow.mode === 'edit-existing-sticker' ? 'context' : 'dark'}
+            initialViewRotation={(flow.mode === 'edit-existing-sticker' ? flow.existingEditContext.displayRectPx.angleDeg : 0) * (Math.PI / 180)}
+            initialScreenMode={flow.mode === 'edit-existing-sticker' ? 'edit' : 'preview'}
           />
         </Box>
       ) : (
@@ -223,3 +301,4 @@ export default function StickerAddFlow({
 }
 
 export type { PreparedStickerSource };
+export type { ExistingStickerEditContext, StickerFlowCommitPayload, StickerFlowDescriptor };

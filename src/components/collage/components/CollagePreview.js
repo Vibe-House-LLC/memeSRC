@@ -96,6 +96,7 @@ const CollagePreview = ({
   onPreviewMetaChange,
   // Editing session tracking
   onEditingSessionChange,
+  onEditStickerRequest,
   // Optional persisted custom layout to initialize preview grid
   customLayout,
   customLayoutKey,
@@ -995,6 +996,7 @@ const CollagePreview = ({
         onPreviewMetaChange={onPreviewMetaChange}
         // Editing session tracking
         onEditingSessionChange={onEditingSessionChange}
+        onEditStickerRequest={onEditStickerRequest}
         // Initialize with a custom grid when reloading a project
         initialCustomLayout={customLayout}
         customLayoutKey={customLayoutKey}
@@ -1234,6 +1236,7 @@ CollagePreview.propTypes = {
   onPreviewRendered: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
+  onEditStickerRequest: PropTypes.func,
   allowHydrationTransformCarry: PropTypes.bool,
   canvasResetKey: PropTypes.number,
 };

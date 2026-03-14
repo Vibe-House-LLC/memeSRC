@@ -5,6 +5,7 @@ import {
   clampTransformToViewport,
   createCenteredTransformForBounds,
   createOpaqueMaskData,
+  cropCanvasToNonTransparentBoundsWithBounds,
   getNonTransparentPixelBounds,
   imageToScreenPoint,
   isMaskDataPristine,
@@ -137,6 +138,26 @@ describe('stickerBrushMath', () => {
       width: 7,
       height: 7,
     });
+  });
+
+  test('cropping reports padded crop bounds alongside the cropped canvas', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 12;
+    canvas.height = 10;
+    const ctx = canvas.getContext('2d');
+    expect(ctx).toBeTruthy();
+    ctx?.fillRect(4, 3, 2, 2);
+
+    const cropped = cropCanvasToNonTransparentBoundsWithBounds(canvas);
+
+    expect(cropped.bounds).toEqual({
+      x: 2,
+      y: 1,
+      width: 6,
+      height: 6,
+    });
+    expect(cropped.canvas.width).toBe(6);
+    expect(cropped.canvas.height).toBe(6);
   });
 
   test('free-pan transform preserves offsets while still enforcing min scale', () => {

@@ -2,12 +2,13 @@ import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMe
 import PropTypes from 'prop-types';
 import { Box, IconButton, Typography, Menu, MenuItem, ListItemIcon, Snackbar, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight } from '@mui/icons-material';
+import { Check, Place, Crop, DragIndicator, Image as ImageIcon, Subtitles, SaveAlt, AutoFixHighRounded, DeleteOutline, OpenInFull, RotateRight, BrushRounded } from '@mui/icons-material';
 import { layoutDefinitions } from '../config/layouts';
 import CaptionEditor from './CaptionEditor';
 import { getMetadataForKey } from '../../../utils/library/metadata';
 import { parseFormattedText } from '../../../utils/inlineFormatting';
 import { TOP_CAPTION_DEFAULTS } from '../constants/topCaptionDefaults';
+import { STICKER_EDITOR_MAX_DIMENSION_PX } from '../stickers/stickerBrushMath';
 import {
   applyBorderDragDelta,
   buildStableBorderEdgeId,
@@ -29,6 +30,15 @@ const angleFromPointDeg = (centerX, centerY, pointX, pointY) => (
 const snapAngleToZeroDeg = (value) => {
   const normalized = normalizeAngleDeg(value);
   return Math.abs(normalized) <= ROTATION_ZERO_SNAP_THRESHOLD_DEG ? 0 : normalized;
+};
+const getStickerEditorWorkingDimensions = (image) => {
+  const originalWidth = Math.max(1, Number(image?.naturalWidth || image?.width || 1));
+  const originalHeight = Math.max(1, Number(image?.naturalHeight || image?.height || 1));
+  const scale = Math.min(1, STICKER_EDITOR_MAX_DIMENSION_PX / Math.max(originalWidth, originalHeight));
+  return {
+    width: Math.max(1, Math.round(originalWidth * scale)),
+    height: Math.max(1, Math.round(originalHeight * scale)),
+  };
 };
 
 const isPointInAxisAlignedRect = (x, y, rectX, rectY, width, height) => (
@@ -980,6 +990,7 @@ const CanvasCollagePreview = ({
   onRendered,
   // Editing session tracking (crop & zoom / reorder)
   onEditingSessionChange,
+  onEditStickerRequest,
   // When provided, use as initial custom grid config (restored from snapshot)
   initialCustomLayout,
   customLayoutKey,
@@ -3818,6 +3829,209 @@ const CanvasCollagePreview = ({
     }
   }, [activeTextLayerId, panelRects, panelTexts]);
 
+  const renderStickerUnderlayScene = useCallback((ctx, maxStickerIndex) => {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, componentWidth, componentHeight);
+
+    if (borderPixels > 0) {
+      ctx.fillStyle = borderColor;
+      ctx.fillRect(0, 0, componentWidth, componentHeight);
+    }
+
+    panelRects.forEach((rect) => {
+      const { x, y, width, height, panelId } = rect;
+      const imageIndex = panelImageMapping[panelId];
+      const hasImage = imageIndex !== undefined && loadedImages[imageIndex];
+      const transform = panelTransforms[panelId] || { scale: 1, positionX: 0, positionY: 0 };
+
+      ctx.fillStyle = hasImage
+        ? (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+        : 'rgba(0,0,0,0.3)';
+      ctx.fillRect(x, y, width, height);
+
+      if (!hasImage) return;
+
+      const img = loadedImages[imageIndex];
+      if (!img) return;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, width, height);
+      ctx.clip();
+
+      const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+      const panelAspectRatio = width / height;
+      const initialScale = imageAspectRatio > panelAspectRatio
+        ? (height / img.naturalHeight)
+        : (width / img.naturalWidth);
+      const finalScale = initialScale * transform.scale;
+      const scaledWidth = img.naturalWidth * finalScale;
+      const scaledHeight = img.naturalHeight * finalScale;
+      const centerOffsetX = (width - scaledWidth) / 2;
+      const centerOffsetY = (height - scaledHeight) / 2;
+      const finalOffsetX = centerOffsetX + transform.positionX;
+      const finalOffsetY = centerOffsetY + transform.positionY;
+
+      ctx.drawImage(img, x + finalOffsetX, y + finalOffsetY, scaledWidth, scaledHeight);
+      ctx.restore();
+    });
+
+    if (!Array.isArray(stickers) || maxStickerIndex <= 0) return;
+    stickers.slice(0, maxStickerIndex).forEach((sticker) => {
+      if (!sticker?.id) return;
+      const stickerImage = loadedStickers[sticker.id];
+      if (!stickerImage) return;
+      const stickerRect = getStickerRectPx(sticker, stickerImage);
+      if (!stickerRect) return;
+
+      ctx.save();
+      try {
+        if (Math.abs(stickerRect.angleDeg || 0) > 0.01) {
+          const centerX = stickerRect.x + (stickerRect.width / 2);
+          const centerY = stickerRect.y + (stickerRect.height / 2);
+          ctx.translate(centerX, centerY);
+          ctx.rotate((stickerRect.angleDeg * Math.PI) / 180);
+          ctx.drawImage(
+            stickerImage,
+            -(stickerRect.width / 2),
+            -(stickerRect.height / 2),
+            stickerRect.width,
+            stickerRect.height
+          );
+        } else {
+          ctx.drawImage(stickerImage, stickerRect.x, stickerRect.y, stickerRect.width, stickerRect.height);
+        }
+      } catch (_) {
+        // Ignore sticker rendering failures for backdrop generation.
+      } finally {
+        ctx.restore();
+      }
+    });
+  }, [
+    borderColor,
+    borderPixels,
+    componentHeight,
+    componentWidth,
+    getStickerRectPx,
+    loadedImages,
+    loadedStickers,
+    panelImageMapping,
+    panelRects,
+    panelTransforms,
+    stickers,
+    theme.palette.mode,
+  ]);
+
+  const buildStickerContextBackdrop = useCallback((stickerRect, stickerImage, layerIndex) => {
+    if (!stickerRect || !stickerImage) {
+      return {
+        contextBackdropSrc: '',
+        sourceWorkingDimensions: { width: 1, height: 1 },
+      };
+    }
+
+    const underlayCanvas = document.createElement('canvas');
+    underlayCanvas.width = Math.max(1, Math.round(componentWidth));
+    underlayCanvas.height = Math.max(1, Math.round(componentHeight));
+    const underlayCtx = underlayCanvas.getContext('2d');
+    if (!underlayCtx) {
+      return {
+        contextBackdropSrc: '',
+        sourceWorkingDimensions: getStickerEditorWorkingDimensions(stickerImage),
+      };
+    }
+
+    renderStickerUnderlayScene(underlayCtx, layerIndex);
+
+    const sourceWorkingDimensions = getStickerEditorWorkingDimensions(stickerImage);
+    const backdropCanvas = document.createElement('canvas');
+    backdropCanvas.width = sourceWorkingDimensions.width;
+    backdropCanvas.height = sourceWorkingDimensions.height;
+    const backdropCtx = backdropCanvas.getContext('2d');
+    if (!backdropCtx) {
+      return {
+        contextBackdropSrc: '',
+        sourceWorkingDimensions,
+      };
+    }
+
+    const angleRad = ((stickerRect.angleDeg || 0) * Math.PI) / 180;
+    const scaleX = sourceWorkingDimensions.width / Math.max(stickerRect.width, 1);
+    const scaleY = sourceWorkingDimensions.height / Math.max(stickerRect.height, 1);
+    const centerX = stickerRect.x + (stickerRect.width / 2);
+    const centerY = stickerRect.y + (stickerRect.height / 2);
+
+    backdropCtx.clearRect(0, 0, backdropCanvas.width, backdropCanvas.height);
+    backdropCtx.translate(backdropCanvas.width / 2, backdropCanvas.height / 2);
+    backdropCtx.scale(scaleX, scaleY);
+    backdropCtx.rotate(-angleRad);
+    backdropCtx.translate(-centerX, -centerY);
+    backdropCtx.drawImage(underlayCanvas, 0, 0);
+
+    return {
+      contextBackdropSrc: backdropCanvas.toDataURL('image/png'),
+      sourceWorkingDimensions,
+    };
+  }, [componentHeight, componentWidth, renderStickerUnderlayScene]);
+
+  const handleStickerEditRequest = useCallback((event, sticker, layerIndex) => {
+    if (!sticker?.id || typeof onEditStickerRequest !== 'function') return;
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+    if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+
+    const stickerImage = loadedStickers[sticker.id];
+    const stickerRect = getStickerRectPx(sticker, stickerImage);
+    if (!stickerImage || !stickerRect) return;
+
+    setActiveStickerId(sticker.id);
+    setStickerInteraction(null);
+    setSelectedBorderZoneId(null);
+    pendingStickerPointerRef.current = null;
+    if (stickerRafRef.current !== null) {
+      window.cancelAnimationFrame(stickerRafRef.current);
+      stickerRafRef.current = null;
+    }
+
+    const { contextBackdropSrc, sourceWorkingDimensions } = buildStickerContextBackdrop(stickerRect, stickerImage, layerIndex);
+    void Promise.resolve(onEditStickerRequest({
+      stickerId: sticker.id,
+      sticker: {
+        id: sticker.id,
+        originalUrl: sticker.originalUrl || sticker.url || '',
+        thumbnailUrl: sticker.thumbnailUrl || sticker.originalUrl || sticker.url || '',
+        metadata: (sticker.metadata && typeof sticker.metadata === 'object')
+          ? { ...sticker.metadata }
+          : {},
+        aspectRatio: sticker.aspectRatio,
+        angleDeg: sticker.angleDeg,
+        widthPercent: sticker.widthPercent,
+        xPercent: sticker.xPercent,
+        yPercent: sticker.yPercent,
+      },
+      displayRectPx: {
+        x: stickerRect.x,
+        y: stickerRect.y,
+        width: stickerRect.width,
+        height: stickerRect.height,
+        angleDeg: stickerRect.angleDeg,
+      },
+      placement: {
+        xPercent: stickerRect.xPercent,
+        yPercent: stickerRect.yPercent,
+        widthPercent: stickerRect.widthPercent,
+        angleDeg: stickerRect.angleDeg,
+        aspectRatio: stickerRect.aspectRatio,
+      },
+      previewCanvasSize: {
+        width: componentWidth,
+        height: componentHeight,
+      },
+      sourceWorkingDimensions,
+      contextBackdropSrc,
+      layerIndex,
+    }));
+  }, [buildStickerContextBackdrop, componentHeight, componentWidth, getStickerRectPx, loadedStickers, onEditStickerRequest]);
+
   // Redraw canvas when dependencies change
   useEffect(() => {
     drawCanvas();
@@ -5987,6 +6201,28 @@ const CanvasCollagePreview = ({
                     <DeleteOutline sx={{ fontSize: deleteHandleSize * 0.62 }} />
                   </Box>
                   <Box
+                    onPointerDown={(event) => handleStickerEditRequest(event, sticker, index)}
+                    sx={{
+                      position: 'absolute',
+                      left: -(handleSize * 0.35),
+                      bottom: -(handleSize * 0.35),
+                      width: handleSize,
+                      height: handleSize,
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.95)',
+                      backgroundColor: 'rgba(97, 97, 97, 0.96)',
+                      boxShadow: '0 3px 10px rgba(0,0,0,0.32)',
+                      cursor: 'pointer',
+                      pointerEvents: 'auto',
+                      touchAction: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <BrushRounded sx={{ fontSize: handleSize * 0.54, color: '#ffffff' }} />
+                  </Box>
+                  <Box
                     onPointerDown={(event) => handleStickerPointerDown(event, sticker, 'resize')}
                     sx={{
                       position: 'absolute',
@@ -6821,6 +7057,7 @@ CanvasCollagePreview.propTypes = {
   onRendered: PropTypes.func,
   onEditingSessionChange: PropTypes.func,
   onPreviewMetaChange: PropTypes.func,
+  onEditStickerRequest: PropTypes.func,
   allowHydrationTransformCarry: PropTypes.bool,
 };
 

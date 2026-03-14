@@ -33,6 +33,9 @@ export type ExportedStickerEdit = {
   width: number;
   height: number;
   changed: boolean;
+  cropBounds: PixelBounds;
+  sourceWidth: number;
+  sourceHeight: number;
 };
 
 export type PixelBounds = {
@@ -43,6 +46,7 @@ export type PixelBounds = {
 };
 
 export type CheckerboardMode = 'light' | 'dark';
+export type StickerViewportBackgroundMode = CheckerboardMode | 'context';
 
 export const STICKER_EDITOR_MAX_DIMENSION_PX = 1500;
 const CROPPED_STICKER_PADDING_PX = 2;
@@ -383,24 +387,47 @@ export const getNonTransparentPixelBounds = (
 };
 
 export const cropCanvasToNonTransparentBounds = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
-  const ctx = getCanvasContext(canvas);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const bounds = getNonTransparentPixelBounds(imageData.data, canvas.width, canvas.height);
+  return cropCanvasToNonTransparentBoundsWithBounds(canvas).canvas;
+};
 
-  if (!bounds) {
-    return createCanvas(1, 1);
-  }
-
+const getPaddedBounds = (
+  bounds: PixelBounds,
+  canvasWidth: number,
+  canvasHeight: number
+): PixelBounds => {
   const paddedBounds = {
     x: Math.max(0, bounds.x - CROPPED_STICKER_PADDING_PX),
     y: Math.max(0, bounds.y - CROPPED_STICKER_PADDING_PX),
     width: 0,
     height: 0,
   };
-  const right = Math.min(canvas.width, bounds.x + bounds.width + CROPPED_STICKER_PADDING_PX);
-  const bottom = Math.min(canvas.height, bounds.y + bounds.height + CROPPED_STICKER_PADDING_PX);
+  const right = Math.min(canvasWidth, bounds.x + bounds.width + CROPPED_STICKER_PADDING_PX);
+  const bottom = Math.min(canvasHeight, bounds.y + bounds.height + CROPPED_STICKER_PADDING_PX);
   paddedBounds.width = right - paddedBounds.x;
   paddedBounds.height = bottom - paddedBounds.y;
+  return paddedBounds;
+};
+
+export const cropCanvasToNonTransparentBoundsWithBounds = (
+  canvas: HTMLCanvasElement
+): { canvas: HTMLCanvasElement; bounds: PixelBounds } => {
+  const ctx = getCanvasContext(canvas);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const bounds = getNonTransparentPixelBounds(imageData.data, canvas.width, canvas.height);
+
+  if (!bounds) {
+    return {
+      canvas: createCanvas(1, 1),
+      bounds: {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+      },
+    };
+  }
+
+  const paddedBounds = getPaddedBounds(bounds, canvas.width, canvas.height);
 
   if (
     paddedBounds.x === 0
@@ -408,7 +435,10 @@ export const cropCanvasToNonTransparentBounds = (canvas: HTMLCanvasElement): HTM
     && paddedBounds.width === canvas.width
     && paddedBounds.height === canvas.height
   ) {
-    return canvas;
+    return {
+      canvas,
+      bounds: paddedBounds,
+    };
   }
 
   const cropped = createCanvas(paddedBounds.width, paddedBounds.height);
@@ -424,7 +454,10 @@ export const cropCanvasToNonTransparentBounds = (canvas: HTMLCanvasElement): HTM
     paddedBounds.width,
     paddedBounds.height
   );
-  return cropped;
+  return {
+    canvas: cropped,
+    bounds: paddedBounds,
+  };
 };
 
 export const getCanvasNonTransparentBounds = (canvas: HTMLCanvasElement): PixelBounds | null => {
@@ -500,22 +533,32 @@ const renderCheckerboard = (
 export const renderStickerViewport = ({
   targetCanvas,
   compositeCanvas,
+  backgroundCanvas,
   transform,
-  checkerboardMode = 'light',
+  backgroundMode = 'light',
 }: {
   targetCanvas: HTMLCanvasElement;
   compositeCanvas: HTMLCanvasElement;
+  backgroundCanvas?: HTMLCanvasElement | null;
   transform: ViewTransform;
-  checkerboardMode?: CheckerboardMode;
+  backgroundMode?: StickerViewportBackgroundMode;
 }): void => {
   const ctx = getCanvasContext(targetCanvas);
   ctx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
-  renderCheckerboard(ctx, targetCanvas.width, targetCanvas.height, checkerboardMode);
+  renderCheckerboard(
+    ctx,
+    targetCanvas.width,
+    targetCanvas.height,
+    backgroundMode === 'light' ? 'light' : 'dark'
+  );
   ctx.save();
   ctx.translate(transform.offsetX, transform.offsetY);
   ctx.rotate(transform.rotation || 0);
   ctx.scale(transform.scale, transform.scale);
   ctx.imageSmoothingEnabled = true;
+  if (backgroundMode === 'context' && backgroundCanvas) {
+    ctx.drawImage(backgroundCanvas, 0, 0);
+  }
   ctx.drawImage(compositeCanvas, 0, 0);
   ctx.restore();
 };
@@ -635,7 +678,18 @@ export const exportMaskedSticker = async ({
   const changed = !isMaskCanvasPristine(maskCanvas);
   const composited = createCanvas(sourceCanvas.width, sourceCanvas.height);
   updateCompositeCanvas(composited, sourceCanvas, maskCanvas);
-  const output = changed ? cropCanvasToNonTransparentBounds(composited) : composited;
+  const cropResult = changed
+    ? cropCanvasToNonTransparentBoundsWithBounds(composited)
+    : {
+      canvas: composited,
+      bounds: {
+        x: 0,
+        y: 0,
+        width: composited.width,
+        height: composited.height,
+      },
+    };
+  const output = cropResult.canvas;
   const blob = await canvasToBlob(output, 'image/png');
   return {
     blob,
@@ -643,5 +697,8 @@ export const exportMaskedSticker = async ({
     width: output.width,
     height: output.height,
     changed,
+    cropBounds: cropResult.bounds,
+    sourceWidth: sourceCanvas.width,
+    sourceHeight: sourceCanvas.height,
   };
 };

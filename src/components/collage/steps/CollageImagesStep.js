@@ -76,6 +76,7 @@ const CollageImagesStep = ({
   onRemovePanelRequest,
   onAddTextRequest,
   onAddStickerRequest,
+  onEditStickerRequest,
   canManageStickers = false,
   showTopAddButton = true,
   showBottomAddButton = true,
@@ -321,6 +322,7 @@ const CollageImagesStep = ({
             onPreviewMetaChange={onPreviewMetaChange}
             // Editing session tracking
             onEditingSessionChange={onEditingSessionChange}
+            onEditStickerRequest={onEditStickerRequest}
             // Initialize with custom layout if provided
             customLayout={customLayout}
             customLayoutKey={customLayoutKey}
@@ -487,6 +489,7 @@ CollageImagesStep.propTypes = {
   onRemovePanelRequest: PropTypes.func,
   onAddTextRequest: PropTypes.func,
   onAddStickerRequest: PropTypes.func,
+  onEditStickerRequest: PropTypes.func,
   canManageStickers: PropTypes.bool,
   showTopAddButton: PropTypes.bool,
   showBottomAddButton: PropTypes.bool,

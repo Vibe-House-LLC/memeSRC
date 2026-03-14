@@ -23,6 +23,7 @@ jest.mock('./StickerBrushEditor', () => ({
     return (
       <div>
         <div>editor:{props.imageSrc}</div>
+        <div>mode:{props.initialScreenMode}</div>
         <button type="button" onClick={props.onBack}>editor back</button>
         <button
           type="button"
@@ -32,6 +33,9 @@ jest.mock('./StickerBrushEditor', () => ({
             blob: new Blob(['test'], { type: 'image/png' }),
             width: 40,
             height: 20,
+            cropBounds: { x: 0, y: 0, width: 40, height: 20 },
+            sourceWidth: 40,
+            sourceHeight: 20,
           })}
         >
           editor add
@@ -86,6 +90,7 @@ describe('StickerAddFlow', () => {
     }));
 
     renderFlow({
+      flow: { mode: 'add-from-library' },
       onClose: jest.fn(),
       onResolveSelection,
       onCommit: jest.fn(),
@@ -105,6 +110,7 @@ describe('StickerAddFlow', () => {
     }));
 
     renderFlow({
+      flow: { mode: 'add-from-library' },
       onClose: jest.fn(),
       onResolveSelection,
       onCommit: jest.fn(),
@@ -127,6 +133,7 @@ describe('StickerAddFlow', () => {
     const onClose = jest.fn();
 
     renderFlow({
+      flow: { mode: 'add-from-library' },
       onClose,
       onResolveSelection,
       onCommit,
@@ -144,6 +151,7 @@ describe('StickerAddFlow', () => {
     });
 
     expect(onCommit).toHaveBeenCalledWith({
+      mode: 'add-from-library',
       preparedSource: {
         dataUrl: 'data:image/png;base64,xyz',
         metadata: { libraryKey: 'library/source' },
@@ -155,6 +163,7 @@ describe('StickerAddFlow', () => {
         width: 40,
         height: 20,
       }),
+      existingEditContext: undefined,
     });
     expect(onClose).toHaveBeenCalled();
   });
@@ -163,13 +172,43 @@ describe('StickerAddFlow', () => {
     const onClose = jest.fn();
 
     renderFlow({
+      flow: { mode: 'add-from-library' },
       onClose,
       onResolveSelection: jest.fn(),
       onCommit: jest.fn(),
     });
 
-    await clickText('Back');
+    await clickText('Library');
 
     expect(onClose).toHaveBeenCalled();
+  });
+
+  test('existing sticker edit mode opens the editor immediately', () => {
+    renderFlow({
+      flow: {
+        mode: 'edit-existing-sticker',
+        preparedSource: {
+          dataUrl: 'data:image/png;base64,placed',
+          metadata: { libraryKey: 'library/placed' },
+          aspectRatio: 1,
+        },
+        existingEditContext: {
+          stickerId: 'sticker-placed',
+          sticker: { id: 'sticker-placed' },
+          displayRectPx: { x: 10, y: 20, width: 40, height: 40, angleDeg: 15 },
+          placement: { xPercent: 10, yPercent: 20, widthPercent: 30, angleDeg: 15, aspectRatio: 1 },
+          previewCanvasSize: { width: 300, height: 200 },
+          sourceWorkingDimensions: { width: 256, height: 256 },
+          contextBackdropSrc: 'data:image/png;base64,context',
+          layerIndex: 2,
+        },
+      },
+      onClose: jest.fn(),
+      onResolveSelection: jest.fn(),
+      onCommit: jest.fn(),
+    });
+
+    expect(container.textContent).toContain('editor:data:image/png;base64,placed');
+    expect(container.textContent).toContain('mode:edit');
   });
 });

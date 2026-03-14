@@ -23,6 +23,7 @@ import {
   FitScreenRounded,
   LightModeRounded,
   OpenWithRounded,
+  PhotoRounded,
   RedoRounded,
   TuneRounded,
   UndoRounded,
@@ -31,7 +32,12 @@ import {
 } from '@mui/icons-material';
 import { alpha, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import type { CheckerboardMode, ExportedStickerEdit, LoadedStickerSource, ViewTransform } from './stickerBrushMath';
+import type {
+  ExportedStickerEdit,
+  LoadedStickerSource,
+  StickerViewportBackgroundMode,
+  ViewTransform,
+} from './stickerBrushMath';
 import {
   applyOverlayToMaskCanvas,
   clampTransformToViewport,
@@ -46,7 +52,6 @@ import {
   isMaskCanvasPristine,
   loadStickerSource,
   renderStickerViewport,
-  resetMaskCanvas,
   screenToImagePoint,
   stampBrushStrokeOnCanvas,
   STICKER_EDITOR_MAX_DIMENSION_PX,
@@ -58,6 +63,12 @@ type StickerBrushEditorProps = {
   busy?: boolean;
   onAdd: (result: ExportedStickerEdit) => void | Promise<void>;
   onBack: () => void;
+  contextBackdropSrc?: string;
+  backgroundModeAvailability?: StickerViewportBackgroundMode[];
+  initialBackgroundMode?: StickerViewportBackgroundMode;
+  editingPlacedSticker?: boolean;
+  initialViewRotation?: number;
+  initialScreenMode?: 'preview' | 'edit';
 };
 
 type PointerPoint = {
@@ -145,6 +156,12 @@ export default function StickerBrushEditor({
   busy = false,
   onAdd,
   onBack,
+  contextBackdropSrc,
+  backgroundModeAvailability = ['dark', 'light'],
+  initialBackgroundMode = 'dark',
+  editingPlacedSticker = false,
+  initialViewRotation = 0,
+  initialScreenMode = 'preview',
 }: StickerBrushEditorProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -166,7 +183,8 @@ export default function StickerBrushEditor({
     hasApproximateEdits: boolean;
     previewResult: ExportedStickerEdit | null;
   } | null>(null);
-  const checkerboardModeRef = React.useRef<CheckerboardMode>('dark');
+  const backgroundCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const backgroundModeRef = React.useRef<StickerViewportBackgroundMode>(initialBackgroundMode);
   const renderFrameRef = React.useRef<number | null>(null);
   const brushPreviewTimeoutRef = React.useRef<number | null>(null);
   const activePointersRef = React.useRef<Map<number, PointerPoint>>(new Map());
@@ -194,17 +212,17 @@ export default function StickerBrushEditor({
   const [loadedSource, setLoadedSource] = React.useState<LoadedStickerSource | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [editorError, setEditorError] = React.useState<string>('');
-  const [hasApproximateEdits, setHasApproximateEdits] = React.useState(false);
+  const [, setHasApproximateEdits] = React.useState(false);
   const [previewResult, setPreviewResult] = React.useState<ExportedStickerEdit | null>(null);
   const [previewBusy, setPreviewBusy] = React.useState(false);
   const [commitBusy, setCommitBusy] = React.useState(false);
-  const [screenMode, setScreenMode] = React.useState<'preview' | 'edit'>('preview');
+  const [screenMode, setScreenMode] = React.useState<'preview' | 'edit'>(initialScreenMode);
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
   const [brushPreviewVisible, setBrushPreviewVisible] = React.useState(false);
   const [historyState, setHistoryState] = React.useState({ canUndo: false, canRedo: false });
   const [discardConfirmOpen, setDiscardConfirmOpen] = React.useState(false);
-  const [checkerboardMode, setCheckerboardMode] = React.useState<CheckerboardMode>('dark');
+  const [backgroundMode, setBackgroundMode] = React.useState<StickerViewportBackgroundMode>(initialBackgroundMode);
   const [activeBrushControl, setActiveBrushControl] = React.useState<BrushControlKey>('size');
   const [brushControlMenuAnchorEl, setBrushControlMenuAnchorEl] = React.useState<HTMLElement | null>(null);
   const [brushSettingsOpen, setBrushSettingsOpen] = React.useState(false);
@@ -220,8 +238,9 @@ export default function StickerBrushEditor({
       renderStickerViewport({
         targetCanvas: canvas,
         compositeCanvas: composite,
+        backgroundCanvas: backgroundCanvasRef.current,
         transform,
-        checkerboardMode: checkerboardModeRef.current,
+        backgroundMode: backgroundModeRef.current,
       });
     });
   }, []);
@@ -293,9 +312,10 @@ export default function StickerBrushEditor({
       viewportSize.height,
       isMobile ? 14 : 24
     );
+    fit.rotation = initialViewRotation || 0;
     hasUserAdjustedViewRef.current = false;
     setTransform(fit);
-  }, [isMobile, loadedSource, setTransform, viewportSize.height, viewportSize.width]);
+  }, [initialViewRotation, isMobile, loadedSource, setTransform, viewportSize.height, viewportSize.width]);
 
   const refreshComposite = React.useCallback(() => {
     const sourceCanvas = sourceCanvasRef.current;
@@ -397,6 +417,8 @@ export default function StickerBrushEditor({
     let cancelled = false;
     setLoading(true);
     setEditorError('');
+    backgroundModeRef.current = initialBackgroundMode;
+    setBackgroundMode(initialBackgroundMode);
 
     (async () => {
       try {
@@ -410,7 +432,7 @@ export default function StickerBrushEditor({
         hasUserAdjustedViewRef.current = false;
         hasApproximateEditsRef.current = false;
         setHasApproximateEdits(false);
-        setScreenMode('preview');
+        setScreenMode(initialScreenMode);
         setPreviewResult(null);
         setDiscardConfirmOpen(false);
         editSessionBaselineRef.current = null;
@@ -427,7 +449,50 @@ export default function StickerBrushEditor({
     return () => {
       cancelled = true;
     };
-  }, [imageSrc, initializeHistory, refreshComposite]);
+  }, [imageSrc, initialBackgroundMode, initialScreenMode, initializeHistory, refreshComposite]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    backgroundCanvasRef.current = null;
+
+    if (!contextBackdropSrc) {
+      scheduleRender();
+      return undefined;
+    }
+
+    (async () => {
+      try {
+        const backdrop = await loadStickerSource(contextBackdropSrc, STICKER_EDITOR_MAX_DIMENSION_PX);
+        if (cancelled) return;
+        const sourceCanvas = sourceCanvasRef.current;
+        if (!sourceCanvas) {
+          backgroundCanvasRef.current = backdrop.canvas;
+          scheduleRender();
+          return;
+        }
+        if (backdrop.width === sourceCanvas.width && backdrop.height === sourceCanvas.height) {
+          backgroundCanvasRef.current = backdrop.canvas;
+          scheduleRender();
+          return;
+        }
+        const normalizedBackdrop = createTransparentCanvas(sourceCanvas.width, sourceCanvas.height);
+        const normalizedBackdropCtx = normalizedBackdrop.getContext('2d');
+        if (!normalizedBackdropCtx) return;
+        normalizedBackdropCtx.clearRect(0, 0, normalizedBackdrop.width, normalizedBackdrop.height);
+        normalizedBackdropCtx.drawImage(backdrop.canvas, 0, 0, normalizedBackdrop.width, normalizedBackdrop.height);
+        backgroundCanvasRef.current = normalizedBackdrop;
+        scheduleRender();
+      } catch (_) {
+        if (cancelled) return;
+        backgroundCanvasRef.current = null;
+        scheduleRender();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contextBackdropSrc, imageSrc, loadedSource, scheduleRender]);
 
   React.useEffect(() => {
     if (!loadedSource || viewportSize.width <= 0 || viewportSize.height <= 0) return;
@@ -444,7 +509,8 @@ export default function StickerBrushEditor({
   }, [loading, scheduleRender]);
 
   React.useEffect(() => {
-    if (screenMode !== 'edit' || viewportSize.width <= 0 || viewportSize.height <= 0) return;
+    if (screenMode !== 'edit' && !(screenMode === 'preview' && editingPlacedSticker)) return;
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (canvas.width !== viewportSize.width || canvas.height !== viewportSize.height) {
@@ -452,12 +518,12 @@ export default function StickerBrushEditor({
       canvas.height = viewportSize.height;
     }
     scheduleRender();
-  }, [scheduleRender, screenMode, viewportSize.height, viewportSize.width]);
+  }, [editingPlacedSticker, scheduleRender, screenMode, viewportSize.height, viewportSize.width]);
 
   React.useEffect(() => {
-    checkerboardModeRef.current = checkerboardMode;
+    backgroundModeRef.current = backgroundMode;
     scheduleRender();
-  }, [checkerboardMode, scheduleRender]);
+  }, [backgroundMode, scheduleRender]);
 
   React.useEffect(() => {
     if (!brushSettingsOpen) {
@@ -790,6 +856,13 @@ export default function StickerBrushEditor({
     const sourceCanvas = sourceCanvasRef.current;
     const maskCanvas = maskCanvasRef.current;
     if (!sourceCanvas || !maskCanvas || previewBusy || commitBusy || busy) return;
+    if (editingPlacedSticker) {
+      setDiscardConfirmOpen(false);
+      setPreviewResult(null);
+      setScreenMode('preview');
+      scheduleRender();
+      return;
+    }
     setPreviewBusy(true);
     setEditorError('');
     try {
@@ -802,7 +875,7 @@ export default function StickerBrushEditor({
     } finally {
       setPreviewBusy(false);
     }
-  }, [busy, commitBusy, previewBusy]);
+  }, [busy, commitBusy, editingPlacedSticker, previewBusy, scheduleRender]);
 
   const handleAdd = React.useCallback(async () => {
     const sourceCanvas = sourceCanvasRef.current;
@@ -828,10 +901,42 @@ export default function StickerBrushEditor({
     )
     : 'crosshair';
   const navigationTip = isMobile
-    ? 'Pinch to zoom, rotate, or pan'
-    : 'Wheel to zoom, Shift + drag to pan';
+    ? 'Two-finger drag to pan'
+    : 'Shift + drag to pan';
+  const availableBackgroundModes = React.useMemo<StickerViewportBackgroundMode[]>(() => {
+    const uniqueModes = Array.from(new Set(backgroundModeAvailability)) as StickerViewportBackgroundMode[];
+    const supportedModes = uniqueModes.filter((mode) => mode !== 'context' || Boolean(contextBackdropSrc));
+    return supportedModes.length > 0 ? supportedModes : ['dark', 'light'];
+  }, [backgroundModeAvailability, contextBackdropSrc]);
+  React.useEffect(() => {
+    if (availableBackgroundModes.includes(backgroundMode)) return;
+    setBackgroundMode(availableBackgroundModes[0]);
+  }, [availableBackgroundModes, backgroundMode]);
+  const cycleBackgroundMode = React.useCallback(() => {
+    setBackgroundMode((currentMode) => {
+      const currentIndex = availableBackgroundModes.indexOf(currentMode);
+      const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
+      return availableBackgroundModes[(fallbackIndex + 1) % availableBackgroundModes.length];
+    });
+  }, [availableBackgroundModes]);
+  const backgroundButtonMeta = backgroundMode === 'context'
+    ? {
+      icon: <PhotoRounded sx={{ fontSize: 19 }} />,
+      label: 'Use dark background',
+    }
+    : backgroundMode === 'dark'
+      ? {
+        icon: <LightModeRounded sx={{ fontSize: 19 }} />,
+        label: availableBackgroundModes.includes('context') ? 'Use collage context background' : 'Use light background',
+      }
+      : {
+        icon: availableBackgroundModes.includes('context')
+          ? <PhotoRounded sx={{ fontSize: 19 }} />
+          : <DarkModeRounded sx={{ fontSize: 19 }} />,
+        label: availableBackgroundModes.includes('context') ? 'Use collage context background' : 'Use dark background',
+      };
   const previewImageSrc = previewResult?.dataUrl || imageSrc;
-  const previewCheckerboardSx = checkerboardMode === 'dark'
+  const previewCheckerboardSx = backgroundMode === 'dark'
     ? {
       backgroundImage: `
         linear-gradient(45deg, rgba(255,255,255,0.08) 25%, transparent 25%),
@@ -1039,6 +1144,7 @@ export default function StickerBrushEditor({
         : alpha(theme.palette.common.white, 0.88),
     },
   };
+  const previewUsesCanvas = editingPlacedSticker;
 
   return (
     <Box
@@ -1082,24 +1188,24 @@ export default function StickerBrushEditor({
           }}
         >
           <Box
-            component={screenMode === 'preview' ? 'div' : 'canvas'}
-            ref={screenMode === 'preview' ? undefined : canvasRef}
-            onPointerDown={screenMode === 'preview' ? undefined : handlePointerDown}
-            onPointerMove={screenMode === 'preview' ? undefined : handlePointerMove}
-            onPointerUp={screenMode === 'preview' ? undefined : handlePointerUp}
-            onPointerCancel={screenMode === 'preview' ? undefined : handlePointerCancel}
-            onLostPointerCapture={screenMode === 'preview' ? undefined : handlePointerCancel}
-            onWheel={screenMode === 'preview' ? undefined : handleWheel}
+            component={screenMode === 'edit' || previewUsesCanvas ? 'canvas' : 'div'}
+            ref={screenMode === 'edit' || previewUsesCanvas ? canvasRef : undefined}
+            onPointerDown={screenMode === 'edit' ? handlePointerDown : undefined}
+            onPointerMove={screenMode === 'edit' ? handlePointerMove : undefined}
+            onPointerUp={screenMode === 'edit' ? handlePointerUp : undefined}
+            onPointerCancel={screenMode === 'edit' ? handlePointerCancel : undefined}
+            onLostPointerCapture={screenMode === 'edit' ? handlePointerCancel : undefined}
+            onWheel={screenMode === 'edit' ? handleWheel : undefined}
             sx={{
               width: '100%',
               height: '100%',
               display: 'block',
-              touchAction: 'none',
+              touchAction: screenMode === 'edit' ? 'none' : 'auto',
               cursor: screenMode === 'preview' ? 'default' : canvasCursor,
               position: 'relative',
             }}
           >
-            {screenMode === 'preview' ? (
+            {screenMode === 'preview' && !previewUsesCanvas ? (
               <Box
                 sx={{
                   position: 'absolute',
@@ -1286,13 +1392,11 @@ export default function StickerBrushEditor({
           }}
         >
           <IconButton
-            onClick={() => setCheckerboardMode((currentMode) => (currentMode === 'dark' ? 'light' : 'dark'))}
-            aria-label={checkerboardMode === 'dark' ? 'Use light checkerboard background' : 'Use dark checkerboard background'}
+            onClick={cycleBackgroundMode}
+            aria-label={backgroundButtonMeta.label}
             sx={overlayIconButtonSx}
           >
-            {checkerboardMode === 'dark'
-              ? <LightModeRounded sx={{ fontSize: 19 }} />
-              : <DarkModeRounded sx={{ fontSize: 19 }} />}
+            {backgroundButtonMeta.icon}
           </IconButton>
           {screenMode === 'edit' && (
             <IconButton

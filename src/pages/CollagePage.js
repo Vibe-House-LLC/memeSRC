@@ -54,6 +54,64 @@ function blobToDataUrl(blob) {
   });
 }
 
+function rotatePoint(x, y, radians) {
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: (x * cos) - (y * sin),
+    y: (x * sin) + (y * cos),
+  };
+}
+
+function computePlacedStickerUpdateFromCrop(existingEditContext, edit) {
+  const rect = existingEditContext?.displayRectPx;
+  const previewCanvasSize = existingEditContext?.previewCanvasSize;
+  const cropBounds = edit?.cropBounds;
+  const sourceWidth = Math.max(1, Number(edit?.sourceWidth || existingEditContext?.sourceWorkingDimensions?.width || 1));
+  const sourceHeight = Math.max(1, Number(edit?.sourceHeight || existingEditContext?.sourceWorkingDimensions?.height || 1));
+  const previewWidth = Math.max(1, Number(previewCanvasSize?.width || 1));
+  const previewHeight = Math.max(1, Number(previewCanvasSize?.height || 1));
+  if (!rect || !cropBounds) {
+    return {
+      xPercent: existingEditContext?.placement?.xPercent,
+      yPercent: existingEditContext?.placement?.yPercent,
+      widthPercent: existingEditContext?.placement?.widthPercent,
+      aspectRatio: (edit?.width > 0 && edit?.height > 0) ? (edit.width / edit.height) : existingEditContext?.placement?.aspectRatio,
+      angleDeg: existingEditContext?.placement?.angleDeg,
+    };
+  }
+
+  const visibleCenterLocalX = rect.width * ((cropBounds.x + (cropBounds.width / 2)) / sourceWidth);
+  const visibleCenterLocalY = rect.height * ((cropBounds.y + (cropBounds.height / 2)) / sourceHeight);
+  const newWidthPx = rect.width * (cropBounds.width / sourceWidth);
+  const newHeightPx = rect.height * (cropBounds.height / sourceHeight);
+  const oldCenterX = rect.x + (rect.width / 2);
+  const oldCenterY = rect.y + (rect.height / 2);
+  const deltaFromOldCenter = {
+    x: visibleCenterLocalX - (rect.width / 2),
+    y: visibleCenterLocalY - (rect.height / 2),
+  };
+  const rotatedDelta = rotatePoint(
+    deltaFromOldCenter.x,
+    deltaFromOldCenter.y,
+    ((rect.angleDeg || 0) * Math.PI) / 180
+  );
+  const newCenterX = oldCenterX + rotatedDelta.x;
+  const newCenterY = oldCenterY + rotatedDelta.y;
+  const newX = newCenterX - (newWidthPx / 2);
+  const newY = newCenterY - (newHeightPx / 2);
+
+  return {
+    xPercent: (newX / previewWidth) * 100,
+    yPercent: (newY / previewHeight) * 100,
+    widthPercent: (newWidthPx / previewWidth) * 100,
+    aspectRatio: (edit?.width > 0 && edit?.height > 0)
+      ? (edit.width / edit.height)
+      : (newWidthPx > 0 && newHeightPx > 0 ? (newWidthPx / newHeightPx) : existingEditContext?.placement?.aspectRatio),
+    angleDeg: existingEditContext?.placement?.angleDeg,
+  };
+}
+
 // Guard against adopting a stale custom layout from snapshots saved
 // under a different panel count. We only accept if the layout has
 // enough areas/items for the requested panel count.
@@ -304,7 +362,7 @@ export default function CollagePage() {
   const mobileSettingsPreviewRequestRef = useRef(0);
   const mobileSettingsOpenSigRef = useRef(null);
   const [headerAddMenuAnchorEl, setHeaderAddMenuAnchorEl] = useState(null);
-  const [stickerFlowOpen, setStickerFlowOpen] = useState(false);
+  const [stickerFlowState, setStickerFlowState] = useState(null);
   const [isCaptionEditorOpen, setIsCaptionEditorOpen] = useState(false);
   const [showEarlyAccess, setShowEarlyAccess] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -313,6 +371,7 @@ export default function CollagePage() {
   const [panelTransformAutoOpenRequest, setPanelTransformAutoOpenRequest] = useState(null);
   const [panelReorderAutoOpenRequest, setPanelReorderAutoOpenRequest] = useState(null);
   const [removePanelDialog, setRemovePanelDialog] = useState({ open: false, panelId: null, hasImage: false });
+  const stickerFlowOpen = Boolean(stickerFlowState);
   
   // Adopt a pre-created project id passed via navigation state (e.g., from editor)
   useEffect(() => {
@@ -2774,7 +2833,11 @@ export default function CollagePage() {
     };
   }, [canManageStickers, getStickerAspectRatio, resolveStickerSource]);
 
-  const commitStickerFromFlow = useCallback(async ({ preparedSource, edit }) => {
+  const closeStickerFlow = useCallback(() => {
+    setStickerFlowState(null);
+  }, []);
+
+  const commitStickerFromFlow = useCallback(async ({ mode, preparedSource, edit, existingEditContext }) => {
     if (!preparedSource || !edit) return null;
 
     let stickerMetadata = preparedSource.metadata && typeof preparedSource.metadata === 'object'
@@ -2791,7 +2854,9 @@ export default function CollagePage() {
         ...stickerMetadata,
         ...(derivedFromLibraryKey ? { derivedFromLibraryKey } : {}),
         editedWithTransparency: true,
-        source: 'collage-sticker-editor',
+        source: mode === 'edit-existing-sticker'
+          ? 'collage-placed-sticker-editor'
+          : 'collage-sticker-editor',
       };
       const libraryKey = await saveImageToLibrary(edit.blob, 'sticker-transparent.png', {
         level: 'private',
@@ -2807,6 +2872,29 @@ export default function CollagePage() {
       }
     }
 
+    if (mode === 'edit-existing-sticker' && existingEditContext?.stickerId) {
+      if (!edit.changed) {
+        closeStickerFlow();
+        setCurrentView('editor');
+        return existingEditContext.stickerId;
+      }
+
+      const placementUpdate = computePlacedStickerUpdateFromCrop(existingEditContext, edit);
+      updateSticker(existingEditContext.stickerId, {
+        originalUrl: stickerUrl,
+        thumbnailUrl: stickerUrl,
+        metadata: stickerMetadata,
+        aspectRatio,
+        widthPercent: placementUpdate.widthPercent,
+        xPercent: placementUpdate.xPercent,
+        yPercent: placementUpdate.yPercent,
+        angleDeg: placementUpdate.angleDeg,
+      });
+      closeStickerFlow();
+      setCurrentView('editor');
+      return existingEditContext.stickerId;
+    }
+
     const stickerId = addSticker({
       originalUrl: stickerUrl,
       thumbnailUrl: stickerUrl,
@@ -2815,10 +2903,10 @@ export default function CollagePage() {
       widthPercent: 28,
     });
 
-    setStickerFlowOpen(false);
+    closeStickerFlow();
     setCurrentView('editor');
     return stickerId;
-  }, [addSticker]);
+  }, [addSticker, closeStickerFlow, updateSticker]);
 
   const openHeaderAddMenu = useCallback((event) => {
     setHeaderAddMenuAnchorEl(event.currentTarget);
@@ -2834,8 +2922,33 @@ export default function CollagePage() {
       return;
     }
     closeHeaderAddMenu();
-    setStickerFlowOpen(true);
+    setStickerFlowState({ mode: 'add-from-library' });
   }, [canManageStickers, closeHeaderAddMenu]);
+
+  const handleEditStickerRequest = useCallback(async (editRequest) => {
+    if (!canManageStickers) {
+      setSnackbar({ open: true, message: 'Log in with library access to edit stickers.', severity: 'warning' });
+      return;
+    }
+    if (!editRequest?.sticker) return;
+
+    try {
+      const preparedSource = await prepareStickerSourceForEditing(editRequest.sticker);
+      if (!preparedSource) return;
+      setCurrentView('editor');
+      setStickerFlowState({
+        mode: 'edit-existing-sticker',
+        preparedSource,
+        existingEditContext: editRequest,
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Unable to edit that sticker right now.',
+        severity: 'error',
+      });
+    }
+  }, [canManageStickers, prepareStickerSourceForEditing]);
 
   const handleHeaderAddTopCaption = useCallback(() => {
     closeHeaderAddMenu();
@@ -2914,6 +3027,7 @@ export default function CollagePage() {
     onOpenPanelTransform: handlePanelTransformRequestedFromSettings,
     onOpenPanelReorder: handlePanelReorderRequestedFromSettings,
     onRemovePanelRequest: handlePanelRemoveRequestedFromSettings,
+    onEditStickerRequest: handleEditStickerRequest,
   };
 
   // Handler for when collage is generated - show inline result
@@ -2994,6 +3108,7 @@ export default function CollagePage() {
     onRemovePanelRequest: handleRemovePanelRequest,
     onAddTextRequest: handleAddTextRequested,
     onAddStickerRequest: openStickerAddFlow,
+    onEditStickerRequest: handleEditStickerRequest,
     canManageStickers,
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
@@ -3363,7 +3478,8 @@ export default function CollagePage() {
             >
               {stickerFlowOpen ? (
                 <StickerAddFlow
-                  onClose={() => setStickerFlowOpen(false)}
+                  flow={stickerFlowState || { mode: 'add-from-library' }}
+                  onClose={closeStickerFlow}
                   onResolveSelection={prepareStickerSourceForEditing}
                   onCommit={commitStickerFromFlow}
                 />
