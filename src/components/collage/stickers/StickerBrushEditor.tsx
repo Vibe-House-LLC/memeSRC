@@ -57,6 +57,7 @@ import {
   STICKER_EDITOR_MAX_DIMENSION_PX,
   updateCompositeCanvas,
 } from './stickerBrushMath';
+import { getExperimentsHostStatus } from '../../../utils/websiteSettings/experiments';
 
 type StickerBrushEditorProps = {
   imageSrc: string;
@@ -97,7 +98,6 @@ const DEFAULT_BRUSH_SIZE = Math.round((BRUSH_SIZE_MIN + BRUSH_SIZE_MAX) / 2);
 const DEFAULT_BRUSH_OPACITY = 1;
 const DEFAULT_BRUSH_FEATHER = 0.15;
 const STICKER_BRUSH_PREFERENCES_STORAGE_KEY = 'meme-src-sticker-brush-preferences';
-const STICKER_AUTO_REMOVE_API_BASE = 'https://separated-latter-urge-sur.trycloudflare.com';
 const STICKER_AUTO_REMOVE_POLL_INTERVAL_MS = 1200;
 const STICKER_AUTO_REMOVE_TIMEOUT_MS = 60000;
 const STICKER_AUTO_REMOVE_EDGE_TRIM_PX = 2;
@@ -161,11 +161,11 @@ const wait = async (ms: number): Promise<void> => {
   });
 };
 
-const queueAutoBackgroundRemoval = async (imageBlob: Blob): Promise<Blob> => {
+const queueAutoBackgroundRemoval = async (apiBase: string, imageBlob: Blob): Promise<Blob> => {
   const formData = new FormData();
   formData.append('image', imageBlob, 'sticker.png');
 
-  const queueResponse = await fetch(`${STICKER_AUTO_REMOVE_API_BASE}/api/run/removebg`, {
+  const queueResponse = await fetch(`${apiBase}/api/run/removebg`, {
     method: 'POST',
     body: formData,
   });
@@ -181,7 +181,7 @@ const queueAutoBackgroundRemoval = async (imageBlob: Blob): Promise<Blob> => {
 
   const deadline = Date.now() + STICKER_AUTO_REMOVE_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const statusResponse = await fetch(`${STICKER_AUTO_REMOVE_API_BASE}/api/jobs/${encodeURIComponent(promptId)}`);
+    const statusResponse = await fetch(`${apiBase}/api/jobs/${encodeURIComponent(promptId)}`);
     if (!statusResponse.ok) {
       throw new Error(`Background removal status failed (${statusResponse.status})`);
     }
@@ -192,7 +192,7 @@ const queueAutoBackgroundRemoval = async (imageBlob: Blob): Promise<Blob> => {
       if (typeof resultUrl !== 'string' || !resultUrl) {
         throw new Error('Background removal completed without an image result.');
       }
-      const resolvedUrl = new URL(resultUrl, STICKER_AUTO_REMOVE_API_BASE).toString();
+      const resolvedUrl = new URL(resultUrl, apiBase).toString();
       const resultResponse = await fetch(resolvedUrl);
       if (!resultResponse.ok) {
         throw new Error(`Background removal result fetch failed (${resultResponse.status})`);
@@ -276,6 +276,15 @@ export default function StickerBrushEditor({
   const [previewBusy, setPreviewBusy] = React.useState(false);
   const [commitBusy, setCommitBusy] = React.useState(false);
   const [autoRemoveBusy, setAutoRemoveBusy] = React.useState(false);
+  const [autoRemoveHealth, setAutoRemoveHealth] = React.useState<{
+    checking: boolean;
+    healthy: boolean;
+    reason: string;
+  }>({
+    checking: true,
+    healthy: false,
+    reason: '',
+  });
   const [screenMode, setScreenMode] = React.useState<'preview' | 'edit'>(initialScreenMode);
   const [interactionMode, setInteractionMode] = React.useState<InteractionMode>('none');
   const [panModifierPressed, setPanModifierPressed] = React.useState(false);
@@ -337,6 +346,67 @@ export default function StickerBrushEditor({
       setBrushPreviewVisible(false);
       brushPreviewTimeoutRef.current = null;
     }, 900);
+  }, []);
+
+  const refreshAutoRemoveHealth = React.useCallback(async () => {
+    setAutoRemoveHealth((current) => ({ ...current, checking: true }));
+    try {
+      const status = await getExperimentsHostStatus();
+      setAutoRemoveHealth({
+        checking: false,
+        healthy: status.healthy,
+        reason: status.reason,
+      });
+    } catch (_) {
+      setAutoRemoveHealth({
+        checking: false,
+        healthy: false,
+        reason: 'Experiments service is unavailable right now.',
+      });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    let active = true;
+
+    const runCheck = async () => {
+      try {
+        const status = await getExperimentsHostStatus();
+        if (!active) return;
+        setAutoRemoveHealth({
+          checking: false,
+          healthy: status.healthy,
+          reason: status.reason,
+        });
+      } catch (_) {
+        if (!active) return;
+        setAutoRemoveHealth({
+          checking: false,
+          healthy: false,
+          reason: 'Experiments service is unavailable right now.',
+        });
+      }
+    };
+
+    void runCheck();
+
+    const handleWindowFocus = () => {
+      void runCheck();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void runCheck();
+      }
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      active = false;
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const syncHistoryState = React.useCallback(() => {
@@ -1070,6 +1140,17 @@ export default function StickerBrushEditor({
     setAutoRemoveBusy(true);
     setEditorError('');
     try {
+      const hostStatus = await getExperimentsHostStatus();
+      setAutoRemoveHealth({
+        checking: false,
+        healthy: hostStatus.healthy,
+        reason: hostStatus.reason,
+      });
+      if (!hostStatus.healthy || !hostStatus.apiBase) {
+        throw new Error(hostStatus.reason || 'Experiments service is unavailable right now.');
+      }
+      const apiBase = hostStatus.apiBase;
+
       const compositedCanvas = createTransparentCanvas(sourceCanvas.width, sourceCanvas.height);
       updateCompositeCanvas(compositedCanvas, sourceCanvas, maskCanvas);
       const requestBlob = await new Promise<Blob>((resolve, reject) => {
@@ -1081,7 +1162,7 @@ export default function StickerBrushEditor({
           reject(new Error('Unable to prepare the sticker for background removal.'));
         }, 'image/png');
       });
-      const removedBlob = await queueAutoBackgroundRemoval(requestBlob);
+      const removedBlob = await queueAutoBackgroundRemoval(apiBase, requestBlob);
       const removedObjectUrl = URL.createObjectURL(removedBlob);
 
       try {
@@ -1162,10 +1243,11 @@ export default function StickerBrushEditor({
       }
     } catch (error) {
       setEditorError(error instanceof Error ? error.message : 'Unable to remove the background right now.');
+      void refreshAutoRemoveHealth();
     } finally {
       setAutoRemoveBusy(false);
     }
-  }, [autoRemoveBusy, busy, commitBusy, commitHistorySnapshot, editingPlacedSticker, previewBusy, refreshComposite, screenMode]);
+  }, [autoRemoveBusy, busy, commitBusy, commitHistorySnapshot, editingPlacedSticker, previewBusy, refreshAutoRemoveHealth, refreshComposite, screenMode]);
   const brushPreviewOuterMultiplier = getBrushFeatherOuterRadiusMultiplier(brushFeather);
   const brushPreviewDiameter = clamp(
     brushSize * brushPreviewOuterMultiplier,
@@ -1638,11 +1720,11 @@ export default function StickerBrushEditor({
           </IconButton>
           <IconButton
             onClick={() => { void handleAutoRemove(); }}
-            disabled={loading || !loadedSource || autoRemoveBusy || previewBusy || commitBusy || busy}
-            aria-label="Automatically remove background"
+            disabled={loading || !loadedSource || autoRemoveHealth.checking || !autoRemoveHealth.healthy || autoRemoveBusy || previewBusy || commitBusy || busy}
+            aria-label={autoRemoveHealth.healthy ? 'Automatically remove background' : (autoRemoveHealth.reason || 'Background removal unavailable')}
             sx={overlayIconButtonSx}
           >
-            {autoRemoveBusy ? (
+            {(autoRemoveBusy || autoRemoveHealth.checking) ? (
               <CircularProgress size={18} color="inherit" />
             ) : (
               <AutoFixHighRounded sx={{ fontSize: 19 }} />
