@@ -17,13 +17,14 @@ import {
   ArrowBackRounded,
   BlurOnRounded,
   BrushRounded,
+  CheckRounded,
   DarkModeRounded,
   ExpandMoreRounded,
   FitScreenRounded,
   LightModeRounded,
   OpenWithRounded,
   RedoRounded,
-  ReplayRounded,
+  TuneRounded,
   UndoRounded,
   WaterDropRounded,
   ZoomInRounded,
@@ -206,6 +207,7 @@ export default function StickerBrushEditor({
   const [checkerboardMode, setCheckerboardMode] = React.useState<CheckerboardMode>('dark');
   const [activeBrushControl, setActiveBrushControl] = React.useState<BrushControlKey>('size');
   const [brushControlMenuAnchorEl, setBrushControlMenuAnchorEl] = React.useState<HTMLElement | null>(null);
+  const [brushSettingsOpen, setBrushSettingsOpen] = React.useState(false);
 
   const scheduleRender = React.useCallback(() => {
     if (renderFrameRef.current != null) return;
@@ -456,6 +458,12 @@ export default function StickerBrushEditor({
     checkerboardModeRef.current = checkerboardMode;
     scheduleRender();
   }, [checkerboardMode, scheduleRender]);
+
+  React.useEffect(() => {
+    if (!brushSettingsOpen) {
+      setBrushControlMenuAnchorEl(null);
+    }
+  }, [brushSettingsOpen]);
 
   React.useEffect(() => {
     if (!brushPreferencesDirtyRef.current || typeof window === 'undefined') return;
@@ -760,7 +768,8 @@ export default function StickerBrushEditor({
     if (!current) return;
     const point = getCanvasLocalPoint(event as unknown as React.PointerEvent<HTMLCanvasElement>);
     if (!point) return;
-    const zoomFactor = event.deltaY < 0 ? 1.1 : 0.92;
+    const delta = clamp(event.deltaY, -120, 120);
+    const zoomFactor = Math.exp((-delta / 120) * 0.12);
     const nextScale = clamp(current.scale * zoomFactor, MIN_VIEW_SCALE, MAX_VIEW_SCALE);
     const imagePoint = screenToImagePoint(point.x, point.y, current);
     const transformedPoint = imageToScreenPoint(imagePoint.x, imagePoint.y, {
@@ -776,25 +785,6 @@ export default function StickerBrushEditor({
       rotation: current.rotation,
     });
   }, [getCanvasLocalPoint, loadedSource, setUserTransform]);
-
-  const handleReset = React.useCallback(() => {
-    const maskCanvas = maskCanvasRef.current;
-    if (!maskCanvas) return;
-    resetMaskCanvas(maskCanvas);
-    hasApproximateEditsRef.current = false;
-    setHasApproximateEdits(false);
-    clearPendingDraw();
-    panPointerIdRef.current = null;
-    lastPanPointRef.current = null;
-    pinchStateRef.current = null;
-    activePointersRef.current.clear();
-    setInteraction('none');
-    setScreenMode('edit');
-    setPreviewResult(null);
-    setBrushPreviewVisible(false);
-    commitHistorySnapshot(maskCanvas);
-    refreshComposite();
-  }, [clearPendingDraw, commitHistorySnapshot, refreshComposite, setInteraction]);
 
   const handlePreview = React.useCallback(async () => {
     const sourceCanvas = sourceCanvasRef.current;
@@ -1210,6 +1200,56 @@ export default function StickerBrushEditor({
               spacing={0.8}
               sx={{
                 position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
+                zIndex: 2,
+              }}
+            >
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={brushMode}
+                onChange={(_, value) => {
+                  if (value === 'erase' || value === 'restore') {
+                    setBrushMode(value);
+                  }
+                }}
+                sx={{
+                  p: 0.35,
+                  borderRadius: 999,
+                  bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.9),
+                  boxShadow: `0 8px 22px ${alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.22 : 0.14)}`,
+                  backdropFilter: 'blur(14px)',
+                  '& .MuiToggleButton-root': {
+                    minWidth: isMobile ? 78 : 88,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    px: isMobile ? 1.15 : 1.8,
+                    py: 0.55,
+                    border: 'none',
+                    borderRadius: 999,
+                    color: 'text.secondary',
+                    '&.Mui-selected': {
+                      color: 'text.primary',
+                      bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08),
+                    },
+                    '&.Mui-selected:hover': {
+                      bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.2 : 0.1),
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="erase">Erase</ToggleButton>
+                <ToggleButton value="restore">Restore</ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+
+            <Stack
+              direction="row"
+              spacing={0.8}
+              sx={{
+                position: 'absolute',
                 right: 12,
                 bottom: FLOATING_CANVAS_CONTROL_GAP_PX,
                 zIndex: 2,
@@ -1358,165 +1398,205 @@ export default function StickerBrushEditor({
             <Stack spacing={0.8}>
             {screenMode === 'edit' && (
               <>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  spacing={0.8}
-                  sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between' }}
-                >
-                  <ToggleButtonGroup
-                    exclusive
-                    size="small"
-                    value={brushMode}
-                    onChange={(_, value) => {
-                      if (value === 'erase' || value === 'restore') {
-                        setBrushMode(value);
-                      }
-                    }}
+                {brushSettingsOpen && (
+                  <Stack
+                    direction="row"
+                    spacing={1}
                     sx={{
-                      alignSelf: { xs: 'stretch', sm: 'flex-start' },
-                      p: 0.35,
-                      borderRadius: 999,
-                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
-                      '& .MuiToggleButton-root': {
-                        flex: 1,
-                        textTransform: 'none',
-                        fontWeight: 700,
-                        px: isMobile ? 1.15 : 1.8,
-                        py: 0.55,
-                        border: 'none',
-                        borderRadius: 999,
-                        color: 'text.secondary',
-                        '&.Mui-selected': {
-                          color: 'text.primary',
-                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08),
-                        },
-                        '&.Mui-selected:hover': {
-                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.2 : 0.1),
-                        },
-                      },
-                    }}
-                  >
-                    <ToggleButton value="erase">Erase</ToggleButton>
-                    <ToggleButton value="restore">Restore</ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
-
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{
-                    alignItems: 'center',
-                    px: 1,
-                    py: 0.55,
-                    borderRadius: 1.35,
-                    bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
-                  }}
-                >
-                  <Button
-                    onClick={(event) => setBrushControlMenuAnchorEl(event.currentTarget)}
-                    endIcon={<ExpandMoreRounded sx={{ fontSize: 18 }} />}
-                    sx={{
-                      minWidth: 112,
-                      px: 0.9,
-                      py: 0.45,
-                      borderRadius: 999,
-                      textTransform: 'none',
-                      fontWeight: 800,
-                      color: 'text.primary',
-                      bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
-                      justifyContent: 'space-between',
-                      '&:hover': {
-                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.18 : 0.12),
-                      },
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                      {activeBrushControlConfig.icon}
-                      <Typography variant="caption" sx={{ fontWeight: 800 }}>
-                        {activeBrushControlConfig.label}
-                      </Typography>
-                    </Box>
-                  </Button>
-                  <Slider
-                    size="small"
-                    value={activeBrushControlConfig.sliderValue}
-                    min={activeBrushControlConfig.sliderMin}
-                    max={activeBrushControlConfig.sliderMax}
-                    step={activeBrushControlConfig.sliderStep}
-                    onChange={activeBrushControlConfig.onChange}
-                    aria-label={activeBrushControlConfig.ariaLabel}
-                    sx={{ flex: 1, minWidth: 0 }}
-                  />
-                  <Box
-                    sx={{
-                      width: 46,
-                      height: 42,
-                      borderRadius: 999,
-                      display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.42 : 0.82),
-                      flexShrink: 0,
+                      px: 1,
+                      py: 0.55,
+                      borderRadius: 1.35,
+                      bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.72 : 0.88),
                     }}
                   >
-                    {activeBrushControlConfig.valueDisplay}
-                  </Box>
-                  <Menu
-                    anchorEl={brushControlMenuAnchorEl}
-                    open={Boolean(brushControlMenuAnchorEl)}
-                    onClose={() => setBrushControlMenuAnchorEl(null)}
-                    PaperProps={{
-                      sx: {
-                        mt: 0.5,
-                        borderRadius: 2,
-                        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
-                      },
-                    }}
-                  >
-                    <MenuItem
-                      selected={activeBrushControl === 'size'}
-                      onClick={() => {
-                        setActiveBrushControl('size');
-                        setBrushControlMenuAnchorEl(null);
+                    <Button
+                      onClick={(event) => setBrushControlMenuAnchorEl(event.currentTarget)}
+                      endIcon={<ExpandMoreRounded sx={{ fontSize: 18 }} />}
+                      sx={{
+                        minWidth: 112,
+                        px: 0.9,
+                        py: 0.45,
+                        borderRadius: 999,
+                        textTransform: 'none',
+                        fontWeight: 800,
+                        color: 'text.primary',
+                        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                        justifyContent: 'space-between',
+                        '&:hover': {
+                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.18 : 0.12),
+                        },
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <BrushRounded sx={{ fontSize: 17 }} />
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          Size
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        {activeBrushControlConfig.icon}
+                        <Typography variant="caption" sx={{ fontWeight: 800 }}>
+                          {activeBrushControlConfig.label}
                         </Typography>
                       </Box>
-                    </MenuItem>
-                    <MenuItem
-                      selected={activeBrushControl === 'opacity'}
-                      onClick={() => {
-                        setActiveBrushControl('opacity');
-                        setBrushControlMenuAnchorEl(null);
+                    </Button>
+                    <Slider
+                      size="small"
+                      value={activeBrushControlConfig.sliderValue}
+                      min={activeBrushControlConfig.sliderMin}
+                      max={activeBrushControlConfig.sliderMax}
+                      step={activeBrushControlConfig.sliderStep}
+                      onChange={activeBrushControlConfig.onChange}
+                      aria-label={activeBrushControlConfig.ariaLabel}
+                      sx={{ flex: 1, minWidth: 0 }}
+                    />
+                    <Box
+                      sx={{
+                        width: 46,
+                        height: 42,
+                        borderRadius: 999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.42 : 0.82),
+                        flexShrink: 0,
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <WaterDropRounded sx={{ fontSize: 17 }} />
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          Opacity
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                    <MenuItem
-                      selected={activeBrushControl === 'feather'}
-                      onClick={() => {
-                        setActiveBrushControl('feather');
-                        setBrushControlMenuAnchorEl(null);
+                      {activeBrushControlConfig.valueDisplay}
+                    </Box>
+                    <Menu
+                      anchorEl={brushControlMenuAnchorEl}
+                      open={Boolean(brushControlMenuAnchorEl)}
+                      onClose={() => setBrushControlMenuAnchorEl(null)}
+                      autoFocus={false}
+                      disableAutoFocusItem
+                      MenuListProps={{ autoFocusItem: false }}
+                      PaperProps={{
+                        sx: {
+                          mt: 0.5,
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+                        },
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <BlurOnRounded sx={{ fontSize: 17 }} />
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          Feather
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                  </Menu>
-                </Stack>
+                      <MenuItem
+                        disableRipple
+                        onClick={() => {
+                          setActiveBrushControl('size');
+                          setBrushControlMenuAnchorEl(null);
+                        }}
+                        sx={{
+                          minWidth: 150,
+                          py: 0.8,
+                          px: 1.1,
+                          borderRadius: 1.4,
+                          mx: 0.5,
+                          my: 0.25,
+                          transition: 'none',
+                          WebkitTapHighlightColor: 'transparent',
+                          bgcolor: activeBrushControl === 'size'
+                            ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                            : 'transparent',
+                          '&:hover': {
+                            bgcolor: activeBrushControl === 'size'
+                              ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                              : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                          },
+                          '&.Mui-focusVisible': {
+                            bgcolor: activeBrushControl === 'size'
+                              ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                              : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <BrushRounded sx={{ fontSize: 17 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              Size
+                            </Typography>
+                          </Box>
+                          <CheckRounded sx={{ fontSize: 16, color: 'text.primary', opacity: activeBrushControl === 'size' ? 0.82 : 0 }} />
+                        </Box>
+                      </MenuItem>
+                      <MenuItem
+                        disableRipple
+                        onClick={() => {
+                          setActiveBrushControl('opacity');
+                          setBrushControlMenuAnchorEl(null);
+                        }}
+                        sx={{
+                          minWidth: 150,
+                          py: 0.8,
+                          px: 1.1,
+                          borderRadius: 1.4,
+                          mx: 0.5,
+                          my: 0.25,
+                          transition: 'none',
+                          WebkitTapHighlightColor: 'transparent',
+                          bgcolor: activeBrushControl === 'opacity'
+                            ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                            : 'transparent',
+                          '&:hover': {
+                            bgcolor: activeBrushControl === 'opacity'
+                              ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                              : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                          },
+                          '&.Mui-focusVisible': {
+                            bgcolor: activeBrushControl === 'opacity'
+                              ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                              : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <WaterDropRounded sx={{ fontSize: 17 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              Opacity
+                            </Typography>
+                          </Box>
+                          <CheckRounded sx={{ fontSize: 16, color: 'text.primary', opacity: activeBrushControl === 'opacity' ? 0.82 : 0 }} />
+                        </Box>
+                      </MenuItem>
+                      <MenuItem
+                        disableRipple
+                        onClick={() => {
+                          setActiveBrushControl('feather');
+                          setBrushControlMenuAnchorEl(null);
+                        }}
+                        sx={{
+                          minWidth: 150,
+                          py: 0.8,
+                          px: 1.1,
+                          borderRadius: 1.4,
+                          mx: 0.5,
+                          my: 0.25,
+                          transition: 'none',
+                          WebkitTapHighlightColor: 'transparent',
+                          bgcolor: activeBrushControl === 'feather'
+                            ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                            : 'transparent',
+                          '&:hover': {
+                            bgcolor: activeBrushControl === 'feather'
+                              ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                              : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                          },
+                          '&.Mui-focusVisible': {
+                            bgcolor: activeBrushControl === 'feather'
+                              ? alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.16 : 0.08)
+                              : alpha(theme.palette.action.hover, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', justifyContent: 'space-between' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <BlurOnRounded sx={{ fontSize: 17 }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              Feather
+                            </Typography>
+                          </Box>
+                          <CheckRounded sx={{ fontSize: 16, color: 'text.primary', opacity: activeBrushControl === 'feather' ? 0.82 : 0 }} />
+                        </Box>
+                      </MenuItem>
+                    </Menu>
+                  </Stack>
+                )}
               </>
             )}
 
@@ -1596,17 +1676,28 @@ export default function StickerBrushEditor({
                   </Button>
 
                   <IconButton
-                    onClick={handleReset}
-                    disabled={loading || !hasApproximateEdits}
-                    aria-label="Reset sticker edits"
+                    onClick={() => setBrushSettingsOpen((current) => !current)}
+                    disabled={loading || previewBusy || commitBusy || busy}
+                    aria-label={brushSettingsOpen ? 'Hide brush settings' : 'Show brush settings'}
                     sx={{
                       ...sideIconActionButtonSx,
+                      ...(brushSettingsOpen
+                        ? {
+                          bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+                          borderColor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.24 : 0.16),
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.18 : 0.12),
+                            borderColor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.28 : 0.2),
+                            boxShadow: neutralButtonShadow,
+                          },
+                        }
+                        : {}),
                       width: 52,
                       minWidth: 52,
                       px: 0,
                     }}
                   >
-                    <ReplayRounded />
+                    <TuneRounded />
                   </IconButton>
                 </>
               )}
