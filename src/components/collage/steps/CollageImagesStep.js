@@ -77,6 +77,8 @@ const CollageImagesStep = ({
   onAddTextRequest,
   onAddStickerRequest,
   onEditStickerRequest,
+  activeStickerSelectionRequest,
+  onActiveStickerSelectionHandled,
   canManageStickers = false,
   showTopAddButton = true,
   showBottomAddButton = true,
@@ -323,6 +325,8 @@ const CollageImagesStep = ({
             // Editing session tracking
             onEditingSessionChange={onEditingSessionChange}
             onEditStickerRequest={onEditStickerRequest}
+            activeStickerSelectionRequest={activeStickerSelectionRequest}
+            onActiveStickerSelectionHandled={onActiveStickerSelectionHandled}
             // Initialize with custom layout if provided
             customLayout={customLayout}
             customLayoutKey={customLayoutKey}
@@ -490,6 +494,11 @@ CollageImagesStep.propTypes = {
   onAddTextRequest: PropTypes.func,
   onAddStickerRequest: PropTypes.func,
   onEditStickerRequest: PropTypes.func,
+  activeStickerSelectionRequest: PropTypes.shape({
+    stickerId: PropTypes.string,
+    requestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  }),
+  onActiveStickerSelectionHandled: PropTypes.func,
   canManageStickers: PropTypes.bool,
   showTopAddButton: PropTypes.bool,
   showBottomAddButton: PropTypes.bool,

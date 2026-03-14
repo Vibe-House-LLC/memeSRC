@@ -313,6 +313,7 @@ export default function CollagePage() {
   const [replaceSelection, setReplaceSelection] = useState(null);
   const [pendingReplaceImage, setPendingReplaceImage] = useState(null);
   const pendingReplaceQueueRef = useRef([]);
+  const [activeStickerSelectionRequest, setActiveStickerSelectionRequest] = useState(null);
   
   // Projects state: track only the active project id for editor flows
   const [activeProjectId, setActiveProjectId] = useState(null);
@@ -2837,6 +2838,21 @@ export default function CollagePage() {
     setStickerFlowState(null);
   }, []);
 
+  const requestStickerSelection = useCallback((stickerId) => {
+    if (typeof stickerId !== 'string' || !stickerId) return;
+    setActiveStickerSelectionRequest({
+      stickerId,
+      requestId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    });
+  }, []);
+
+  const handleActiveStickerSelectionHandled = useCallback((requestId) => {
+    setActiveStickerSelectionRequest((current) => {
+      if (!current || current.requestId !== requestId) return current;
+      return null;
+    });
+  }, []);
+
   const commitStickerFromFlow = useCallback(async ({ mode, preparedSource, edit, existingEditContext }) => {
     if (!preparedSource || !edit) return null;
 
@@ -2874,6 +2890,7 @@ export default function CollagePage() {
 
     if (mode === 'edit-existing-sticker' && existingEditContext?.stickerId) {
       if (!edit.changed) {
+        requestStickerSelection(existingEditContext.stickerId);
         closeStickerFlow();
         setCurrentView('editor');
         return existingEditContext.stickerId;
@@ -2890,6 +2907,7 @@ export default function CollagePage() {
         yPercent: placementUpdate.yPercent,
         angleDeg: placementUpdate.angleDeg,
       });
+      requestStickerSelection(existingEditContext.stickerId);
       closeStickerFlow();
       setCurrentView('editor');
       return existingEditContext.stickerId;
@@ -2903,10 +2921,11 @@ export default function CollagePage() {
       widthPercent: 28,
     });
 
+    requestStickerSelection(stickerId);
     closeStickerFlow();
     setCurrentView('editor');
     return stickerId;
-  }, [addSticker, closeStickerFlow, updateSticker]);
+  }, [addSticker, closeStickerFlow, requestStickerSelection, updateSticker]);
 
   const openHeaderAddMenu = useCallback((event) => {
     setHeaderAddMenuAnchorEl(event.currentTarget);
@@ -3028,6 +3047,8 @@ export default function CollagePage() {
     onOpenPanelReorder: handlePanelReorderRequestedFromSettings,
     onRemovePanelRequest: handlePanelRemoveRequestedFromSettings,
     onEditStickerRequest: handleEditStickerRequest,
+    activeStickerSelectionRequest,
+    onActiveStickerSelectionHandled: handleActiveStickerSelectionHandled,
   };
 
   // Handler for when collage is generated - show inline result
@@ -3109,6 +3130,8 @@ export default function CollagePage() {
     onAddTextRequest: handleAddTextRequested,
     onAddStickerRequest: openStickerAddFlow,
     onEditStickerRequest: handleEditStickerRequest,
+    activeStickerSelectionRequest,
+    onActiveStickerSelectionHandled: handleActiveStickerSelectionHandled,
     canManageStickers,
     // Render tracking for timely thumbnail capture
     renderSig: currentSig,
